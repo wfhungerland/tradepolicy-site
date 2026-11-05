@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Produktraum-Monitor</title>
+<meta name="description" content="Wie komplex sind die Exporte eines Landes, und wo liegen seine nächsten Chancen? Economic Complexity aus BACI-Handelsdaten, 1995 bis 2024.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <span class="eyebrow">Außenhandel</span>
+      <h1>Produktraum-Monitor</h1>
+    </div>
+    <nav aria-label="Bereiche">
+      <a href="#ueberblick">Überblick</a>
+      <a href="#laender">Länder</a>
+      <a href="#produktraum">Produktraum</a>
+      <a href="#branchen">Branchen</a>
+      <a href="#prognose">Prognosetest</a>
+      <a href="#methodik">Methodik</a>
+    </nav>
+  </div>
+</header>
+
+<main class="inner">
+  <div class="controls" id="controls">
+    <label for="country">Land</label>
+    <select id="country"></select>
+    <span class="hint" id="countryHint"></span>
+  </div>
+
+  <section id="view-ueberblick" class="view">
+    <h2>Wie komplex sind die Exporte eines Landes?</h2>
+    <p class="lead">Der Monitor misst, welche Produkte ein Land mit Vorteil exportiert, wie anspruchsvoll diese Produkte sind und welche verwandten Produkte als Nächstes erreichbar wären. Grundlage sind bilaterale Handelsdaten für 130 Länder und 1.203 Warengruppen von 1995 bis 2024.</p>
+    <div class="facts" id="facts"></div>
+    <div class="callout">
+      <h3>Befund für Deutschland</h3>
+      <p>Deutschland fällt im Complexity-Rang von Platz 2 (1995) auf Platz 5 (2024), weil Korea, Taiwan und China aufholen. Auf einem festen Maßstab bleibt der deutsche Exportkorb etwa gleich komplex. Deutschland hält den eng verbundenen Kern aus Maschinen, Chemie, Metallen und Fahrzeugen und verliert Vorteile an dessen Rand. Der Befund hält über alle Robustheitsprüfungen und im Abgleich mit dem Atlas of Economic Complexity.</p>
+    </div>
+    <div class="callout">
+      <h3>Taugt Gravitation für Kurzfristprognosen?</h3>
+      <p>Nein. Ein Gravitationsmodell mit fixen Effekten prognostiziert deutsche Ausfuhren 1 bis 6 Monate im Voraus um 19 bis 27 % schlechter als ein einfaches AR-Modell. Für den Welthandel liegt es bestenfalls gleichauf. Details unter <a href="#prognose">Prognosetest</a>.</p>
+    </div>
+  </section>
+
+  <section id="view-laender" class="view" hidden>
+    <h2 id="laenderTitle">Länder</h2>
+    <p class="lead">Rang im Economic Complexity Index (ECI) unter 130 Ländern. Wählen Sie bis zu fünf Vergleichsländer.</p>
+    <div class="compare" id="compare"></div>
+    <figure class="chart">
+      <figcaption>ECI-Rang (1 = komplexester Exportkorb)</figcaption>
+      <div id="rankChart" class="svgwrap"></div>
+    </figure>
+    <figure class="chart">
+      <figcaption>Komplexität des Exportkorbs auf festem Maßstab (mittlere Produktkomplexität 1995 bis 2024)</figcaption>
+      <div id="fixedChart" class="svgwrap"></div>
+    </figure>
+    <div class="tablewrap"><table id="rankTable"></table></div>
+    <p class="note">Der ECI wird jedes Jahr neu normiert und zeigt nur die relative Position. Der feste Maßstab bewertet den Korb jedes Jahres mit denselben Produktkomplexitäten und zeigt, ob ein Land selbst anspruchsvoller exportiert. Fitness und GENEPY sind alternative Verfahren.</p>
+  </section>
+
+  <section id="view-produktraum" class="view" hidden>
+    <h2>Produktraum</h2>
+    <p class="lead">Jeder Punkt ist eine Warengruppe (HS4). Nah beieinander liegen Produkte, die häufig von denselben Ländern exportiert werden. Größe: Welthandel 2024.</p>
+    <div class="toolbar">
+      <label for="colorMode">Färbung</label>
+      <select id="colorMode">
+        <option value="status">Vorteile des Landes 1995 und 2024</option>
+        <option value="year">Vorteile in einem Jahr</option>
+        <option value="group">Produktgruppen</option>
+      </select>
+      <label for="snapYear" id="snapYearLabel" hidden>Jahr</label>
+      <select id="snapYear" hidden></select>
+    </div>
+    <div class="spacewrap">
+      <canvas id="space" aria-label="Karte des Produktraums"></canvas>
+      <div id="tip" class="tip" hidden></div>
+    </div>
+    <div class="legend" id="spaceLegend"></div>
+    <h3>Nächste Chancen</h3>
+    <p class="note">Produkte ohne Exportvorteil im Jahr 2024, sortiert nach Complexity Outlook Gain: Wie stark würde ein Einstieg die Nähe zu komplexen Produkten erhöhen? Nähe 0 bis 1, Komplexität als PCI. Zeile anklicken markiert das Produkt in der Karte.</p>
+    <div class="tablewrap"><table id="oppTable"></table></div>
+  </section>
+
+  <section id="view-branchen" class="view" hidden>
+    <h2 id="branchenTitle">Branchen</h2>
+    <p class="lead">Anteil am Welthandel der jeweiligen Branche, 1995 und 2024.</p>
+    <div class="tablewrap"><table id="sectorTable"></table></div>
+  </section>
+
+  <section id="view-prognose" class="view" hidden>
+    <h2>Prognosetest: Gravitation gegen einfache Modelle</h2>
+    <p class="lead">Können Gravitationsmodelle mit fixen Effekten den Handel auf Monats- oder Quartalsebene prognostizieren? Alle Modelle wurden außerhalb der Schätzstichprobe getestet, mit Prognosezeitpunkten ab Dezember 2014.</p>
+    <div id="forecastTables"></div>
+    <p class="note">Werte: Prognosefehler (RMSE) relativ zum AR-Modell; unter 1 heißt besser als AR. p: Diebold-Mariano-Test gegen AR. Naiv: unveränderte Vorjahresrate. AR nach Zielländern: AR-Prognosen je Zielland, aufsummiert. Gravitation: PPML mit Exporteur-Monat-, Importeur-Monat- und Länderpaar-Effekten auf 60-Monats-Fenstern. Datenstand heute, ohne Revisionen.</p>
+  </section>
+
+  <section id="view-methodik" class="view" hidden>
+    <h2>Methodik und Quellen</h2>
+    <div class="prose">
+      <h3>Daten</h3>
+      <p>Bilaterale Exporte aus BACI HS92 (CEPII), aufsummiert über Zielländer und zu HS4-Positionen zusammengefasst. Festes Panel: Länder mit mindestens 1 Mio. Einwohnern und durchschnittlich mindestens 1 Mrd. USD Exporten, Produkte mit mindestens 40 Mio. USD Welthandel. Exporte als gleitender Dreijahresdurchschnitt.</p>
+      <h3>Kennzahlen</h3>
+      <p>Offenbarter komparativer Vorteil nach Balassa, Schwelle 1. Economic Complexity Index und Product Complexity Index über den Eigenvektor zum zweitgrößten Eigenwert (äquivalent zur Methode der Reflexionen im Grenzwert). Nähe zwischen Produkten als kleinere der beiden bedingten Wahrscheinlichkeiten gemeinsamer Exportvorteile, Dichte und Complexity Outlook nach Hausmann et al. (2014). Der Produktraum zeigt den maximalen Spannbaum der Nähe-Matrix 2024 und alle Verbindungen ab 0,55.</p>
+      <h3>Prüfungen</h3>
+      <p>RCA-Schwellen 0,75 bis 2, Glättung über 1 bis 5 Jahre, HS6 statt HS4, ohne Re-Export-Drehscheiben, Fitness-Complexity und GENEPY als alternative Verfahren, Abgleich mit dem Atlas of Economic Complexity (Rangkorrelation 0,95 bis 0,97).</p>
+      <h3>Quellen und Lizenzen</h3>
+      <ul id="sources"></ul>
+      <p>Warengruppen-Namen: Harvard Growth Lab (englisch). Ländernamen: Browser-Standard.</p>
+      <h3>Daten herunterladen</h3>
+      <p>Alle Ergebnisse liegen als JSON im Ordner <a href="data/">data</a>, etwa <a href="data/eci.json">eci.json</a> (Zeitreihen je Land) und <a href="data/products.json">products.json</a> (Produkte mit Komplexität und Kartenposition).</p>
+      <p class="note" id="built"></p>
+    </div>
+  </section>
+</main>
+
+<footer class="inner foot">
+  <span>Wolf-Fabian Hungerland · Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS und Harvard Growth Lab.</span>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
