@@ -104,6 +104,7 @@ canvas#space { display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%
 .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .prose { display: flex; flex-direction: column; gap: 10px; }
 .prose ul { margin: 0; padding-left: 20px; }
-.foot { border-top: 1px solid var(--line); padding-block: 20px 32px; font-size: 13px; color: var(--muted); }
+.foot { border-top: 1px solid var(--line); padding-block: 20px 32px; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 #forecastTables { display: flex; flex-direction: column; gap: 14px; }
+.legal { padding-block: 32px 48px; max-width: 760px; }

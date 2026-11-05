@@ -30,7 +30,9 @@ Dieses Repo enthält nur die Seite (`site/`) und abgeleitete Ergebnisse (`site/d
 2. Den Inhalt von `<output>/site_data` nach `site/data` in diesem Repo kopieren.
 3. Committen und pushen. Der Workflow `pages.yml` veröffentlicht `site/` auf GitHub Pages (Settings, Pages, Source: GitHub Actions).
 
-Die Seite braucht keinen Build-Schritt und keine Bibliotheken. Lokal ansehen:
+Die Seite braucht keinen Build-Schritt und keine Bibliotheken. Schriften liegen in `site/fonts` (SIL Open Font License), damit keine fremden Server eingebunden werden. Impressum und Datenschutzerklärung: `site/impressum.html`, `site/datenschutz.html`.
+
+Lokal ansehen:
 
 ```bash
 python -m http.server --directory site 8000

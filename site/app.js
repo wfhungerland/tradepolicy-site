@@ -25,8 +25,6 @@
     return cache[path];
   }
 
-  function store(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* storage unavailable */ } }
-  function load(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
 
   // ---------------------------------------------------------------- routing
   function route() {
@@ -104,9 +102,9 @@
       `<span class="pill"><i style="background:${colors[k + 1]}"></i>${esc(cname(iso))}<button type="button" data-rm="${iso}" aria-label="${esc(cname(iso))} entfernen">×</button></span>`).join("") +
       (list.length < 6 ? `<label for="addCmp" class="hint">Vergleichsland</label><select id="addCmp"><option value="">hinzufügen …</option>${opts.map((i) => `<option value="${i}">${esc(cname(i))}</option>`).join("")}</select>` : "");
     $("compare").querySelectorAll("button[data-rm]").forEach((b) => b.addEventListener("click", () => {
-      state.compare = state.compare.filter((i) => i !== b.dataset.rm); store("compare", state.compare); renderCountries();
+      state.compare = state.compare.filter((i) => i !== b.dataset.rm); renderCountries();
     }));
-    const add = $("addCmp"); if (add) add.addEventListener("change", () => { if (add.value) { state.compare.push(add.value); store("compare", state.compare); renderCountries(); } });
+    const add = $("addCmp"); if (add) add.addEventListener("change", () => { if (add.value) { state.compare.push(add.value); renderCountries(); } });
     const series = (key) => list.map((iso, k) => ({ label: cname(iso), color: colors[k], values: D.eci.countries[iso][key], bold: k === 0 }));
     const maxRank = Math.max(...list.flatMap((i) => D.eci.countries[i].rank));
     lineChart($("rankChart"), ys, series("rank"), { invert: true, min: 1, max: Math.max(10, maxRank + 2), int: true, label: "ECI-Rang" });
@@ -243,11 +241,9 @@
   async function start() {
     const [meta, eci, products, edges, forecast] = await Promise.all(["meta", "eci", "products", "edges", "forecast"].map((f) => getJSON(`data/${f}.json`)));
     D = { meta, eci, products, edges, forecast };
-    const saved = load("country"); if (saved && eci.countries[saved]) state.iso = saved;
-    const cmp = load("compare"); if (Array.isArray(cmp)) state.compare = cmp.filter((i) => eci.countries[i]);
     const sel = $("country");
     sel.innerHTML = Object.keys(eci.countries).sort((a, b) => cname(a).localeCompare(cname(b), "de")).map((i) => `<option value="${i}"${i === state.iso ? " selected" : ""}>${esc(cname(i))}</option>`).join("");
-    sel.addEventListener("change", () => { state.iso = sel.value; state.highlight = null; state.snapYear = null; store("country", state.iso); route(); });
+    sel.addEventListener("change", () => { state.iso = sel.value; state.highlight = null; state.snapYear = null; route(); });
     $("countryHint").textContent = `${eci.n_countries} Länder, ${meta.years[0]} bis ${meta.years[1]}`;
     $("colorMode").addEventListener("change", (e) => { state.colorMode = e.target.value; renderSpace(); });
     $("snapYear").addEventListener("change", (e) => { state.snapYear = +e.target.value; renderSpace(); });
