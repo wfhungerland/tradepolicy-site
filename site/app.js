@@ -9,6 +9,8 @@
   try { regionNames = new Intl.DisplayNames(["de"], { type: "region" }); } catch (e) { regionNames = null; }
 
   const $ = (id) => document.getElementById(id);
+  // product group colours from the Konjunkturmonitor palette
+  const GROUP_PAL = ["#0070C0", "#7030A0", "#47D359", "#B45309", "#D86DCD", "#51154A", "#00B0F0", "#002060"];
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const fmt = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? "–" : v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -128,7 +130,7 @@
     const first = new Set(cd.rca[String(snaps[0])]), last = new Set(cd.rca[String(snaps[snaps.length - 1])]);
     const yearSet = new Set(cd.rca[String(state.snapYear)] || []);
     const col = { kept: css("--kept"), gained: css("--gained"), lost: css("--lost"), none: css("--none") };
-    const gcol = D.products.group_colors;
+    const gcol = GROUP_PAL;
     const status = P.map((_, i) => first.has(i) && last.has(i) ? "kept" : last.has(i) ? "gained" : first.has(i) ? "lost" : "none");
     const color = P.map((p, i) => state.colorMode === "group" ? gcol[p[4]] : state.colorMode === "year" ? (yearSet.has(i) ? col.kept : col.none) : col[status[i]]);
     const order = P.map((_, i) => i).sort((a, b) => (color[a] === col.none) - (color[b] === col.none)).reverse();
