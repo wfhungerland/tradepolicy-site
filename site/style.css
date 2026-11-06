@@ -108,3 +108,8 @@ canvas#space { display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%
 .legal { padding-block: 24px 40px; max-width: 760px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 @media print { .top, nav, .controls, .toolbar { display: none !important; } body { background: #fff; } }
+.answer { font-size: 19px; max-width: 48em; margin: 0; }
+.answer button.copy { font: 12px var(--ff); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: var(--r); padding: 0 6px; cursor: pointer; vertical-align: 2px; }
+details.fold > summary { cursor: pointer; color: var(--accent); font-size: 15px; }
+details.fold[open] > summary { margin-bottom: 8px; }
+#scenChecks td:last-child { min-width: 320px; }

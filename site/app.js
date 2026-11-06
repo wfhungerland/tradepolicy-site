@@ -1,8 +1,8 @@
 "use strict";
 (function () {
-  const VIEWS = ["ueberblick", "laender", "produktraum", "branchen", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "produktraum", "branchen", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
-  const state = { iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
+  const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
   let D = {};
   let regionNames = null;
@@ -81,6 +81,7 @@
     if (view === "laender") renderCountries();
     if (view === "produktraum") await renderSpace();
     if (view === "branchen") await renderSectors();
+    if (view === "szenarien") await renderScenarios();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -206,6 +207,88 @@
         const d = (r.b - r.a) * 100, cls = Math.abs(d) < 0.3 ? "even" : d > 0 ? "good" : "bad";
         return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${cls}">${d > 0 ? "+" : ""}${fmt(d, 1)}</span></td><td><span class="bar" style="width:${Math.max(1, 140 * (r.b || 0) / mx)}px;background:var(--accent)"></span></td></tr>`;
       }).join("") + "</tbody>";
+  }
+
+
+  // scenarios ----------------------------------------------------------------
+  const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : (v > 0 ? "+" : "") + fmt(v, d) + " %";
+  function scName(iso, S) {
+    if (iso === "EU27") return "EU27";
+    if (iso === "ROW") return "Rest der Welt";
+    const i2 = S.iso2[iso];
+    if (regionNames && i2) { try { const n = regionNames.of(i2); if (n && n !== i2) return n; } catch (e) { /* fall back */ } }
+    return (D.eci.countries[iso] && D.eci.countries[iso].name) || iso;
+  }
+  function robust(v) {
+    if (v[1] === null || v[2] === null) return ["even", "ohne Spanne"];
+    if (Math.abs(v[0]) < 0.005 && Math.abs(v[1]) < 0.01 && Math.abs(v[2]) < 0.01) return ["even", "kaum Wirkung"];
+    return (v[1] < 0) === (v[2] < 0) || v[1] === 0 || v[2] === 0 ? ["good", "robust"] : ["bad", "Vorzeichen unsicher"];
+  }
+  async function renderScenarios() {
+    const S = await getJSON("data/scenarios.json");
+    const sel = $("scenario");
+    if (!sel.options.length) {
+      const grp = { us: "US-Zölle (ohne Vergeltung)", eu: "EU-Binnenmarkt" };
+      sel.innerHTML = Object.keys(grp).map((g) => `<optgroup label="${grp[g]}">` +
+        S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(s.title)}</option>`).join("") + "</optgroup>").join("");
+      sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
+    }
+    sel.value = state.scenario;
+    const sc = S.scenarios.find((s) => s.id === state.scenario), C = sc.countries;
+    const iso = C[state.iso] ? state.iso : "DEU", name = scName(iso, S), v = C[iso];
+    const partner = sc.partner === "USA" ? "in die USA" : "in die EU";
+    $("scenShock").textContent = sc.shock;
+    const note = iso !== state.iso ? `${cname(state.iso)} ist im Modell Teil des „Rests der Welt“; gezeigt wird Deutschland. ` : "";
+    const [rc, rl] = robust(v);
+    const sent = `${sc.title}: Das Realeinkommen ${iso === "DEU" ? "in Deutschland" : "von " + name} ändert sich um ${pct(v[0])} (Spanne ${pct(v[1])} bis ${pct(v[2])}). ` +
+      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Die Exporte ${partner} ändern sich um ${pct(v[4], 1)}, die gesamten Exporte um ${pct(v[3], 1)}.` : "");
+    $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">Textbaustein kopieren</button>`;
+    $("copyScen").addEventListener("click", (e) => {
+      const txt = sent + " Quelle: Produktraum-Monitor, Modell nach Caliendo und Parro (2015), OECD ICIO 2022; " + location.href.split("#")[0] + "#szenarien";
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => { e.target.textContent = "kopiert"; });
+    });
+    const tile = (big, label) => `<div class="fact"><span class="big">${big}</span><span class="label">${esc(label)}</span></div>`;
+    $("scenFacts").innerHTML = [
+      tile(pct(v[0]), `Realeinkommen ${name}`),
+      v[4] !== null ? tile(pct(v[4], 1), `Exporte ${partner}`) : tile(pct(v[3], 1), "Exporte insgesamt"),
+      tile(pct(C.EU27[0]), "Realeinkommen EU27"),
+      tile(pct(sc.partner === "USA" ? C.USA[0] : C.CHN[0], 2), sc.partner === "USA" ? "Realeinkommen USA" : "Realeinkommen China"),
+    ].join("");
+    // bar chart: 20 largest effects plus selection and EU27
+    const all = Object.keys(C).filter((k) => k !== "ROW");
+    let list = all.filter((k) => k !== "EU27").sort((a, b) => Math.abs(C[b][0]) - Math.abs(C[a][0])).slice(0, 18);
+    ["EU27", iso].forEach((k) => { if (!list.includes(k)) list.push(k); });
+    list.sort((a, b) => C[a][0] - C[b][0]);
+    $("scenChartTitle").textContent = "Realeinkommen in %: die 18 am stärksten betroffenen Länder, " + (iso === "DEU" ? "Deutschland" : name) + " und EU27";
+    const W = 860, row = 22, m = { l: 170, r: 70, t: 8, b: 26 }, H = m.t + m.b + row * list.length;
+    const vals = list.flatMap((k) => [C[k][0], C[k][1], C[k][2]]).filter((x) => x !== null);
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.05 || 0.1; lo -= pd; hi += pd;
+    const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen nach Ländern">`;
+    niceTicks(lo, hi, 6).forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, 1)}</text>`; });
+    s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
+    list.forEach((k, i) => {
+      const y = m.t + i * row, c = C[k], sel = k === iso || k === "EU27";
+      const col = c[0] < 0 ? (sel ? "#C00000" : "#e08a8a") : (sel ? "#0070C0" : "#8fbfe3");
+      s += `<rect x="${Math.min(X(0), X(c[0]))}" y="${y + 4}" width="${Math.abs(X(c[0]) - X(0))}" height="${row - 8}" fill="${col}"/>`;
+      if (c[1] !== null) s += `<line x1="${X(c[1])}" x2="${X(c[2])}" y1="${y + row / 2}" y2="${y + row / 2}" stroke="#000" stroke-width="1"/>`;
+      s += `<text x="${m.l - 8}" y="${y + row / 2 + 4}" text-anchor="end" style="fill:var(--fg);font-weight:${sel ? 600 : 400}">${esc(scName(k, S))}</text>`;
+      s += `<text x="${W - m.r + 6}" y="${y + row / 2 + 4}">${pct(c[0])}</text>`;
+    });
+    $("scenChart").innerHTML = s + "</svg>";
+    // German sectors
+    const usS = sc.partner === "USA";
+    // the 15 sectors with the largest German exports to the partner in 2022 (small sectors give extreme percentages)
+    const bySize = sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => (b[4] || 0) - (a[4] || 0)).slice(0, 15);
+    const chip = (x, d = 1) => `<span class="chip ${x === null || Math.abs(x) < 0.05 ? "even" : x > 0 ? "good" : "bad"}">${pct(x, d)}</span>`;
+    $("scenSectors").innerHTML = `<thead><tr><th>Branche</th>${usS ? '<th class="num">US-Zoll</th>' : ""}<th class="num">Exporte ${partner} 2022</th><th class="num">Exporte ${partner}</th><th class="num">Produktion</th></tr></thead><tbody>` +
+      bySize.map((r) => `<tr><td>${esc(S.sector_names[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)} %</td>` : ""}<td class="num">${fmt(r[4], 1)} Mrd. USD</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
+    // all countries
+    $("scenAll").innerHTML = `<thead><tr><th>Land</th><th class="num">Realeinkommen</th><th class="num">Spanne</th><th class="num">Exporte ${partner}</th><th class="num">Exporte insgesamt</th>${usS ? '<th class="num">US-Zoll im Mittel</th>' : ""}</tr></thead><tbody>` +
+      all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), "de")).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + " bis " + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
+    const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad" };
+    $("scenChecks").innerHTML = `<thead><tr><th>Prüfung</th><th>Ergebnis</th><th>Befund</th></tr></thead><tbody>` +
+      S.checks.map((c) => `<tr><td>${esc(c.name)}</td><td><span class="chip ${rcls[c.result] || "even"}">${esc(c.result)}</span></td><td>${esc(c.text)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
