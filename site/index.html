@@ -44,7 +44,7 @@
     </div>
     <div class="callout">
       <h3>Was kosten die US-Zölle, was bringt der Binnenmarkt?</h3>
-      <p>Bei den US-Zöllen vom August 2026 verliert Deutschland in einem Mehrsektormodell rund 0,07 % Realeinkommen, die Exporte in die USA sinken um gut 7 %. Ohne EU-Binnenmarkt wären es -1,5 %. Details, Spannen und Prüfungen unter <a href="#szenarien">Szenarien</a>.</p>
+      <p>Bei den US-Zöllen vom August 2026 verliert Deutschland in einem Mehrsektormodell rund 0,07 % Realeinkommen, die Exporte in die USA sinken um gut 7 %. Ohne EU-Binnenmarkt wären es -1,5 %, eine Umleitung um Afrika wie 2024 kostet rund 0,05 %. Details, Spannen und Prüfungen unter <a href="#szenarien">Szenarien</a>.</p>
     </div>
     <div class="callout">
       <h3>Taugt Gravitation für Kurzfristprognosen?</h3>
@@ -98,8 +98,8 @@
   </section>
 
   <section id="view-szenarien" class="view" hidden>
-    <h2>Szenarien: Zölle und Binnenmarkt</h2>
-    <p class="lead">Was bedeuten die US-Zölle und der EU-Binnenmarkt für Einkommen und Handel? Ein Mehrsektormodell mit Vorleistungsverflechtung rechnet durch, wie sich Preise, Produktion und Handelsströme weltweit anpassen.</p>
+    <h2>Szenarien: Zölle, Binnenmarkt, Transportwege</h2>
+    <p class="lead">Was bedeuten US-Zölle, der EU-Binnenmarkt oder gesperrte Seewege für Einkommen und Handel? Ein Mehrsektormodell mit Vorleistungsverflechtung rechnet durch, wie sich Preise, Produktion und Handelsströme weltweit anpassen.</p>
     <div class="toolbar">
       <label for="scenario">Szenario</label>
       <select id="scenario"></select>
@@ -119,14 +119,14 @@
     <details class="fold"><summary>Modell, Annahmen und Grenzen</summary>
       <div class="prose">
         <p><b>Modell.</b> Statisches Mehrsektormodell nach Caliendo und Parro (2015, Review of Economic Studies) mit 81 Volkswirtschaften und 50 Branchen, Vorleistungsverflechtung und Zolleinnahmen, die an die Haushalte zurückfließen. Gelöst in Veränderungen gegenüber der Ausgangslage („exact hat algebra“).</p>
-        <p><b>Daten.</b> Ausgangslage: OECD Inter-Country Input-Output Tables, Ausgabe 2025, Jahr 2022. US-Zölle: CEPII (Guimbard 2026) nach Herkunftsland und HS-Position, mit US-Importen 2024 gewichtet. Elastizitäten: ProTEE (Fontagné, Guimbard und Orefice 2022, Journal of International Economics), Branchenmedian, gedeckelt bei 15. Binnenmarkt: Schätzungen nach Head und Mayer (2021, Journal of Economic Perspectives) mit ITPD-E der USITC.</p>
-        <p><b>Grenzen.</b> Langfristige Anpassung, keine Dynamik und kein Kapital. Keine Vergeltung der Handelspartner. Handelsbilanzsalden bleiben fest. Zölle anderer Länder als der USA sind in der Ausgangslage null. Länder außerhalb der 80 ICIO-Volkswirtschaften bilden den „Rest der Welt“.</p>
-        <p><b>Spanne.</b> Zentraler Fall und drei Varianten: ProTEE ohne Deckel, einheitliche Elastizität 4 und 8. Ein Ergebnis gilt als robust, wenn alle Varianten dasselbe Vorzeichen haben.</p>
+        <p><b>Daten.</b> Ausgangslage: OECD Inter-Country Input-Output Tables, Ausgabe 2025, Jahr 2022. US-Zölle: CEPII (Guimbard 2026) nach Herkunftsland und HS-Position, mit US-Importen 2024 gewichtet. Elastizitäten: ProTEE (Fontagné, Guimbard und Orefice 2022, Journal of International Economics), Branchenmedian, gedeckelt bei 15. Binnenmarkt: Schätzungen nach Head und Mayer (2021, Journal of Economic Perspectives) mit ITPD-E der USITC. Seewege: kürzeste Routen zwischen den Haupthäfen im Seewegenetz von searoute (Eurostat SeaRoute), mit und ohne Suez- oder Panamakanal; der Handel reagiert auf längere Seewege mit der Elastizität 0,5 aus der Schließung des Suezkanals 1967 bis 1975 (Feyrer 2021, Journal of Development Economics), obere Variante 1,0.</p>
+        <p><b>Grenzen.</b> Langfristige Anpassung, keine Dynamik und kein Kapital. Keine Vergeltung der Handelspartner. Handelsbilanzsalden bleiben fest. Zölle anderer Länder als der USA sind in der Ausgangslage null. Länder außerhalb der 80 ICIO-Volkswirtschaften bilden den „Rest der Welt“. Bei den Seewegen gilt der Warenhandel auf längeren Routen vollständig als Seefracht; Einnahmeausfälle des Suezkanals für Ägypten sind nicht erfasst.</p>
+        <p><b>Spanne.</b> Zentraler Fall und drei Varianten: ProTEE ohne Deckel, einheitliche Elastizität 4 und 8; bei den Seewegen zusätzlich die Entfernungselastizität 1,0. Ein Ergebnis gilt als robust, wenn alle Varianten dasselbe Vorzeichen haben.</p>
       </div>
     </details>
     <h3>Prüfungen</h3>
     <div class="tablewrap"><table id="scenChecks"></table></div>
-    <p class="note">Ergebnisse als JSON: <a href="data/scenarios.json">scenarios.json</a>. Code: Skripte 33 bis 37 im Projektarchiv.</p>
+    <p class="note">Ergebnisse als JSON: <a href="data/scenarios.json">scenarios.json</a>. Code: Skripte 33 bis 38 im Projektarchiv.</p>
   </section>
 
   <section id="view-prognose" class="view" hidden>
@@ -157,7 +157,7 @@
 
 <footer class="inner foot">
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
-  <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E und CEPII-Zolldaten.</span>
+  <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
 <script src="app.js"></script>
 </body>

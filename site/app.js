@@ -228,7 +228,7 @@
     const S = await getJSON("data/scenarios.json");
     const sel = $("scenario");
     if (!sel.options.length) {
-      const grp = { us: "US-Zölle (ohne Vergeltung)", eu: "EU-Binnenmarkt" };
+      const grp = { us: "US-Zölle (ohne Vergeltung)", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
       sel.innerHTML = Object.keys(grp).map((g) => `<optgroup label="${grp[g]}">` +
         S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(s.title)}</option>`).join("") + "</optgroup>").join("");
       sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
@@ -236,7 +236,7 @@
     sel.value = state.scenario;
     const sc = S.scenarios.find((s) => s.id === state.scenario), C = sc.countries;
     const iso = C[state.iso] ? state.iso : "DEU", name = scName(iso, S), v = C[iso];
-    const partner = sc.partner === "USA" ? "in die USA" : "in die EU";
+    const partner = sc.partner === "USA" ? "in die USA" : sc.partner === "EU" ? "in die EU" : "auf längeren Seewegen";
     $("scenShock").textContent = sc.shock;
     const note = iso !== state.iso ? `${cname(state.iso)} ist im Modell Teil des „Rests der Welt“; gezeigt wird Deutschland. ` : "";
     const [rc, rl] = robust(v);
@@ -252,7 +252,7 @@
       tile(pct(v[0]), `Realeinkommen ${name}`),
       v[4] !== null ? tile(pct(v[4], 1), `Exporte ${partner}`) : tile(pct(v[3], 1), "Exporte insgesamt"),
       tile(pct(C.EU27[0]), "Realeinkommen EU27"),
-      tile(pct(sc.partner === "USA" ? C.USA[0] : C.CHN[0], 2), sc.partner === "USA" ? "Realeinkommen USA" : "Realeinkommen China"),
+      sc.partner === "USA" ? tile(pct(C.USA[0]), "Realeinkommen USA") : tile(pct(C.CHN[0]), "Realeinkommen China"),
     ].join("");
     // bar chart: 20 largest effects plus selection and EU27
     const all = Object.keys(C).filter((k) => k !== "ROW");
