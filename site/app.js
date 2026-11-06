@@ -160,7 +160,7 @@
         : `<span><i style="background:${col.kept}"></i>Vorteil ${snaps[0]} und ${snaps[snaps.length - 1]} (${n("kept")})</span><span><i style="background:${col.gained}"></i>hinzugewonnen (${n("gained")})</span><span><i style="background:${col.lost}"></i>verloren (${n("lost")})</span><span><i style="background:${col.none}"></i>kein Vorteil</span>`;
 
     $("oppTable").innerHTML = `<thead><tr><th>HS4</th><th>Warengruppe</th><th class="num">Nähe</th><th class="num">Komplexität</th><th class="num">Outlook Gain</th></tr></thead><tbody>` +
-      cd.opportunities.slice(0, 25).map(([i, dens, cog, pci]) => `<tr class="clickable${state.highlight === i ? " sel" : ""}" data-i="${i}" tabindex="0"><td class="num">${P[i][0]}</td><td>${esc(P[i][1])}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td><td class="num">${fmt(cog)}</td></tr>`).join("") + "</tbody>";
+      cd.opportunities.slice(0, 25).map(([i, dens, cog, pci]) => `<tr class="clickable${state.highlight === i ? " sel" : ""}" data-i="${i}" tabindex="0"><td class="num">${P[i][0]}</td><td>${esc(P[i][1])}${P[i][9] ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td><td class="num">${fmt(cog)}</td></tr>`).join("") + "</tbody>";
     $("oppTable").querySelectorAll("tr[data-i]").forEach((tr) => {
       const pick = () => { const i = +tr.dataset.i; state.highlight = state.highlight === i ? null : i; renderSpace(); };
       tr.addEventListener("click", pick); tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
@@ -190,7 +190,7 @@
     const tip = $("tip");
     if (best < 0 || bd > 144) { tip.hidden = true; return; }
     const p = P[best], st = { kept: "Vorteil in beiden Jahren", gained: "hinzugewonnen", lost: "verloren", none: "kein Vorteil" }[spaceGeom.status[best]];
-    tip.innerHTML = `<b>${p[0]}</b> ${esc(p[1])}<br>${esc(sectorDe(D.products.sectors[p[3]]))}<br>Komplexität ${fmt(p[7])} · Welthandel ${fmt(p[8], 1)} Mrd. USD<br>${cname(state.iso)}: ${st}`;
+    tip.innerHTML = `<b>${p[0]}</b> ${esc(p[1])}${p[9] ? `<br><i>z. B. ${esc(p[9])}</i>` : ""}<br>${esc(sectorDe(D.products.sectors[p[3]]))}<br>Komplexität ${fmt(p[7])} · Welthandel ${fmt(p[8], 1)} Mrd. USD<br>${cname(state.iso)}: ${st}`;
     tip.hidden = false;
     const tx = Math.min(mx + 12, r.width - tip.offsetWidth - 4), ty = Math.min(my + 12, r.height - tip.offsetHeight - 4);
     tip.style.left = Math.max(4, tx) + "px"; tip.style.top = Math.max(4, ty) + "px";

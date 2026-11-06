@@ -82,6 +82,7 @@ th { font-size: 13.5px; font-weight: normal; color: var(--muted); border-bottom-
 tr:last-child td { border-bottom: none; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 tbody tr.clickable { cursor: pointer; }
+td .ex { display: block; font-size: 13.5px; color: var(--muted); }
 tbody tr.clickable:hover td, tbody tr.sel td { background: var(--tint); }
 .chip { display: inline-block; font-size: 13.5px; font-variant-numeric: tabular-nums; padding: 0 6px; border-radius: var(--r); }
 .chip.bad { background: var(--bad-soft); color: var(--bad); }
