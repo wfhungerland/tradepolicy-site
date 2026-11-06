@@ -228,7 +228,7 @@
     const S = await getJSON("data/scenarios.json");
     const sel = $("scenario");
     if (!sel.options.length) {
-      const grp = { us: "US-Zölle (ohne Vergeltung)", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
+      const grp = { us: "US-Zölle und Gegenzölle", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
       sel.innerHTML = Object.keys(grp).map((g) => `<optgroup label="${grp[g]}">` +
         S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(s.title)}</option>`).join("") + "</optgroup>").join("");
       sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
