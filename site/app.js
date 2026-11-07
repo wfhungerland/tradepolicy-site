@@ -1,6 +1,6 @@
 "use strict";
 (function () {
-  const VIEWS = ["ueberblick", "laender", "produktraum", "branchen", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -32,6 +32,8 @@
   function route() {
     let h = location.hash.replace("#", "");
     let fig = null;
+    const m = h.match(/^(profil|laender|produktraum|branchen)\/([A-Z]{3})$/);
+    if (m && D.eci.countries[m[2]]) { state.iso = m[2]; $("country").value = m[2]; h = m[1]; }
     if (h.startsWith("abb-")) { fig = document.getElementById(h); const sec = fig && fig.closest("section.view"); h = sec ? sec.id.replace("view-", "") : ""; }
     const view = VIEWS.includes(h) ? h : "ueberblick";
     VIEWS.forEach((v) => { $("view-" + v).hidden = v !== view; });
@@ -55,7 +57,7 @@
   function figAction(f, b) {
     const act = b.dataset.act;
     if (act === "link") {
-      const url = location.href.split("#")[0] + "#" + f.id;
+      const url = location.href.split("#")[0] + "#" + (f.dataset.fig === "profil" ? "profil/" + state.iso : f.id);
       if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => { b.textContent = "Link kopiert"; setTimeout(() => { b.textContent = "Link kopieren"; }, 1500); });
       return;
     }
@@ -120,6 +122,7 @@
   async function render(view) {
     if (view === "ueberblick") renderFacts();
     if (view === "laender") renderCountries();
+    if (view === "profil") await renderProfile();
     if (view === "produktraum") await renderSpace();
     if (view === "branchen") await renderSectors();
     if (view === "szenarien") await renderScenarios();
@@ -346,6 +349,56 @@
       S.checks.map((c) => `<tr><td>${esc(c.name)}</td><td><span class="chip ${rcls[c.result] || "even"}">${esc(c.result)}</span></td><td>${esc(c.text)}</td></tr>`).join("") + "</tbody>";
   }
 
+
+  // country profile ------------------------------------------------------------
+  async function renderProfile() {
+    const [cd, S] = await Promise.all([getJSON(`data/countries/${state.iso}.json`), getJSON("data/scenarios.json")]);
+    const c = D.eci.countries[state.iso], ys = D.eci.years, n = ys.length - 1, name = cname(state.iso), P = D.products.rows;
+    const iso = S.scenarios[0].countries[state.iso] ? state.iso : "ROW";
+    $("profTitle").textContent = "Länderprofil: " + name;
+    const val = (id) => { const sc = S.scenarios.find((s) => s.id === id); return sc ? sc.countries[iso] : null; };
+    const cur = val("current_2026_08"), nsm = val("no_single_market"), red = val("red_sea_2024");
+    const eu = ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"].includes(state.iso);
+    const sh = D.products.sectors.map((s, k) => ({ s, a: cd.sector_share[k][0], b: cd.sector_share[k][1] })).filter((r) => r.b !== null).sort((p, q) => q.b - p.b);
+    $("profAnswer").textContent = `${name} liegt ${ys[n]} im Complexity-Rang auf Platz ${c.rank[n]} von ${D.eci.n_countries} (${ys[0]}: ${c.rank[0]}) und ist am stärksten in der Branche ${sectorDe(sh[0].s)}. ` +
+      (iso === "ROW" ? `Für Szenarien gehört ${name} im Modell zum „Rest der Welt“.` :
+        `Die US-Zölle vom August 2026 ändern das Realeinkommen langfristig um ${pct(cur[0])}` + (eu ? `, ein Wegfall des Binnenmarkts um ${pct(nsm[0])}.` : `, eine Umleitung um Afrika wie 2024 um ${pct(red[0])}.`));
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("profFacts").innerHTML = [
+      tile(`${c.rank[0]} → ${c.rank[n]}`, "ECI-Rang", `${ys[0]} und ${ys[n]}, von ${D.eci.n_countries}`),
+      tile(`${c.diversity[n]}`, "Warengruppen mit Exportvorteil", `${ys[n]} (${ys[0]}: ${c.diversity[0]})`),
+      tile(`${fmt(c.exports_bn_usd[n], 0)} Mrd. USD`, "Warenexporte", `${ys[n]}, Dreijahresmittel`),
+      tile(pct(cur[0]), "Realeinkommen bei US-Zöllen", iso === "ROW" ? "Rest der Welt, August 2026" : "August 2026, langfristig"),
+    ].join("");
+    // dot and whisker chart over all scenarios
+    const grpName = { us: "Zölle", eu: "Binnenmarkt", transport: "Seewege" };
+    const SHORT = { peak_2025_04: "US-Zölle April 2025", deal_2025_09: "US-Zölle September 2025", current_2026_08: "US-Zölle August 2026",
+      retaliation_eu: "dazu Gegenzölle der EU", retaliation_all: "dazu Gegenzölle aller Länder", no_single_market: "Ohne Binnenmarkt",
+      trend_2030: "Integration bis 2030", services_deeper: "Tieferer Dienstleistungsmarkt", red_sea_2024: "Rotes Meer wie 2024",
+      red_sea_closed: "Rotes Meer gesperrt", panama_closed: "Panamakanal gesperrt" };
+    const rows = S.scenarios.map((s) => ({ id: s.id, g: grpName[s.group], t: SHORT[s.id] || s.title, v: s.countries[iso] })).filter((r) => r.v);
+    $("profChartTitle").textContent = `Realeinkommen ${iso === "ROW" ? "Rest der Welt" : name} je Szenario, Änderung in %`;
+    const W = 860, row = 28, m = { l: 300, r: 80, t: 10, b: 30 }, H = m.t + m.b + row * rows.length;
+    const vals = rows.flatMap((r) => [r.v[0], r.v[1], r.v[2]]).filter((x) => x !== null);
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.06 || 0.1; lo -= pd; hi += pd;
+    const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen je Szenario">`;
+    niceTicks(lo, hi, 6).forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, Math.abs(hi - lo) < 1 ? 2 : 1)}</text>`; });
+    s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
+    rows.forEach((r, i) => {
+      const y = m.t + i * row + row / 2, col = r.v[0] < 0 ? "#C00000" : "#002060";
+      s += `<text x="8" y="${y + 4}" fill="#595959">${esc(r.g)}</text><text x="${m.l - 10}" y="${y + 4}" text-anchor="end">${esc(r.t)}</text>`;
+      if (r.v[1] !== null) s += `<line x1="${X(r.v[1])}" x2="${X(r.v[2])}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.5" opacity="0.6"/>`;
+      s += `<circle cx="${X(r.v[0])}" cy="${y}" r="5" fill="${col}"><title>${esc(r.t)}: ${pct(r.v[0])}</title></circle><text x="${W - m.r + 8}" y="${y + 4}">${pct(r.v[0])}</text>`;
+    });
+    $("profChart").innerHTML = s + "</svg>";
+    FIGDATA.profil = { header: ["Szenario", "Realeinkommen in %", "Spanne von", "Spanne bis"], rows: rows.map((r) => [r.t, r.v[0], r.v[1], r.v[2]]) };
+    $("profSectors").innerHTML = `<thead><tr><th>Branche</th><th class="num">Weltmarktanteil ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">Veränderung</th></tr></thead><tbody>` +
+      sh.slice(0, 6).map((r) => { const d = (r.b - r.a) * 100, sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼"; return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${Math.abs(d) < 0.05 ? "even" : "down"}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} Pp</td></tr>`; }).join("") + "</tbody>";
+    $("profOpps").innerHTML = `<thead><tr><th>HS4</th><th>Warengruppe</th><th class="num">Nähe</th><th class="num">Komplexität</th></tr></thead><tbody>` +
+      cd.opportunities.slice(0, 10).map(([i, dens, cog, pci]) => `<tr><td class="num">${P[i][0]}</td><td>${esc(P[i][1])}${P[i][9] ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td></tr>`).join("") + "</tbody>";
+  }
+
   function renderForecast() {
     const names = { naive: "Naiv", ar: "AR (Referenz)", bottom_up: "AR nach Zielländern", gravity: "Gravitation" };
     const block = (title, rows, hkey, hlabel) => {
@@ -387,6 +440,7 @@
     $("countryHint").textContent = `${eci.n_countries} Länder, ${meta.years[0]} bis ${meta.years[1]}`;
     $("stand").textContent = `Stand ${new Date(meta.built).toLocaleDateString("de-DE")} · Handelsdaten bis ${meta.years[1]}`;
     setupFigures();
+    $("profPrint").addEventListener("click", () => window.print());
     $("colorMode").addEventListener("change", (e) => { state.colorMode = e.target.value; renderSpace(); });
     $("snapYear").addEventListener("change", (e) => { state.snapYear = +e.target.value; renderSpace(); });
     $("space").addEventListener("mousemove", onSpaceMove);

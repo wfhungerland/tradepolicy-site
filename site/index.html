@@ -18,6 +18,7 @@
     <nav aria-label="Bereiche">
       <a href="#ueberblick">Überblick</a>
       <a href="#laender">Länder</a>
+      <a href="#profil">Länderprofil</a>
       <a href="#produktraum">Produktraum</a>
       <a href="#branchen">Branchen</a>
       <a href="#szenarien">Szenarien</a>
@@ -88,6 +89,32 @@
     </div>
     <div class="tablewrap"><table id="rankTable"></table></div>
     <p class="tnote">Fitness und GENEPY sind alternative Verfahren zur Messung der Komplexität; sie bestätigen die Rangfolge.</p>
+  </section>
+
+  <section id="view-profil" class="view" hidden>
+    <h2 id="profTitle">Länderprofil</h2>
+    <div class="intro">
+      <p class="answer" id="profAnswer"></p>
+      <p class="explain">Das Profil bündelt für ein Land die Komplexität der Exporte, die stärksten Branchen, die nächsten Exportchancen und die Wirkung von Zöllen, Binnenmarkt und gesperrten Seewegen. Das Land wählen Sie oben.</p>
+    </div>
+    <div class="kpis" id="profFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="profil">
+      <p class="cask">Wie stark treffen Zölle, Binnenmarkt und Seewege das Land?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="profChartTitle">Realeinkommen je Szenario</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="profChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Punkt: zentraler Fall, Linie: Spanne über die Annahmen zur Handelselastizität. Langfristige Anpassung im Mehrsektormodell. Länder außerhalb der 80 Volkswirtschaften des Modells zeigen die Werte für den „Rest der Welt“.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen, Mehrsektormodell nach Caliendo und Parro (2015); OECD ICIO 2025, CEPII, MAcMap, USITC ITPD-E. Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="csv">CSV</button><button type="button" data-act="png">PNG</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3>Stärkste Branchen</h3>
+    <div class="tablewrap"><table id="profSectors"></table></div>
+    <h3>Nächste Chancen</h3>
+    <div class="tablewrap"><table id="profOpps"></table></div>
+    <p class="tnote">Branchen: Anteil am Welthandel der Branche. Chancen: Produkte ohne Exportvorteil, sortiert nach Complexity Outlook Gain; Beispiele sind eigene, beispielhafte Zuordnungen. <button type="button" class="copy" id="profPrint">Profil drucken</button></p>
   </section>
 
   <section id="view-produktraum" class="view" hidden>
