@@ -79,6 +79,11 @@ def german_date(d):
     return f"{x.day}. {MONTHS[x.month - 1]} {x.year}"
 
 
+def english_date(d):
+    x = datetime.strptime(d, "%Y%m%d")
+    return f"{x.day} {x.strftime('%B')} {x.year}"
+
+
 def main(assets, scen_path, force=False):
     assets, scen_path = Path(assets), Path(scen_path)
     S = json.loads(scen_path.read_text(encoding="utf-8"))
@@ -154,8 +159,13 @@ def main(assets, scen_path, force=False):
         if sc["id"] == "current_2026_08":
             sc["title"] = f"US-Zölle aktuell ({when})"
             sc["shock"] = re.sub(r"US-Zölle wie am [^:;]+", f"US-Zölle wie am {when}", sc["shock"], count=1)
+            if "title_en" in sc:
+                sc["title_en"] = f"US tariffs now ({english_date(last)})"
+                sc["shock_en"] = re.sub(r"US tariffs as on [^:;]+", f"US tariffs as on {english_date(last)}", sc["shock_en"], count=1)
         if sc["id"].startswith("retaliation"):
             sc["shock"] = re.sub(r"US-Zölle wie am [^;]+", f"US-Zölle wie am {when}", sc["shock"], count=1)
+            if "shock_en" in sc:
+                sc["shock_en"] = re.sub(r"US tariffs as on [^;]+", f"US tariffs as on {english_date(last)}", sc["shock_en"], count=1)
     S["us_tariff_file"] = name
     S["us_tariff_latest_date"] = last
     S["built"] = date.today().isoformat()
