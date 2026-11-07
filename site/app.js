@@ -290,6 +290,7 @@
       sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
     }
     sel.value = state.scenario;
+    if (S.us_tariff_latest_date) { const d = S.us_tariff_latest_date; $("scenStand").textContent = `US-Zölle: CEPII-Datei ${S.us_tariff_file}, jüngste Maßnahme vom ${d.slice(6)}.${d.slice(4, 6)}.${d.slice(0, 4)}; monatliche Prüfung auf neue Daten.`; }
     const sc = S.scenarios.find((s) => s.id === state.scenario), C = sc.countries;
     const iso = C[state.iso] ? state.iso : "DEU", name = scName(iso, S), v = C[iso];
     const partner = sc.partner === "USA" ? "in die USA" : sc.partner === "EU" ? "in die EU" : "auf längeren Seewegen";
