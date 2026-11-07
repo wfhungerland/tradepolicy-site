@@ -421,7 +421,7 @@
     // all countries
     $("scenAll").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Realeinkommen", "Real income")}</th><th class="num">${L("Spanne", "Range")}</th><th class="num">${L("Exporte", "Exports")} ${partner}</th><th class="num">${L("Exporte insgesamt", "Total exports")}</th>${usS ? `<th class="num">${L("US-Zoll im Mittel", "Average US tariff")}</th>` : ""}</tr></thead><tbody>` +
       all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), L("de", "en"))).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + L(" bis ", " to ") + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
-    const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad", "passed": "good", "plausible": "good", "explained": "even", "deviation": "bad" };
+    const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad", "teilweise": "even", "partly": "even", "passed": "good", "plausible": "good", "explained": "even", "deviation": "bad" };
     $("scenChecks").innerHTML = `<thead><tr><th>${L("Prüfung", "Check")}</th><th>${L("Ergebnis", "Result")}</th><th>${L("Befund", "Finding")}</th></tr></thead><tbody>` +
       (EN ? S.checks_en : S.checks).map((c) => `<tr><td>${esc(c.name)}</td><td><span class="chip ${rcls[c.result] || "even"}">${esc(c.result)}</span></td><td>${esc(c.text)}</td></tr>`).join("") + "</tbody>";
   }
