@@ -340,7 +340,8 @@
 
 
   // scenarios ----------------------------------------------------------------
-  const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : (v > 0 && Number(v.toFixed(d)) !== 0 ? "+" : "") + fmt(v, d) + "\u202f%";
+  // a value that rounds to zero carries no sign (rule of the Konjunkturmonitor)
+  const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : Number(v.toFixed(d)) === 0 ? fmt(0, d) + "\u202f%" : (v > 0 ? "+" : "") + fmt(v, d) + "\u202f%";
   function scName(iso, S) {
     if (iso === "EU27") return "EU27";
     if (iso === "ROW") return L("Rest der Welt", "Rest of the world");
@@ -527,8 +528,8 @@
     $("depTable").innerHTML = `<thead><tr><th>HS6</th><th>${L("Ware", "Product")}</th><th>${L("Hauptlieferant", "Main supplier")}</th><th class="num">${L("Anteil", "Share")}</th><th class="num">${L("China", "China")}</th><th class="num">${L("Importe", "Imports")}</th><th class="num">${L("Rotes Meer", "Red Sea")}</th></tr></thead><tbody>` +
       P.slice(0, 30).map((r) => `<tr><td class="num">${r[0]}</td><td>${esc(EN ? r[2] : (r[1] || r[2]))}${EN ? "" : `<span class="ex">${esc(r[2])}</span>`}</td><td>${esc(cname(r[3]) || r[3])}</td><td class="num">${pc(r[4])}</td><td class="num">${pc(r[5])}</td><td class="num">${bn(fmt(r[6], 2))}</td><td class="num">${pc(r[9])}</td></tr>`).join("") + "</tbody>";
     const secNames = EN ? S.sector_names_en : S.sector_names;
-    $("depIndustries").innerHTML = `<thead><tr><th>${L("Branche in Deutschland", "Industry in Germany")}</th><th class="num">${L("Kostenanteil abhängiger Vorleistungen aus China", "Cost share of dependent inputs from China")}</th><th class="num">${L("Produktion bei Lieferstopp", "Output if China stops")}</th></tr></thead><tbody>` +
-      Dd.germany_industries.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td><td class="num">${fmt(r[1], 2)} %</td><td class="num">${pct(r[2], 1)}</td></tr>`).join("") + "</tbody>";
+    $("depIndustries").innerHTML = `<thead><tr><th>${L("Branche in Deutschland", "Industry in Germany")}</th><th class="num">${L("Abhängige Vorleistungen aus China, direkt", "Dependent inputs from China, direct")}</th><th class="num">${L("mit indirekten Lieferketten", "incl. indirect supply chains")}</th><th class="num">${L("Chinesische Wertschöpfung insgesamt", "Chinese value added, all goods")}</th><th class="num">${L("Produktion bei Lieferstopp", "Output if China stops")}</th></tr></thead><tbody>` +
+      Dd.germany_industries.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td><td class="num">${fmt(r[1], 2)}\u202f%</td><td class="num">${fmt(r[4], 2)}\u202f%</td><td class="num">${fmt(r[5], 1)}\u202f%</td><td class="num">${pct(r[2], 1)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
