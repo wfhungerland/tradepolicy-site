@@ -30,19 +30,63 @@
 
   // ---------------------------------------------------------------- routing
   function route() {
-    const h = location.hash.replace("#", "");
+    let h = location.hash.replace("#", "");
+    let fig = null;
+    if (h.startsWith("abb-")) { fig = document.getElementById(h); const sec = fig && fig.closest("section.view"); h = sec ? sec.id.replace("view-", "") : ""; }
     const view = VIEWS.includes(h) ? h : "ueberblick";
     VIEWS.forEach((v) => { $("view-" + v).hidden = v !== view; });
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     $("controls").hidden = view === "prognose" || view === "methodik";
-    render(view);
+    render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
+
+  // figures: numbering, CSV, PNG and link (as under every chart of the Konjunkturmonitor)
+  const FIGDATA = {};
+  function setupFigures() {
+    document.querySelectorAll(".fig").forEach((f, i) => {
+      f.id = "abb-" + (i + 1);
+      f.querySelector(".fignum").textContent = `Abb. ${i + 1}: `;
+      f.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => figAction(f, b)));
+    });
+  }
+  function figName(f) { return `Produktraum-Monitor (${D.meta.built}, ${f.id.replace("abb-", "Abb. ")}) ${f.dataset.fig}`; }
+  function figAction(f, b) {
+    const act = b.dataset.act;
+    if (act === "link") {
+      const url = location.href.split("#")[0] + "#" + f.id;
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => { b.textContent = "Link kopiert"; setTimeout(() => { b.textContent = "Link kopieren"; }, 1500); });
+      return;
+    }
+    if (act === "csv") {
+      const d = FIGDATA[f.dataset.fig]; if (!d) return;
+      const q = (v) => (v === null || v === undefined) ? "" : /[;"\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v).replace(".", ",");
+      const csv = "\ufeff" + [d.header, ...d.rows].map((r) => r.map(q).join(";")).join("\r\n");
+      save(new Blob([csv], { type: "text/csv;charset=utf-8" }), figName(f) + ".csv");
+      return;
+    }
+    if (act === "png") {
+      const canvas = f.querySelector("canvas"), svg = f.querySelector("svg");
+      if (canvas) { canvas.toBlob((bl) => save(bl, figName(f) + ".png")); return; }
+      if (!svg) return;
+      const vb = svg.viewBox.baseVal, s = 2, clone = svg.cloneNode(true);
+      clone.setAttribute("width", vb.width); clone.setAttribute("height", vb.height);
+      clone.querySelectorAll("text").forEach((tx) => { if (!tx.getAttribute("fill") && !tx.style.fill) tx.setAttribute("fill", "#000"); tx.setAttribute("font-family", "Source Sans 3, Arial, sans-serif"); });
+      clone.querySelectorAll(".grid").forEach((g) => { g.setAttribute("stroke", "#D9D9D9"); g.setAttribute("stroke-width", "0.5"); });
+      const src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+      const img = new Image();
+      img.onload = () => { const c = document.createElement("canvas"); c.width = vb.width * s; c.height = vb.height * s; const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height); c.toBlob((bl) => save(bl, figName(f) + ".png")); };
+      img.src = src;
+    }
+  }
+  function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
 
   // ---------------------------------------------------------------- charts
   function lineChart(el, years, series, opt) {
-    const W = 860, H = 300, m = { l: 44, r: 140, t: 12, b: 28 };
+    // as in the Konjunkturmonitor: value axis on the right, round steps, horizontal gridlines only,
+    // unit above the top number, legend above the chart, first series dark blue
+    const W = 860, legendRows = Math.ceil(series.length / 4), m = { l: 16, r: 54, t: 22 + legendRows * 20, b: 28 }, H = 300 + legendRows * 20;
     const vals = series.flatMap((s) => s.values.filter((v) => v !== null));
     let lo = opt.min !== undefined ? opt.min : Math.min(...vals);
     let hi = opt.max !== undefined ? opt.max : Math.max(...vals);
@@ -51,19 +95,16 @@
     const x = (i) => m.l + (i / (years.length - 1)) * (W - m.l - m.r);
     const y = (v) => opt.invert ? m.t + ((v - lo) / (hi - lo)) * (H - m.t - m.b) : H - m.b - ((v - lo) / (hi - lo)) * (H - m.t - m.b);
     const ticks = niceTicks(lo, hi, 5);
+    if (opt.int && opt.min === 1 && !ticks.includes(1)) ticks.unshift(1);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "")}">`;
-    ticks.forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l - 8}" y="${y(t) + 4}" text-anchor="end">${opt.int ? t : fmt(t, 1)}</text>`; });
+    series.forEach((ser, k) => { const lx = m.l + (k % 4) * 200, ly = 14 + Math.floor(k / 4) * 20; s += `<line x1="${lx}" x2="${lx + 18}" y1="${ly}" y2="${ly}" stroke="${ser.color}" stroke-width="${ser.bold ? 3 : 2}"/><text x="${lx + 24}" y="${ly + 4}" style="font-weight:${ser.bold ? 600 : 400}">${esc(ser.label)}</text>`; });
+    ticks.forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${W - m.r + 8}" y="${y(t) + 4}">${opt.int ? t : fmt(t, 1)}</text>`; });
+    if (opt.unit) { const tt = opt.invert ? ticks[0] : ticks[ticks.length - 1]; s += `<text x="${W}" y="${y(tt) - 10}" text-anchor="end">${esc(opt.unit)}</text>`; }
     years.forEach((yr, i) => { if (yr % 5 === 0 || i === years.length - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${yr}</text>`; });
-    const ends = [];
     series.slice().reverse().forEach((ser) => {
       let d = ""; ser.values.forEach((v, i) => { if (v === null) return; d += (d ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); });
-      s += `<path d="${d}" fill="none" stroke="${ser.color}" stroke-width="${ser.bold ? 2.6 : 1.6}" stroke-linejoin="round"/>`;
-      const last = ser.values[ser.values.length - 1];
-      if (last !== null) ends.push({ y: y(last), label: ser.label + (opt.int ? " " + last : ""), color: ser.color, bold: ser.bold });
+      s += `<path d="${d}" fill="none" stroke="${ser.color}" stroke-width="${ser.bold ? 2.6 : 1.6}" stroke-linejoin="round"><title>${esc(ser.label)}</title></path>`;
     });
-    ends.sort((a, b) => a.y - b.y);
-    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
-    ends.forEach((e) => { s += `<circle cx="${x(years.length - 1)}" cy="${e.y}" r="0"/><text x="${W - m.r + 8}" y="${e.y + 4}" style="fill:var(--fg);font-weight:${e.bold ? 600 : 400}">${esc(e.label)}</text>`; });
     s += "</svg>";
     el.innerHTML = s;
   }
@@ -89,17 +130,18 @@
   function renderFacts() {
     const c = D.eci.countries[state.iso], n = c.rank.length - 1, ys = D.eci.years;
     $("facts").innerHTML = [
-      [`${c.rank[0]} → ${c.rank[n]}`, `ECI-Rang ${cname(state.iso)} ${ys[0]} und ${ys[n]}, von ${D.eci.n_countries}`],
-      [`${fmt(c.fixed[0])} → ${fmt(c.fixed[n])}`, "Komplexität des Exportkorbs auf festem Maßstab"],
-      [`${c.diversity[0]} → ${c.diversity[n]}`, "Warengruppen mit Exportvorteil"],
-      [`${fmt(c.exports_bn_usd[n], 0)} Mrd.`, `Warenexporte ${ys[n]} in USD (Dreijahresmittel)`],
-    ].map(([b, l]) => `<div class="fact"><span class="big">${b}</span><span class="label">${esc(l)}</span></div>`).join("");
+      [`${c.rank[0]} → ${c.rank[n]}`, `ECI-Rang ${ys[0]} und ${ys[n]}`, `von ${D.eci.n_countries} Ländern`],
+      [`${fmt(c.fixed[0])} → ${fmt(c.fixed[n])}`, "Komplexität auf festem Maßstab", `${ys[0]} und ${ys[n]}`],
+      [`${c.diversity[0]} → ${c.diversity[n]}`, "Warengruppen mit Exportvorteil", `${ys[0]} und ${ys[n]}`],
+      [`${fmt(c.exports_bn_usd[n], 0)} Mrd. USD`, "Warenexporte", `${ys[n]}, Dreijahresmittel`],
+    ].map(([b, l, s]) => `<div class="kpi"><span class="kn">${esc(l)}</span><span class="kv">${b}</span><span class="ks">${esc(s)}</span></div>`).join("");
+    const move = c.rank[n] < c.rank[0] ? "verbessert sich" : c.rank[n] > c.rank[0] ? "fällt" : "bleibt";
+    $("ovAnswer").textContent = `${cname(state.iso)} ${move} im Complexity-Rang von Platz ${c.rank[0]} (${ys[0]})${move === "bleibt" ? " " : " auf Platz " + c.rank[n] + " "}(${ys[n]}) und hat ${ys[n]} in ${c.diversity[n]} von ${D.meta.n_products.toLocaleString("de-DE")} Warengruppen einen Exportvorteil.`;
   }
 
   function renderCountries() {
     const ys = D.eci.years, list = [state.iso, ...state.compare.filter((i) => i !== state.iso)].slice(0, 6);
     const colors = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"].map(css);
-    $("laenderTitle").textContent = cname(state.iso) + " im Vergleich";
     const opts = Object.keys(D.eci.countries).filter((i) => !list.includes(i)).sort((a, b) => cname(a).localeCompare(cname(b), "de"));
     $("compare").innerHTML = list.slice(1).map((iso, k) =>
       `<span class="pill"><i style="background:${colors[k + 1]}"></i>${esc(cname(iso))}<button type="button" data-rm="${iso}" aria-label="${esc(cname(iso))} entfernen">×</button></span>`).join("") +
@@ -110,8 +152,12 @@
     const add = $("addCmp"); if (add) add.addEventListener("change", () => { if (add.value) { state.compare.push(add.value); renderCountries(); } });
     const series = (key) => list.map((iso, k) => ({ label: cname(iso), color: colors[k], values: D.eci.countries[iso][key], bold: k === 0 }));
     const maxRank = Math.max(...list.flatMap((i) => D.eci.countries[i].rank));
-    lineChart($("rankChart"), ys, series("rank"), { invert: true, min: 1, max: Math.max(10, maxRank + 2), int: true, label: "ECI-Rang" });
-    lineChart($("fixedChart"), ys, series("fixed"), { label: "Komplexität auf festem Maßstab" });
+    lineChart($("rankChart"), ys, series("rank"), { invert: true, min: 1, max: Math.max(10, maxRank + 2), int: true, label: "ECI-Rang", unit: "Rang" });
+    lineChart($("fixedChart"), ys, series("fixed"), { label: "Komplexität auf festem Maßstab", unit: "PCI" });
+    FIGDATA.rank = { header: ["Jahr", ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].rank[i])]) };
+    FIGDATA.fixed = { header: ["Jahr", ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].fixed[i])]) };
+    const c0 = D.eci.countries[state.iso], n0 = ys.length - 1;
+    $("laAnswer").textContent = `${cname(state.iso)} liegt ${ys[n0]} auf Rang ${c0.rank[n0]} von ${D.eci.n_countries} Ländern, ${ys[0]} auf Rang ${c0.rank[0]}. Auf festem Maßstab ${c0.fixed[n0] > c0.fixed[0] + 0.02 ? "stieg" : c0.fixed[n0] < c0.fixed[0] - 0.02 ? "sank" : "blieb"} die Komplexität des Exportkorbs ${Math.abs(c0.fixed[n0] - c0.fixed[0]) <= 0.02 ? "etwa gleich" : "von " + fmt(c0.fixed[0]) + " auf " + fmt(c0.fixed[n0])}.`;
     const n = ys.length - 1;
     $("rankTable").innerHTML = `<thead><tr><th>Land</th><th class="num">ECI-Rang ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">Fitness-Rang ${ys[n]}</th><th class="num">GENEPY-Rang ${ys[n]}</th><th class="num">Fester Maßstab ${ys[0]}</th><th class="num">${ys[n]}</th></tr></thead><tbody>` +
       list.map((iso) => { const c = D.eci.countries[iso]; return `<tr><td>${esc(cname(iso))}</td><td class="num">${c.rank[0]}</td><td class="num">${c.rank[n]}</td><td class="num">${c.fitness_rank[n]}</td><td class="num">${c.genepy_rank[n]}</td><td class="num">${fmt(c.fixed[0])}</td><td class="num">${fmt(c.fixed[n])}</td></tr>`; }).join("") + "</tbody>";
@@ -122,6 +168,11 @@
   async function renderSpace() {
     const cd = await getJSON(`data/countries/${state.iso}.json`);
     const P = D.products.rows, snaps = cd.snapshots;
+    const y0 = snaps[0], y1 = snaps[snaps.length - 1], n0 = cd.rca[String(y0)].length, n1 = cd.rca[String(y1)].length;
+    const firstOpps = cd.opportunities.slice(0, 3).map((o) => P[o[0]][9] ? P[o[0]][9].split(";")[0].trim() : P[o[0]][1]);
+    $("prAnswer").textContent = `${cname(state.iso)} hat ${y1} in ${n1.toLocaleString("de-DE")} Warengruppen einen Exportvorteil (${y0}: ${n0.toLocaleString("de-DE")}); ${cd.gained.length} kamen hinzu, ${cd.lost.length} gingen verloren. Die nächsten Chancen liegen etwa bei ${firstOpps.join(", ")}.`;
+    FIGDATA.space = { header: ["HS4", "Warengruppe", "x", "y", "Komplexität (PCI)", "Welthandel 2024 (Mrd. USD)", `Vorteil ${y0}`, `Vorteil ${y1}`],
+      rows: P.map((r, i) => [r[0], r[1], r[5], r[6], r[7], r[8], cd.rca[String(y0)].includes(i) ? 1 : 0, cd.rca[String(y1)].includes(i) ? 1 : 0]) };
     if (state.snapYear === null) state.snapYear = snaps[snaps.length - 1];
     const sy = $("snapYear");
     sy.innerHTML = snaps.map((y) => `<option value="${y}"${y === state.snapYear ? " selected" : ""}>${y}</option>`).join("");
@@ -199,19 +250,21 @@
 
   async function renderSectors() {
     const cd = await getJSON(`data/countries/${state.iso}.json`), ys = D.meta.years;
-    $("branchenTitle").textContent = "Branchen: " + cname(state.iso);
     const rows = D.products.sectors.map((s, k) => ({ s, a: cd.sector_share[k][0], b: cd.sector_share[k][1] })).sort((p, q) => (q.b || 0) - (p.b || 0));
     const mx = Math.max(...rows.flatMap((r) => [r.a || 0, r.b || 0]));
+    const ch = rows.filter((r) => r.a !== null && r.b !== null).map((r) => ({ ...r, d: (r.b - r.a) * 100 }));
+    const up = ch.slice().sort((p, q) => q.d - p.d)[0], dn = ch.slice().sort((p, q) => p.d - q.d)[0];
+    $("brAnswer").textContent = `Den größten Weltmarktanteil hat ${cname(state.iso)} ${ys[1]} in der Branche ${sectorDe(rows[0].s)} mit ${fmt(rows[0].b * 100, 1)}\u202f%. Am stärksten gestiegen ist der Anteil seit ${ys[0]} in der Branche ${sectorDe(up.s)} (${up.d > 0 ? "+" : ""}${fmt(up.d, 1)} Pp), am stärksten gesunken in der Branche ${sectorDe(dn.s)} (${fmt(dn.d, 1)} Pp).`;
     $("sectorTable").innerHTML = `<thead><tr><th>Branche</th><th class="num">${ys[0]}</th><th class="num">${ys[1]}</th><th class="num">Veränderung</th><th>Anteil ${ys[1]}</th></tr></thead><tbody>` +
       rows.map((r) => {
-        const d = (r.b - r.a) * 100, cls = Math.abs(d) < 0.3 ? "even" : d > 0 ? "good" : "bad";
-        return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${cls}">${d > 0 ? "+" : ""}${fmt(d, 1)}</span></td><td><span class="bar" style="width:${Math.max(1, 140 * (r.b || 0) / mx)}px;background:var(--accent)"></span></td></tr>`;
+        const d = (r.b - r.a) * 100, cls = Math.abs(d) < 0.05 ? "even" : "down", sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼";
+        return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)}\u202f%</td><td class="num">${fmt(r.b * 100, 1)}\u202f%</td><td class="num"><span class="chip ${cls}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} Pp</td><td><span class="bar" style="width:${Math.max(1, 140 * (r.b || 0) / mx)}px;background:var(--c1)"></span></td></tr>`;
       }).join("") + "</tbody>";
   }
 
 
   // scenarios ----------------------------------------------------------------
-  const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : (v > 0 ? "+" : "") + fmt(v, d) + " %";
+  const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : (v > 0 && Number(v.toFixed(d)) !== 0 ? "+" : "") + fmt(v, d) + "\u202f%";
   function scName(iso, S) {
     if (iso === "EU27") return "EU27";
     if (iso === "ROW") return "Rest der Welt";
@@ -242,12 +295,12 @@
     const [rc, rl] = robust(v);
     const sent = `${sc.title}: Das Realeinkommen ${iso === "DEU" ? "in Deutschland" : "von " + name} ändert sich um ${pct(v[0])} (Spanne ${pct(v[1])} bis ${pct(v[2])}). ` +
       (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Die Exporte ${partner} ändern sich um ${pct(v[4], 1)}, die gesamten Exporte um ${pct(v[3], 1)}.` : "");
-    $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">Textbaustein kopieren</button>`;
+    $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">⧉ Textbaustein</button>`;
     $("copyScen").addEventListener("click", (e) => {
       const txt = sent + " Quelle: Produktraum-Monitor, Modell nach Caliendo und Parro (2015), OECD ICIO 2022; " + location.href.split("#")[0] + "#szenarien";
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => { e.target.textContent = "kopiert"; });
     });
-    const tile = (big, label) => `<div class="fact"><span class="big">${big}</span><span class="label">${esc(label)}</span></div>`;
+    const tile = (big, label) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">langfristig, zentraler Fall</span></div>`;
     $("scenFacts").innerHTML = [
       tile(pct(v[0]), `Realeinkommen ${name}`),
       v[4] !== null ? tile(pct(v[4], 1), `Exporte ${partner}`) : tile(pct(v[3], 1), "Exporte insgesamt"),
@@ -276,13 +329,15 @@
       s += `<text x="${W - m.r + 6}" y="${y + row / 2 + 4}">${pct(c[0])}</text>`;
     });
     $("scenChart").innerHTML = s + "</svg>";
+    FIGDATA.scen = { header: ["Land", "Realeinkommen in %", "Spanne von", "Spanne bis", "Exporte insgesamt in %", `Exporte ${partner} in %`],
+      rows: Object.keys(C).map((k) => [scName(k, S), C[k][0], C[k][1], C[k][2], C[k][3], C[k][4]]) };
     // German sectors
     const usS = sc.partner === "USA";
     // the 15 sectors with the largest German exports to the partner in 2022 (small sectors give extreme percentages)
     const bySize = sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => (b[4] || 0) - (a[4] || 0)).slice(0, 15);
     const chip = (x, d = 1) => `<span class="chip ${x === null || Math.abs(x) < 0.05 ? "even" : x > 0 ? "good" : "bad"}">${pct(x, d)}</span>`;
     $("scenSectors").innerHTML = `<thead><tr><th>Branche</th>${usS ? '<th class="num">US-Zoll</th>' : ""}<th class="num">Exporte ${partner} 2022</th><th class="num">Exporte ${partner}</th><th class="num">Produktion</th></tr></thead><tbody>` +
-      bySize.map((r) => `<tr><td>${esc(S.sector_names[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)} %</td>` : ""}<td class="num">${fmt(r[4], 1)} Mrd. USD</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
+      bySize.map((r) => `<tr><td>${esc(S.sector_names[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)}\u202f%</td>` : ""}<td class="num">${fmt(r[4], 1)} Mrd. USD</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
     // all countries
     $("scenAll").innerHTML = `<thead><tr><th>Land</th><th class="num">Realeinkommen</th><th class="num">Spanne</th><th class="num">Exporte ${partner}</th><th class="num">Exporte insgesamt</th>${usS ? '<th class="num">US-Zoll im Mittel</th>' : ""}</tr></thead><tbody>` +
       all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), "de")).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + " bis " + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
@@ -330,6 +385,8 @@
     sel.innerHTML = Object.keys(eci.countries).sort((a, b) => cname(a).localeCompare(cname(b), "de")).map((i) => `<option value="${i}"${i === state.iso ? " selected" : ""}>${esc(cname(i))}</option>`).join("");
     sel.addEventListener("change", () => { state.iso = sel.value; state.highlight = null; state.snapYear = null; route(); });
     $("countryHint").textContent = `${eci.n_countries} Länder, ${meta.years[0]} bis ${meta.years[1]}`;
+    $("stand").textContent = `Stand ${new Date(meta.built).toLocaleDateString("de-DE")} · Handelsdaten bis ${meta.years[1]}`;
+    setupFigures();
     $("colorMode").addEventListener("change", (e) => { state.colorMode = e.target.value; renderSpace(); });
     $("snapYear").addEventListener("change", (e) => { state.snapYear = +e.target.value; renderSpace(); });
     $("space").addEventListener("mousemove", onSpaceMove);
