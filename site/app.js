@@ -1,18 +1,26 @@
 "use strict";
 (function () {
+  const EN = document.documentElement.lang === "en";
+  const L = (de, en) => EN ? en : de;
+  const BASE = EN ? "../" : "";
+  const LOC = L("de-DE", "en-GB");
+  const fmtDate = (d) => EN ? new Date(d).toLocaleDateString(LOC, { day: "numeric", month: "long", year: "numeric" }) : new Date(d).toLocaleDateString(LOC);
+  const PN = EN ? 10 : 1; // product name column
+  const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
+  const PP = L("Pp", "pp");
   const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
   let D = {};
   let regionNames = null;
-  try { regionNames = new Intl.DisplayNames(["de"], { type: "region" }); } catch (e) { regionNames = null; }
+  try { regionNames = new Intl.DisplayNames([L("de", "en")], { type: "region" }); } catch (e) { regionNames = null; }
 
   const $ = (id) => document.getElementById(id);
   // product group colours from the Konjunkturmonitor palette
   const GROUP_PAL = ["#0070C0", "#7030A0", "#47D359", "#B45309", "#D86DCD", "#51154A", "#00B0F0", "#002060"];
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const fmt = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? "–" : v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const fmt = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? "–" : v.toLocaleString(LOC, { minimumFractionDigits: d, maximumFractionDigits: d });
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   function cname(iso) {
@@ -22,8 +30,12 @@
     return c.name;
   }
 
+  // English sentences: "the United States", "The Netherlands ..." at the start of a sentence
+  const THE = ["USA", "GBR", "NLD", "PHL", "ARE", "DOM", "CAF", "COD", "COG", "BHS", "GMB", "SLV"];
+  function sname(iso, start) { const n = cname(iso); return THE.includes(iso) ? (start ? "The " : "the ") + n : n; }
+
   async function getJSON(path) {
-    if (!cache[path]) cache[path] = fetch(path).then((r) => { if (!r.ok) throw new Error(path); return r.json(); });
+    if (!cache[path]) cache[path] = fetch(BASE + path).then((r) => { if (!r.ok) throw new Error(path); return r.json(); });
     return cache[path];
   }
 
@@ -49,43 +61,45 @@
   function setupFigures() {
     document.querySelectorAll(".fig").forEach((f, i) => {
       f.id = "abb-" + (i + 1);
-      f.querySelector(".fignum").textContent = `Abb. ${i + 1}: `;
+      f.querySelector(".fignum").textContent = L(`Abb. ${i + 1}: `, `Fig. ${i + 1}: `);
       f.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => figAction(f, b)));
     });
   }
   // file names as in the Konjunkturmonitor (docs/Regelwerk_Dateinamen.txt): "Product (date, Abb. NN) short title"
-  const FIGSHORT = { rank: "ECI-Rang", fixed: "Fester Massstab", profil: "Laenderprofil Szenarien", space: "Produktraum", scen: "Szenario Realeinkommen" };
-  function figName(f) { const n = f.id.replace("abb-", "").padStart(2, "0"); return `Produktraum-Monitor (${D.meta.built}, Abb. ${n}) ${FIGSHORT[f.dataset.fig] || f.dataset.fig}`; }
+  const FIGSHORT = EN ? { rank: "ECI rank", fixed: "Fixed scale", profil: "Country profile scenarios", space: "Product space", scen: "Scenario real income" }
+    : { rank: "ECI-Rang", fixed: "Fester Massstab", profil: "Laenderprofil Szenarien", space: "Produktraum", scen: "Szenario Realeinkommen" };
+  function figName(f) { const n = f.id.replace("abb-", "").padStart(2, "0"); return `Produktraum-Monitor (${D.meta.built}, ${L("Abb.", "Fig.")} ${n}) ${FIGSHORT[f.dataset.fig] || f.dataset.fig}`; }
   function figAction(f, b) {
     const act = b.dataset.act;
     if (act === "link") {
       const url = location.href.split("#")[0] + "#" + (f.dataset.fig === "profil" ? "profil/" + state.iso : f.id);
-      if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => { b.textContent = "Link kopiert"; setTimeout(() => { b.textContent = "Link kopieren"; }, 1500); });
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => { b.textContent = L("Link kopiert", "Link copied"); setTimeout(() => { b.textContent = L("Link kopieren", "Copy link"); }, 1500); });
       return;
     }
     if (act === "csv") {
       const d = FIGDATA[f.dataset.fig]; if (!d) return;
-      const q = (v) => (v === null || v === undefined) ? "" : /[;"\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v).replace(".", ",");
-      const csv = "\ufeff" + [d.header, ...d.rows].map((r) => r.map(q).join(";")).join("\r\n");
+      const q = EN ? (v) => (v === null || v === undefined) ? "" : /[,"\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v)
+        : (v) => (v === null || v === undefined) ? "" : /[;"\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v).replace(".", ",");
+      const csv = "\ufeff" + [d.header, ...d.rows].map((r) => r.map(q).join(L(";", ","))).join("\r\n");
       save(new Blob([csv], { type: "text/csv;charset=utf-8" }), figName(f) + ".csv");
       return;
     }
     if (act === "png") { figPng(f).then((url) => fetch(url)).then((r) => r.blob()).then((bl) => save(bl, figName(f) + ".png")); return; }
     if (act === "xlsx") {
       const d = FIGDATA[f.dataset.fig]; if (!d) return;
-      loadScript("lib/xlsx.mini.min.js").then(() => {
+      loadScript(BASE + "lib/xlsx.mini.min.js").then(() => {
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.header, ...d.rows]), "Daten");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.header, ...d.rows]), L("Daten", "Data"));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-          ["Abbildung", f.id.replace("abb-", "Abb. ")], ["Frage", f.querySelector(".cask").textContent], ["Titel", f.querySelector(".ftitle").textContent],
-          ["Erläuterung", f.querySelector(".capnote").textContent], ["Quelle", f.querySelector(".src").textContent],
-          ["Stand", D.meta.built], ["Link", location.href.split("#")[0] + "#" + f.id]]), "Info");
+          [L("Abbildung", "Figure"), f.id.replace("abb-", L("Abb. ", "Fig. "))], [L("Frage", "Question"), f.querySelector(".cask").textContent], [L("Titel", "Title"), f.querySelector(".ftitle").textContent],
+          [L("Erläuterung", "Note"), f.querySelector(".capnote").textContent], [L("Quelle", "Source"), f.querySelector(".src").textContent],
+          [L("Stand", "As of"), D.meta.built], ["Link", location.href.split("#")[0] + "#" + f.id]]), "Info");
         XLSX.writeFile(wb, figName(f) + ".xlsx");
       });
       return;
     }
     if (act === "pptx") {
-      Promise.all([loadScript("lib/pptxgen.bundle.js"), figPng(f)]).then(([, url]) => {
+      Promise.all([loadScript(BASE + "lib/pptxgen.bundle.js"), figPng(f)]).then(([, url]) => {
         // slide master as in the Konjunkturmonitor: 16:9, grey frame, kicker, title, source line, no logo
         const pres = new PptxGenJS(); pres.layout = "LAYOUT_WIDE";
         const s = pres.addSlide(), font = "Arial";
@@ -110,7 +124,7 @@
   // an svg drawn as an image cannot use the page's web fonts: embed Source Sans 3 as data URLs
   let fontCss = null;
   function embeddedFonts() {
-    if (!fontCss) fontCss = Promise.all([400, 600, 700].map((w) => fetch(`fonts/SourceSans3-${w}-latin.woff2`).then((r) => r.blob())
+    if (!fontCss) fontCss = Promise.all([400, 600, 700].map((w) => fetch(BASE + `fonts/SourceSans3-${w}-latin.woff2`).then((r) => r.blob())
       .then((b) => new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(`@font-face{font-family:'Source Sans 3';font-weight:${w};src:url(${fr.result}) format('woff2');}`); fr.readAsDataURL(b); }))))
       .then((parts) => parts.join(""));
     return fontCss;
@@ -186,36 +200,39 @@
   function renderFacts() {
     const c = D.eci.countries[state.iso], n = c.rank.length - 1, ys = D.eci.years;
     $("facts").innerHTML = [
-      [`${c.rank[0]} → ${c.rank[n]}`, `ECI-Rang ${ys[0]} und ${ys[n]}`, `von ${D.eci.n_countries} Ländern`],
-      [`${fmt(c.fixed[0])} → ${fmt(c.fixed[n])}`, "Komplexität auf festem Maßstab", `${ys[0]} und ${ys[n]}`],
-      [`${c.diversity[0]} → ${c.diversity[n]}`, "Warengruppen mit Exportvorteil", `${ys[0]} und ${ys[n]}`],
-      [`${fmt(c.exports_bn_usd[n], 0)} Mrd. USD`, "Warenexporte", `${ys[n]}, Dreijahresmittel`],
+      [`${c.rank[0]} → ${c.rank[n]}`, L(`ECI-Rang ${ys[0]} und ${ys[n]}`, `ECI rank ${ys[0]} and ${ys[n]}`), L(`von ${D.eci.n_countries} Ländern`, `of ${D.eci.n_countries} countries`)],
+      [`${fmt(c.fixed[0])} → ${fmt(c.fixed[n])}`, L("Komplexität auf festem Maßstab", "Complexity on a fixed scale"), L(`${ys[0]} und ${ys[n]}`, `${ys[0]} and ${ys[n]}`)],
+      [`${c.diversity[0]} → ${c.diversity[n]}`, L("Warengruppen mit Exportvorteil", "Product groups with an export advantage"), L(`${ys[0]} und ${ys[n]}`, `${ys[0]} and ${ys[n]}`)],
+      [bn(fmt(c.exports_bn_usd[n], 0)), L("Warenexporte", "Goods exports"), L(`${ys[n]}, Dreijahresmittel`, `${ys[n]}, three-year average`)],
     ].map(([b, l, s]) => `<div class="kpi"><span class="kn">${esc(l)}</span><span class="kv">${b}</span><span class="ks">${esc(s)}</span></div>`).join("");
     const move = c.rank[n] < c.rank[0] ? "verbessert sich" : c.rank[n] > c.rank[0] ? "fällt" : "bleibt";
-    $("ovAnswer").textContent = `${cname(state.iso)} ${move} im Complexity-Rang von Platz ${c.rank[0]} (${ys[0]})${move === "bleibt" ? " " : " auf Platz " + c.rank[n] + " "}(${ys[n]}) und hat ${ys[n]} in ${c.diversity[n]} von ${D.meta.n_products.toLocaleString("de-DE")} Warengruppen einen Exportvorteil.`;
+    const moveEn = c.rank[n] < c.rank[0] ? `climbs in the complexity ranking from ${c.rank[0]} (${ys[0]}) to ${c.rank[n]} (${ys[n]})` : c.rank[n] > c.rank[0] ? `falls in the complexity ranking from ${c.rank[0]} (${ys[0]}) to ${c.rank[n]} (${ys[n]})` : `stays at ${c.rank[0]} in the complexity ranking (${ys[0]} and ${ys[n]})`;
+    $("ovAnswer").textContent = EN ? `${sname(state.iso, true)} ${moveEn} and in ${ys[n]} has an export advantage in ${c.diversity[n]} of ${D.meta.n_products.toLocaleString(LOC)} product groups.`
+      : `${cname(state.iso)} ${move} im Complexity-Rang von Platz ${c.rank[0]} (${ys[0]})${move === "bleibt" ? " " : " auf Platz " + c.rank[n] + " "}(${ys[n]}) und hat ${ys[n]} in ${c.diversity[n]} von ${D.meta.n_products.toLocaleString("de-DE")} Warengruppen einen Exportvorteil.`;
   }
 
   function renderCountries() {
     const ys = D.eci.years, list = [state.iso, ...state.compare.filter((i) => i !== state.iso)].slice(0, 6);
     const colors = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"].map(css);
-    const opts = Object.keys(D.eci.countries).filter((i) => !list.includes(i)).sort((a, b) => cname(a).localeCompare(cname(b), "de"));
+    const opts = Object.keys(D.eci.countries).filter((i) => !list.includes(i)).sort((a, b) => cname(a).localeCompare(cname(b), L("de", "en")));
     $("compare").innerHTML = list.slice(1).map((iso, k) =>
-      `<span class="pill"><i style="background:${colors[k + 1]}"></i>${esc(cname(iso))}<button type="button" data-rm="${iso}" aria-label="${esc(cname(iso))} entfernen">×</button></span>`).join("") +
-      (list.length < 6 ? `<label for="addCmp" class="hint">Vergleichsland</label><select id="addCmp"><option value="">hinzufügen …</option>${opts.map((i) => `<option value="${i}">${esc(cname(i))}</option>`).join("")}</select>` : "");
+      `<span class="pill"><i style="background:${colors[k + 1]}"></i>${esc(cname(iso))}<button type="button" data-rm="${iso}" aria-label="${esc(L(cname(iso) + " entfernen", "Remove " + cname(iso)))}">×</button></span>`).join("") +
+      (list.length < 6 ? `<label for="addCmp" class="hint">${L("Vergleichsland", "Comparison country")}</label><select id="addCmp"><option value="">${L("hinzufügen …", "add …")}</option>${opts.map((i) => `<option value="${i}">${esc(cname(i))}</option>`).join("")}</select>` : "");
     $("compare").querySelectorAll("button[data-rm]").forEach((b) => b.addEventListener("click", () => {
       state.compare = state.compare.filter((i) => i !== b.dataset.rm); renderCountries();
     }));
     const add = $("addCmp"); if (add) add.addEventListener("change", () => { if (add.value) { state.compare.push(add.value); renderCountries(); } });
     const series = (key) => list.map((iso, k) => ({ label: cname(iso), color: colors[k], values: D.eci.countries[iso][key], bold: k === 0 }));
     const maxRank = Math.max(...list.flatMap((i) => D.eci.countries[i].rank));
-    lineChart($("rankChart"), ys, series("rank"), { invert: true, min: 1, max: Math.max(10, maxRank + 2), int: true, label: "ECI-Rang", unit: "Rang" });
-    lineChart($("fixedChart"), ys, series("fixed"), { label: "Komplexität auf festem Maßstab", unit: "PCI" });
-    FIGDATA.rank = { header: ["Jahr", ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].rank[i])]) };
-    FIGDATA.fixed = { header: ["Jahr", ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].fixed[i])]) };
+    lineChart($("rankChart"), ys, series("rank"), { invert: true, min: 1, max: Math.max(10, maxRank + 2), int: true, label: L("ECI-Rang", "ECI rank"), unit: L("Rang", "Rank") });
+    lineChart($("fixedChart"), ys, series("fixed"), { label: L("Komplexität auf festem Maßstab", "Complexity on a fixed scale"), unit: "PCI" });
+    FIGDATA.rank = { header: [L("Jahr", "Year"), ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].rank[i])]) };
+    FIGDATA.fixed = { header: [L("Jahr", "Year"), ...list.map(cname)], rows: ys.map((yr, i) => [yr, ...list.map((iso) => D.eci.countries[iso].fixed[i])]) };
     const c0 = D.eci.countries[state.iso], n0 = ys.length - 1;
-    $("laAnswer").textContent = `${cname(state.iso)} liegt ${ys[n0]} auf Rang ${c0.rank[n0]} von ${D.eci.n_countries} Ländern, ${ys[0]} auf Rang ${c0.rank[0]}. Auf festem Maßstab ${c0.fixed[n0] > c0.fixed[0] + 0.02 ? "stieg" : c0.fixed[n0] < c0.fixed[0] - 0.02 ? "sank" : "blieb"} die Komplexität des Exportkorbs ${Math.abs(c0.fixed[n0] - c0.fixed[0]) <= 0.02 ? "etwa gleich" : "von " + fmt(c0.fixed[0]) + " auf " + fmt(c0.fixed[n0])}.`;
+    const dF = c0.fixed[n0] - c0.fixed[0];
+    $("laAnswer").textContent = EN ? `${sname(state.iso, true)} ranks ${c0.rank[n0]} of ${D.eci.n_countries} countries in ${ys[n0]}, compared with ${c0.rank[0]} in ${ys[0]}. On a fixed scale, the complexity of its export basket ${Math.abs(dF) <= 0.02 ? "stayed about the same" : (dF > 0 ? "rose" : "fell") + " from " + fmt(c0.fixed[0]) + " to " + fmt(c0.fixed[n0])}.` : `${cname(state.iso)} liegt ${ys[n0]} auf Rang ${c0.rank[n0]} von ${D.eci.n_countries} Ländern, ${ys[0]} auf Rang ${c0.rank[0]}. Auf festem Maßstab ${c0.fixed[n0] > c0.fixed[0] + 0.02 ? "stieg" : c0.fixed[n0] < c0.fixed[0] - 0.02 ? "sank" : "blieb"} die Komplexität des Exportkorbs ${Math.abs(c0.fixed[n0] - c0.fixed[0]) <= 0.02 ? "etwa gleich" : "von " + fmt(c0.fixed[0]) + " auf " + fmt(c0.fixed[n0])}.`;
     const n = ys.length - 1;
-    $("rankTable").innerHTML = `<thead><tr><th>Land</th><th class="num">ECI-Rang ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">Fitness-Rang ${ys[n]}</th><th class="num">GENEPY-Rang ${ys[n]}</th><th class="num">Fester Maßstab ${ys[0]}</th><th class="num">${ys[n]}</th></tr></thead><tbody>` +
+    $("rankTable").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("ECI-Rang", "ECI rank")} ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">${L("Fitness-Rang", "Fitness rank")} ${ys[n]}</th><th class="num">${L("GENEPY-Rang", "GENEPY rank")} ${ys[n]}</th><th class="num">${L("Fester Maßstab", "Fixed scale")} ${ys[0]}</th><th class="num">${ys[n]}</th></tr></thead><tbody>` +
       list.map((iso) => { const c = D.eci.countries[iso]; return `<tr><td>${esc(cname(iso))}</td><td class="num">${c.rank[0]}</td><td class="num">${c.rank[n]}</td><td class="num">${c.fitness_rank[n]}</td><td class="num">${c.genepy_rank[n]}</td><td class="num">${fmt(c.fixed[0])}</td><td class="num">${fmt(c.fixed[n])}</td></tr>`; }).join("") + "</tbody>";
   }
 
@@ -225,10 +242,10 @@
     const cd = await getJSON(`data/countries/${state.iso}.json`);
     const P = D.products.rows, snaps = cd.snapshots;
     const y0 = snaps[0], y1 = snaps[snaps.length - 1], n0 = cd.rca[String(y0)].length, n1 = cd.rca[String(y1)].length;
-    const firstOpps = cd.opportunities.slice(0, 3).map((o) => P[o[0]][9] ? P[o[0]][9].split(";")[0].trim() : P[o[0]][1]);
-    $("prAnswer").textContent = `${cname(state.iso)} hat ${y1} in ${n1.toLocaleString("de-DE")} Warengruppen einen Exportvorteil (${y0}: ${n0.toLocaleString("de-DE")}); ${cd.gained.length} kamen hinzu, ${cd.lost.length} gingen verloren. Die nächsten Chancen liegen etwa bei ${firstOpps.join(", ")}.`;
-    FIGDATA.space = { header: ["HS4", "Warengruppe", "x", "y", "Komplexität (PCI)", "Welthandel 2024 (Mrd. USD)", `Vorteil ${y0}`, `Vorteil ${y1}`],
-      rows: P.map((r, i) => [r[0], r[1], r[5], r[6], r[7], r[8], cd.rca[String(y0)].includes(i) ? 1 : 0, cd.rca[String(y1)].includes(i) ? 1 : 0]) };
+    const firstOpps = cd.opportunities.slice(0, 3).map((o) => EN ? (P[o[0]][2] || P[o[0]][10]).split(",")[0].trim().toLowerCase() : P[o[0]][9] ? P[o[0]][9].split(";")[0].trim() : P[o[0]][1]);
+    $("prAnswer").textContent = EN ? `In ${y1}, ${sname(state.iso)} has an export advantage in ${n1.toLocaleString(LOC)} product groups (${y0}: ${n0.toLocaleString(LOC)}); it gained ${cd.gained.length} and lost ${cd.lost.length}. The nearest opportunities include ${firstOpps.slice(0, -1).join(", ")} and ${firstOpps[firstOpps.length - 1]}.` : `${cname(state.iso)} hat ${y1} in ${n1.toLocaleString("de-DE")} Warengruppen einen Exportvorteil (${y0}: ${n0.toLocaleString("de-DE")}); ${cd.gained.length} kamen hinzu, ${cd.lost.length} gingen verloren. Die nächsten Chancen liegen etwa bei ${firstOpps.join(", ")}.`;
+    FIGDATA.space = { header: EN ? ["HS4", "Product group", "x", "y", "Complexity (PCI)", "World trade 2024 (USD bn)", `Advantage ${y0}`, `Advantage ${y1}`] : ["HS4", "Warengruppe", "x", "y", "Komplexität (PCI)", "Welthandel 2024 (Mrd. USD)", `Vorteil ${y0}`, `Vorteil ${y1}`],
+      rows: P.map((r, i) => [r[0], r[PN], r[5], r[6], r[7], r[8], cd.rca[String(y0)].includes(i) ? 1 : 0, cd.rca[String(y1)].includes(i) ? 1 : 0]) };
     if (state.snapYear === null) state.snapYear = snaps[snaps.length - 1];
     const sy = $("snapYear");
     sy.innerHTML = snaps.map((y) => `<option value="${y}"${y === state.snapYear ? " selected" : ""}>${y}</option>`).join("");
@@ -264,11 +281,11 @@
     $("spaceLegend").innerHTML = state.colorMode === "group"
       ? D.products.groups.map((g, k) => `<span><i style="background:${gcol[k]}"></i>${esc(groupDe(g))}</span>`).join("")
       : state.colorMode === "year"
-        ? `<span><i style="background:${col.kept}"></i>Exportvorteil ${state.snapYear} (${yearSet.size})</span><span><i style="background:${col.none}"></i>kein Exportvorteil</span>`
-        : `<span><i style="background:${col.kept}"></i>Vorteil ${snaps[0]} und ${snaps[snaps.length - 1]} (${n("kept")})</span><span><i style="background:${col.gained}"></i>hinzugewonnen (${n("gained")})</span><span><i style="background:${col.lost}"></i>verloren (${n("lost")})</span><span><i style="background:${col.none}"></i>kein Vorteil</span>`;
+        ? `<span><i style="background:${col.kept}"></i>${L("Exportvorteil", "Export advantage")} ${state.snapYear} (${yearSet.size})</span><span><i style="background:${col.none}"></i>${L("kein Exportvorteil", "no export advantage")}</span>`
+        : `<span><i style="background:${col.kept}"></i>${L("Vorteil", "Advantage in")} ${snaps[0]} ${L("und", "and")} ${snaps[snaps.length - 1]} (${n("kept")})</span><span><i style="background:${col.gained}"></i>${L("hinzugewonnen", "gained")} (${n("gained")})</span><span><i style="background:${col.lost}"></i>${L("verloren", "lost")} (${n("lost")})</span><span><i style="background:${col.none}"></i>${L("kein Vorteil", "no advantage")}</span>`;
 
-    $("oppTable").innerHTML = `<thead><tr><th>HS4</th><th>Warengruppe</th><th class="num">Nähe</th><th class="num">Komplexität</th><th class="num">Outlook Gain</th></tr></thead><tbody>` +
-      cd.opportunities.slice(0, 25).map(([i, dens, cog, pci]) => `<tr class="clickable${state.highlight === i ? " sel" : ""}" data-i="${i}" tabindex="0"><td class="num">${P[i][0]}</td><td>${esc(P[i][1])}${P[i][9] ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td><td class="num">${fmt(cog)}</td></tr>`).join("") + "</tbody>";
+    $("oppTable").innerHTML = `<thead><tr><th>HS4</th><th>${L("Warengruppe", "Product group")}</th><th class="num">${L("Nähe", "Proximity")}</th><th class="num">${L("Komplexität", "Complexity")}</th><th class="num">Outlook Gain</th></tr></thead><tbody>` +
+      cd.opportunities.slice(0, 25).map(([i, dens, cog, pci]) => `<tr class="clickable${state.highlight === i ? " sel" : ""}" data-i="${i}" tabindex="0"><td class="num">${P[i][0]}</td><td>${esc(P[i][PN])}${P[i][9] && !EN ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td><td class="num">${fmt(cog)}</td></tr>`).join("") + "</tbody>";
     $("oppTable").querySelectorAll("tr[data-i]").forEach((tr) => {
       const pick = () => { const i = +tr.dataset.i; state.highlight = state.highlight === i ? null : i; renderSpace(); };
       tr.addEventListener("click", pick); tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
@@ -276,12 +293,14 @@
   }
 
   function groupDe(g) {
+    if (EN) return g;
     return ({ "Machinery": "Maschinen", "Chemicals and pharma": "Chemie und Pharma", "Food and agriculture": "Nahrungsmittel und Agrar",
       "Minerals, metals, stone": "Rohstoffe, Metalle, Steine", "Textiles and apparel": "Textil und Bekleidung",
       "Plastics, wood, paper": "Kunststoff, Holz, Papier", "Electrical and electronics": "Elektrotechnik und Elektronik",
       "Vehicles, instruments, other": "Fahrzeuge, Instrumente, Sonstiges" })[g] || g;
   }
   function sectorDe(s) {
+    if (EN) return s;
     return ({ "Food and agriculture": "Nahrungsmittel und Agrar", "Minerals and fuels": "Mineralien und Brennstoffe", "Basic chemicals": "Grundstoffchemie",
       "Pharmaceuticals": "Pharma", "Other chemicals": "Übrige Chemie", "Plastics and rubber": "Kunststoffe und Kautschuk",
       "Leather, wood, paper": "Leder, Holz, Papier", "Textiles, apparel, footwear": "Textil, Bekleidung, Schuhe",
@@ -297,8 +316,8 @@
     P.forEach((p, i) => { const dx = spaceGeom.X(p[5]) - mx, dy = spaceGeom.Y(p[6]) - my, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } });
     const tip = $("tip");
     if (best < 0 || bd > 144) { tip.hidden = true; return; }
-    const p = P[best], st = { kept: "Vorteil in beiden Jahren", gained: "hinzugewonnen", lost: "verloren", none: "kein Vorteil" }[spaceGeom.status[best]];
-    tip.innerHTML = `<b>${p[0]}</b> ${esc(p[1])}${p[9] ? `<br><i>z. B. ${esc(p[9])}</i>` : ""}<br>${esc(sectorDe(D.products.sectors[p[3]]))}<br>Komplexität ${fmt(p[7])} · Welthandel ${fmt(p[8], 1)} Mrd. USD<br>${cname(state.iso)}: ${st}`;
+    const p = P[best], st = (EN ? { kept: "advantage in both years", gained: "gained", lost: "lost", none: "no advantage" } : { kept: "Vorteil in beiden Jahren", gained: "hinzugewonnen", lost: "verloren", none: "kein Vorteil" })[spaceGeom.status[best]];
+    tip.innerHTML = `<b>${p[0]}</b> ${esc(p[PN])}${p[9] && !EN ? `<br><i>z. B. ${esc(p[9])}</i>` : ""}<br>${esc(sectorDe(D.products.sectors[p[3]]))}<br>${L("Komplexität", "Complexity")} ${fmt(p[7])} · ${L("Welthandel", "World trade")} ${bn(fmt(p[8], 1))}<br>${cname(state.iso)}: ${st}`;
     tip.hidden = false;
     const tx = Math.min(mx + 12, r.width - tip.offsetWidth - 4), ty = Math.min(my + 12, r.height - tip.offsetHeight - 4);
     tip.style.left = Math.max(4, tx) + "px"; tip.style.top = Math.max(4, ty) + "px";
@@ -310,11 +329,11 @@
     const mx = Math.max(...rows.flatMap((r) => [r.a || 0, r.b || 0]));
     const ch = rows.filter((r) => r.a !== null && r.b !== null).map((r) => ({ ...r, d: (r.b - r.a) * 100 }));
     const up = ch.slice().sort((p, q) => q.d - p.d)[0], dn = ch.slice().sort((p, q) => p.d - q.d)[0];
-    $("brAnswer").textContent = `Den größten Weltmarktanteil hat ${cname(state.iso)} ${ys[1]} in der Branche ${sectorDe(rows[0].s)} mit ${fmt(rows[0].b * 100, 1)}\u202f%. Am stärksten gestiegen ist der Anteil seit ${ys[0]} in der Branche ${sectorDe(up.s)} (${up.d > 0 ? "+" : ""}${fmt(up.d, 1)} Pp), am stärksten gesunken in der Branche ${sectorDe(dn.s)} (${fmt(dn.d, 1)} Pp).`;
-    $("sectorTable").innerHTML = `<thead><tr><th>Branche</th><th class="num">${ys[0]}</th><th class="num">${ys[1]}</th><th class="num">Veränderung</th><th>Anteil ${ys[1]}</th></tr></thead><tbody>` +
+    $("brAnswer").textContent = EN ? `${sname(state.iso, true)}'s largest world market share in ${ys[1]} is in ${sectorDe(rows[0].s).toLowerCase()}, at ${fmt(rows[0].b * 100, 1)}\u202f%. Since ${ys[0]} its share has risen most in ${sectorDe(up.s).toLowerCase()} (${up.d > 0 ? "+" : ""}${fmt(up.d, 1)} pp) and fallen most in ${sectorDe(dn.s).toLowerCase()} (${fmt(dn.d, 1)} pp).` : `Den größten Weltmarktanteil hat ${cname(state.iso)} ${ys[1]} in der Branche ${sectorDe(rows[0].s)} mit ${fmt(rows[0].b * 100, 1)}\u202f%. Am stärksten gestiegen ist der Anteil seit ${ys[0]} in der Branche ${sectorDe(up.s)} (${up.d > 0 ? "+" : ""}${fmt(up.d, 1)} Pp), am stärksten gesunken in der Branche ${sectorDe(dn.s)} (${fmt(dn.d, 1)} Pp).`;
+    $("sectorTable").innerHTML = `<thead><tr><th>${L("Branche", "Sector")}</th><th class="num">${ys[0]}</th><th class="num">${ys[1]}</th><th class="num">${L("Veränderung", "Change")}</th><th>${L("Anteil", "Share")} ${ys[1]}</th></tr></thead><tbody>` +
       rows.map((r) => {
         const d = (r.b - r.a) * 100, cls = Math.abs(d) < 0.05 ? "even" : "down", sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼";
-        return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)}\u202f%</td><td class="num">${fmt(r.b * 100, 1)}\u202f%</td><td class="num"><span class="chip ${cls}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} Pp</td><td><span class="bar" style="width:${Math.max(1, 140 * (r.b || 0) / mx)}px;background:var(--c1)"></span></td></tr>`;
+        return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)}\u202f%</td><td class="num">${fmt(r.b * 100, 1)}\u202f%</td><td class="num"><span class="chip ${cls}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} ${PP}</td><td><span class="bar" style="width:${Math.max(1, 140 * (r.b || 0) / mx)}px;background:var(--c1)"></span></td></tr>`;
       }).join("") + "</tbody>";
   }
 
@@ -323,58 +342,61 @@
   const pct = (v, d = 2) => (v === null || v === undefined) ? "–" : (v > 0 && Number(v.toFixed(d)) !== 0 ? "+" : "") + fmt(v, d) + "\u202f%";
   function scName(iso, S) {
     if (iso === "EU27") return "EU27";
-    if (iso === "ROW") return "Rest der Welt";
+    if (iso === "ROW") return L("Rest der Welt", "Rest of the world");
     const i2 = S.iso2[iso];
     if (regionNames && i2) { try { const n = regionNames.of(i2); if (n && n !== i2) return n; } catch (e) { /* fall back */ } }
     return (D.eci.countries[iso] && D.eci.countries[iso].name) || iso;
   }
   function robust(v) {
-    if (v[1] === null || v[2] === null) return ["even", "ohne Spanne"];
-    if (Math.abs(v[0]) < 0.005 && Math.abs(v[1]) < 0.01 && Math.abs(v[2]) < 0.01) return ["even", "kaum Wirkung"];
-    return (v[1] < 0) === (v[2] < 0) || v[1] === 0 || v[2] === 0 ? ["good", "robust"] : ["bad", "Vorzeichen unsicher"];
+    if (v[1] === null || v[2] === null) return ["even", L("ohne Spanne", "no range")];
+    if (Math.abs(v[0]) < 0.005 && Math.abs(v[1]) < 0.01 && Math.abs(v[2]) < 0.01) return ["even", L("kaum Wirkung", "little effect")];
+    return (v[1] < 0) === (v[2] < 0) || v[1] === 0 || v[2] === 0 ? ["good", "robust"] : ["bad", L("Vorzeichen unsicher", "sign uncertain")];
   }
   async function renderScenarios() {
     const S = await getJSON("data/scenarios.json");
     const sel = $("scenario");
     if (!sel.options.length) {
-      const grp = { us: "US-Zölle und Gegenzölle", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
+      const grp = EN ? { us: "US tariffs and retaliation", eu: "EU single market", transport: "Transport costs" } : { us: "US-Zölle und Gegenzölle", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
       sel.innerHTML = Object.keys(grp).map((g) => `<optgroup label="${grp[g]}">` +
-        S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(s.title)}</option>`).join("") + "</optgroup>").join("");
+        S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(EN ? s.title_en : s.title)}</option>`).join("") + "</optgroup>").join("");
       sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
     }
     sel.value = state.scenario;
-    if (S.us_tariff_latest_date) { const d = S.us_tariff_latest_date; $("scenStand").textContent = `US-Zölle: CEPII-Datei ${S.us_tariff_file}, jüngste Maßnahme vom ${d.slice(6)}.${d.slice(4, 6)}.${d.slice(0, 4)}; monatliche Prüfung auf neue Daten.`; }
+    if (S.us_tariff_latest_date) { const d = S.us_tariff_latest_date; $("scenStand").textContent = EN ? `US tariffs: CEPII file ${S.us_tariff_file}, latest measure dated ${fmtDate(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`)}; checked monthly for new data.` : `US-Zölle: CEPII-Datei ${S.us_tariff_file}, jüngste Maßnahme vom ${d.slice(6)}.${d.slice(4, 6)}.${d.slice(0, 4)}; monatliche Prüfung auf neue Daten.`; }
     const sc = S.scenarios.find((s) => s.id === state.scenario), C = sc.countries;
     const iso = C[state.iso] ? state.iso : "DEU", name = scName(iso, S), v = C[iso];
-    const partner = sc.partner === "USA" ? "in die USA" : sc.partner === "EU" ? "in die EU" : "auf längeren Seewegen";
-    $("scenShock").textContent = sc.shock;
-    const note = iso !== state.iso ? `${cname(state.iso)} ist im Modell Teil des „Rests der Welt“; gezeigt wird Deutschland. ` : "";
+    const partner = EN ? (sc.partner === "USA" ? "to the US" : sc.partner === "EU" ? "to the EU" : "on longer sea routes") : sc.partner === "USA" ? "in die USA" : sc.partner === "EU" ? "in die EU" : "auf längeren Seewegen";
+    const title = EN ? sc.title_en : sc.title;
+    $("scenShock").textContent = EN ? sc.shock_en : sc.shock;
+    const note = iso !== state.iso ? L(`${cname(state.iso)} ist im Modell Teil des „Rests der Welt“; gezeigt wird Deutschland. `, `In the model ${sname(state.iso)} is part of the rest of the world; Germany is shown instead. `) : "";
     const [rc, rl] = robust(v);
-    const sent = `${sc.title}: Das Realeinkommen ${iso === "DEU" ? "in Deutschland" : "von " + name} ändert sich um ${pct(v[0])} (Spanne ${pct(v[1])} bis ${pct(v[2])}). ` +
+    const sent = EN ? `${title}: real income ${iso === "DEU" ? "in Germany" : "in " + sname(iso)} changes by ${pct(v[0])} (range ${pct(v[1])} to ${pct(v[2])}). ` +
+      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Exports ${partner} change by ${pct(v[4], 1)}, total exports by ${pct(v[3], 1)}.` : "")
+      : `${sc.title}: Das Realeinkommen ${iso === "DEU" ? "in Deutschland" : "von " + name} ändert sich um ${pct(v[0])} (Spanne ${pct(v[1])} bis ${pct(v[2])}). ` +
       (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Die Exporte ${partner} ändern sich um ${pct(v[4], 1)}, die gesamten Exporte um ${pct(v[3], 1)}.` : "");
-    $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">⧉ Textbaustein</button>`;
+    $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">⧉ ${L("Textbaustein", "Copy text")}</button>`;
     $("copyScen").addEventListener("click", (e) => {
-      const txt = sent + " Quelle: Produktraum-Monitor, Modell nach Caliendo und Parro (2015), OECD ICIO 2022; " + location.href.split("#")[0] + "#szenarien";
-      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => { e.target.textContent = "kopiert"; });
+      const txt = sent + L(" Quelle: Produktraum-Monitor, Modell nach Caliendo und Parro (2015), OECD ICIO 2022; ", " Source: Produktraum-Monitor, model after Caliendo and Parro (2015), OECD ICIO 2022; ") + location.href.split("#")[0] + "#szenarien";
+      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => { e.target.textContent = L("kopiert", "copied"); });
     });
-    const tile = (big, label) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">langfristig, zentraler Fall</span></div>`;
+    const tile = (big, label) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${L("langfristig, zentraler Fall", "long run, central case")}</span></div>`;
     $("scenFacts").innerHTML = [
-      tile(pct(v[0]), `Realeinkommen ${name}`),
-      v[4] !== null ? tile(pct(v[4], 1), `Exporte ${partner}`) : tile(pct(v[3], 1), "Exporte insgesamt"),
-      tile(pct(C.EU27[0]), "Realeinkommen EU27"),
-      sc.partner === "USA" ? tile(pct(C.USA[0]), "Realeinkommen USA") : tile(pct(C.CHN[0]), "Realeinkommen China"),
+      tile(pct(v[0]), L(`Realeinkommen ${name}`, `Real income, ${name}`)),
+      v[4] !== null ? tile(pct(v[4], 1), L(`Exporte ${partner}`, `Exports ${partner}`)) : tile(pct(v[3], 1), L("Exporte insgesamt", "Total exports")),
+      tile(pct(C.EU27[0]), L("Realeinkommen EU27", "Real income, EU27")),
+      sc.partner === "USA" ? tile(pct(C.USA[0]), L("Realeinkommen USA", "Real income, US")) : tile(pct(C.CHN[0]), L("Realeinkommen China", "Real income, China")),
     ].join("");
     // bar chart: 20 largest effects plus selection and EU27
     const all = Object.keys(C).filter((k) => k !== "ROW");
     let list = all.filter((k) => k !== "EU27").sort((a, b) => Math.abs(C[b][0]) - Math.abs(C[a][0])).slice(0, 18);
     ["EU27", iso].forEach((k) => { if (!list.includes(k)) list.push(k); });
     list.sort((a, b) => C[a][0] - C[b][0]);
-    $("scenChartTitle").textContent = "Realeinkommen in %: die 18 am stärksten betroffenen Länder, " + (iso === "DEU" ? "Deutschland" : name) + " und EU27";
+    $("scenChartTitle").textContent = EN ? "Real income in %: the 18 hardest-hit countries, " + (iso === "DEU" ? "Germany" : name) + " and EU27" : "Realeinkommen in %: die 18 am stärksten betroffenen Länder, " + (iso === "DEU" ? "Deutschland" : name) + " und EU27";
     const W = 860, row = 22, m = { l: 170, r: 70, t: 8, b: 26 }, H = m.t + m.b + row * list.length;
     const vals = list.flatMap((k) => [C[k][0], C[k][1], C[k][2]]).filter((x) => x !== null);
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.05 || 0.1; lo -= pd; hi += pd;
     const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen nach Ländern">`;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("Realeinkommen nach Ländern", "Real income by country")}">`;
     const tks = niceTicks(lo, hi, 6), td = tickDec(tks); tks.forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, td)}</text>`; });
     s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
     list.forEach((k, i) => {
@@ -386,21 +408,22 @@
       s += `<text x="${W - m.r + 6}" y="${y + row / 2 + 4}">${pct(c[0])}</text>`;
     });
     $("scenChart").innerHTML = s + "</svg>";
-    FIGDATA.scen = { header: ["Land", "Realeinkommen in %", "Spanne von", "Spanne bis", "Exporte insgesamt in %", `Exporte ${partner} in %`],
+    FIGDATA.scen = { header: EN ? ["Country", "Real income in %", "Range from", "Range to", "Total exports in %", `Exports ${partner} in %`] : ["Land", "Realeinkommen in %", "Spanne von", "Spanne bis", "Exporte insgesamt in %", `Exporte ${partner} in %`],
       rows: Object.keys(C).map((k) => [scName(k, S), C[k][0], C[k][1], C[k][2], C[k][3], C[k][4]]) };
     // German sectors
     const usS = sc.partner === "USA";
     // the 15 sectors with the largest German exports to the partner in 2022 (small sectors give extreme percentages)
     const bySize = sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => (b[4] || 0) - (a[4] || 0)).slice(0, 15);
     const chip = (x, d = 1) => `<span class="chip ${x === null || Math.abs(x) < 0.05 ? "even" : x > 0 ? "good" : "bad"}">${pct(x, d)}</span>`;
-    $("scenSectors").innerHTML = `<thead><tr><th>Branche</th>${usS ? '<th class="num">US-Zoll</th>' : ""}<th class="num">Exporte ${partner} 2022</th><th class="num">Exporte ${partner}</th><th class="num">Produktion</th></tr></thead><tbody>` +
-      bySize.map((r) => `<tr><td>${esc(S.sector_names[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)}\u202f%</td>` : ""}<td class="num">${fmt(r[4], 1)} Mrd. USD</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
+    const secNames = EN ? S.sector_names_en : S.sector_names;
+    $("scenSectors").innerHTML = `<thead><tr><th>${L("Branche", "Sector")}</th>${usS ? `<th class="num">${L("US-Zoll", "US tariff")}</th>` : ""}<th class="num">${L("Exporte", "Exports")} ${partner} 2022</th><th class="num">${L("Exporte", "Exports")} ${partner}</th><th class="num">${L("Produktion", "Output")}</th></tr></thead><tbody>` +
+      bySize.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)}\u202f%</td>` : ""}<td class="num">${bn(fmt(r[4], 1))}</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
     // all countries
-    $("scenAll").innerHTML = `<thead><tr><th>Land</th><th class="num">Realeinkommen</th><th class="num">Spanne</th><th class="num">Exporte ${partner}</th><th class="num">Exporte insgesamt</th>${usS ? '<th class="num">US-Zoll im Mittel</th>' : ""}</tr></thead><tbody>` +
-      all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), "de")).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + " bis " + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
-    const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad" };
-    $("scenChecks").innerHTML = `<thead><tr><th>Prüfung</th><th>Ergebnis</th><th>Befund</th></tr></thead><tbody>` +
-      S.checks.map((c) => `<tr><td>${esc(c.name)}</td><td><span class="chip ${rcls[c.result] || "even"}">${esc(c.result)}</span></td><td>${esc(c.text)}</td></tr>`).join("") + "</tbody>";
+    $("scenAll").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Realeinkommen", "Real income")}</th><th class="num">${L("Spanne", "Range")}</th><th class="num">${L("Exporte", "Exports")} ${partner}</th><th class="num">${L("Exporte insgesamt", "Total exports")}</th>${usS ? `<th class="num">${L("US-Zoll im Mittel", "Average US tariff")}</th>` : ""}</tr></thead><tbody>` +
+      all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), L("de", "en"))).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + L(" bis ", " to ") + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
+    const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad", "passed": "good", "plausible": "good", "explained": "even", "deviation": "bad" };
+    $("scenChecks").innerHTML = `<thead><tr><th>${L("Prüfung", "Check")}</th><th>${L("Ergebnis", "Result")}</th><th>${L("Befund", "Finding")}</th></tr></thead><tbody>` +
+      (EN ? S.checks_en : S.checks).map((c) => `<tr><td>${esc(c.name)}</td><td><span class="chip ${rcls[c.result] || "even"}">${esc(c.result)}</span></td><td>${esc(c.text)}</td></tr>`).join("") + "</tbody>";
   }
 
 
@@ -409,34 +432,40 @@
     const [cd, S] = await Promise.all([getJSON(`data/countries/${state.iso}.json`), getJSON("data/scenarios.json")]);
     const c = D.eci.countries[state.iso], ys = D.eci.years, n = ys.length - 1, name = cname(state.iso), P = D.products.rows;
     const iso = S.scenarios[0].countries[state.iso] ? state.iso : "ROW";
-    $("profTitle").textContent = "Länderprofil: " + name;
+    $("profTitle").textContent = L("Länderprofil: ", "Country profile: ") + name;
     const val = (id) => { const sc = S.scenarios.find((s) => s.id === id); return sc ? sc.countries[iso] : null; };
     const cur = val("current_2026_08"), nsm = val("no_single_market"), red = val("red_sea_2024");
     const eu = ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"].includes(state.iso);
     const sh = D.products.sectors.map((s, k) => ({ s, a: cd.sector_share[k][0], b: cd.sector_share[k][1] })).filter((r) => r.b !== null).sort((p, q) => q.b - p.b);
-    $("profAnswer").textContent = `${name} liegt ${ys[n]} im Complexity-Rang auf Platz ${c.rank[n]} von ${D.eci.n_countries} (${ys[0]}: ${c.rank[0]}) und ist am stärksten in der Branche ${sectorDe(sh[0].s)}. ` +
+    $("profAnswer").textContent = EN ? `In ${ys[n]}, ${sname(state.iso)} ranks ${c.rank[n]} of ${D.eci.n_countries} in the complexity ranking (${ys[0]}: ${c.rank[0]}) and is strongest in ${sectorDe(sh[0].s).toLowerCase()}. ` +
+      (iso === "ROW" ? `For the scenarios, the model counts ${sname(state.iso)} as part of the rest of the world.` :
+        `The US tariffs of August 2026 change its real income in the long run by ${pct(cur[0])}` + (eu ? `; losing the single market would change it by ${pct(nsm[0])}.` : `; a diversion around Africa as in 2024 would change it by ${pct(red[0])}.`))
+      : `${name} liegt ${ys[n]} im Complexity-Rang auf Platz ${c.rank[n]} von ${D.eci.n_countries} (${ys[0]}: ${c.rank[0]}) und ist am stärksten in der Branche ${sectorDe(sh[0].s)}. ` +
       (iso === "ROW" ? `Für Szenarien gehört ${name} im Modell zum „Rest der Welt“.` :
         `Die US-Zölle vom August 2026 ändern das Realeinkommen langfristig um ${pct(cur[0])}` + (eu ? `, ein Wegfall des Binnenmarkts um ${pct(nsm[0])}.` : `, eine Umleitung um Afrika wie 2024 um ${pct(red[0])}.`));
     const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
     $("profFacts").innerHTML = [
-      tile(`${c.rank[0]} → ${c.rank[n]}`, "ECI-Rang", `${ys[0]} und ${ys[n]}, von ${D.eci.n_countries}`),
-      tile(`${c.diversity[n]}`, "Warengruppen mit Exportvorteil", `${ys[n]} (${ys[0]}: ${c.diversity[0]})`),
-      tile(`${fmt(c.exports_bn_usd[n], 0)} Mrd. USD`, "Warenexporte", `${ys[n]}, Dreijahresmittel`),
-      tile(pct(cur[0]), "Realeinkommen bei US-Zöllen", iso === "ROW" ? "Rest der Welt, August 2026" : "August 2026, langfristig"),
+      tile(`${c.rank[0]} → ${c.rank[n]}`, L("ECI-Rang", "ECI rank"), L(`${ys[0]} und ${ys[n]}, von ${D.eci.n_countries}`, `${ys[0]} and ${ys[n]}, of ${D.eci.n_countries}`)),
+      tile(`${c.diversity[n]}`, L("Warengruppen mit Exportvorteil", "Product groups with an export advantage"), `${ys[n]} (${ys[0]}: ${c.diversity[0]})`),
+      tile(bn(fmt(c.exports_bn_usd[n], 0)), L("Warenexporte", "Goods exports"), L(`${ys[n]}, Dreijahresmittel`, `${ys[n]}, three-year average`)),
+      tile(pct(cur[0]), L("Realeinkommen bei US-Zöllen", "Real income under US tariffs"), iso === "ROW" ? L("Rest der Welt, August 2026", "Rest of the world, August 2026") : L("August 2026, langfristig", "August 2026, long run")),
     ].join("");
     // dot and whisker chart over all scenarios
-    const grpName = { us: "Zölle", eu: "Binnenmarkt", transport: "Seewege" };
-    const SHORT = { peak_2025_04: "US-Zölle April 2025", deal_2025_09: "US-Zölle September 2025", current_2026_08: "US-Zölle August 2026",
+    const grpName = EN ? { us: "Tariffs", eu: "Single market", transport: "Sea routes" } : { us: "Zölle", eu: "Binnenmarkt", transport: "Seewege" };
+    const SHORT = EN ? { peak_2025_04: "US tariffs April 2025", deal_2025_09: "US tariffs September 2025", current_2026_08: "US tariffs August 2026",
+      retaliation_eu: "plus EU retaliation", retaliation_all: "plus retaliation by all", no_single_market: "No single market",
+      trend_2030: "Integration to 2030", services_deeper: "Deeper services market", red_sea_2024: "Red Sea as in 2024",
+      red_sea_closed: "Red Sea closed", panama_closed: "Panama Canal closed" } : { peak_2025_04: "US-Zölle April 2025", deal_2025_09: "US-Zölle September 2025", current_2026_08: "US-Zölle August 2026",
       retaliation_eu: "dazu Gegenzölle der EU", retaliation_all: "dazu Gegenzölle aller Länder", no_single_market: "Ohne Binnenmarkt",
       trend_2030: "Integration bis 2030", services_deeper: "Tieferer Dienstleistungsmarkt", red_sea_2024: "Rotes Meer wie 2024",
       red_sea_closed: "Rotes Meer gesperrt", panama_closed: "Panamakanal gesperrt" };
-    const rows = S.scenarios.map((s) => ({ id: s.id, g: grpName[s.group], t: SHORT[s.id] || s.title, v: s.countries[iso] })).filter((r) => r.v);
-    $("profChartTitle").textContent = `Realeinkommen ${iso === "ROW" ? "Rest der Welt" : name} je Szenario, Änderung in %`;
+    const rows = S.scenarios.map((s) => ({ id: s.id, g: grpName[s.group], t: SHORT[s.id] || (EN ? s.title_en : s.title), v: s.countries[iso] })).filter((r) => r.v);
+    $("profChartTitle").textContent = EN ? `Real income, ${iso === "ROW" ? "rest of the world" : name}, by scenario, change in %` : `Realeinkommen ${iso === "ROW" ? "Rest der Welt" : name} je Szenario, Änderung in %`;
     const W = 860, row = 28, m = { l: 300, r: 80, t: 10, b: 30 }, H = m.t + m.b + row * rows.length;
     const vals = rows.flatMap((r) => [r.v[0], r.v[1], r.v[2]]).filter((x) => x !== null);
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.06 || 0.1; lo -= pd; hi += pd;
     const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen je Szenario">`;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("Realeinkommen je Szenario", "Real income by scenario")}">`;
     const tks = niceTicks(lo, hi, 6), td = tickDec(tks); tks.forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, td)}</text>`; });
     s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
     rows.forEach((r, i) => {
@@ -446,20 +475,20 @@
       s += `<circle cx="${X(r.v[0])}" cy="${y}" r="5" fill="${col}"><title>${esc(r.t)}: ${pct(r.v[0])}</title></circle><text x="${W - m.r + 8}" y="${y + 4}">${pct(r.v[0])}</text>`;
     });
     $("profChart").innerHTML = s + "</svg>";
-    FIGDATA.profil = { header: ["Szenario", "Realeinkommen in %", "Spanne von", "Spanne bis"], rows: rows.map((r) => [r.t, r.v[0], r.v[1], r.v[2]]) };
-    $("profSectors").innerHTML = `<thead><tr><th>Branche</th><th class="num">Weltmarktanteil ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">Veränderung</th></tr></thead><tbody>` +
-      sh.slice(0, 6).map((r) => { const d = (r.b - r.a) * 100, sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼"; return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${Math.abs(d) < 0.05 ? "even" : "down"}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} Pp</td></tr>`; }).join("") + "</tbody>";
-    $("profOpps").innerHTML = `<thead><tr><th>HS4</th><th>Warengruppe</th><th class="num">Nähe</th><th class="num">Komplexität</th></tr></thead><tbody>` +
-      cd.opportunities.slice(0, 10).map(([i, dens, cog, pci]) => `<tr><td class="num">${P[i][0]}</td><td>${esc(P[i][1])}${P[i][9] ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td></tr>`).join("") + "</tbody>";
+    FIGDATA.profil = { header: EN ? ["Scenario", "Real income in %", "Range from", "Range to"] : ["Szenario", "Realeinkommen in %", "Spanne von", "Spanne bis"], rows: rows.map((r) => [r.t, r.v[0], r.v[1], r.v[2]]) };
+    $("profSectors").innerHTML = `<thead><tr><th>${L("Branche", "Sector")}</th><th class="num">${L("Weltmarktanteil", "World market share")} ${ys[0]}</th><th class="num">${ys[n]}</th><th class="num">${L("Veränderung", "Change")}</th></tr></thead><tbody>` +
+      sh.slice(0, 6).map((r) => { const d = (r.b - r.a) * 100, sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼"; return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${Math.abs(d) < 0.05 ? "even" : "down"}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} ${PP}</td></tr>`; }).join("") + "</tbody>";
+    $("profOpps").innerHTML = `<thead><tr><th>HS4</th><th>${L("Warengruppe", "Product group")}</th><th class="num">${L("Nähe", "Proximity")}</th><th class="num">${L("Komplexität", "Complexity")}</th></tr></thead><tbody>` +
+      cd.opportunities.slice(0, 10).map(([i, dens, cog, pci]) => `<tr><td class="num">${P[i][0]}</td><td>${esc(P[i][PN])}${P[i][9] && !EN ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
-    const names = { naive: "Naiv", ar: "AR (Referenz)", bottom_up: "AR nach Zielländern", gravity: "Gravitation" };
+    const names = EN ? { naive: "Naive", ar: "AR (benchmark)", bottom_up: "AR by destination", gravity: "Gravity" } : { naive: "Naiv", ar: "AR (Referenz)", bottom_up: "AR nach Zielländern", gravity: "Gravitation" };
     const block = (title, rows, hkey, hlabel) => {
       if (!rows) return "";
       const hs = [...new Set(rows.map((r) => r[hkey]))];
       const models = ["naive", "ar", "bottom_up", "gravity"];
-      let t = `<div class="tablewrap"><table><caption>${esc(title)}</caption><thead><tr><th>Modell</th>${hs.map((h) => `<th class="num">${esc(hlabel(h))}</th>`).join("")}</tr></thead><tbody>`;
+      let t = `<div class="tablewrap"><table><caption>${esc(title)}</caption><thead><tr><th>${L("Modell", "Model")}</th>${hs.map((h) => `<th class="num">${esc(hlabel(h))}</th>`).join("")}</tr></thead><tbody>`;
       models.forEach((m) => {
         t += `<tr><td>${names[m]}</td>` + hs.map((h) => {
           const r = rows.find((x) => x[hkey] === h && x.model === m); if (!r) return "<td></td>";
@@ -470,18 +499,20 @@
       });
       return t + "</tbody></table></div>";
     };
-    const F = D.forecast, mh = (h) => h === 1 ? "1 Monat" : `${h} Monate`, qh = (k) => k === 0 ? "Quartal voraus" : `${k} Monat${k > 1 ? "e" : ""} bekannt`;
+    const F = D.forecast;
+    const mh = EN ? (h) => h === 1 ? "1 month" : `${h} months` : (h) => h === 1 ? "1 Monat" : `${h} Monate`;
+    const qh = EN ? (k) => k === 0 ? "quarter ahead" : `${k} month${k > 1 ? "s" : ""} known` : (k) => k === 0 ? "Quartal voraus" : `${k} Monat${k > 1 ? "e" : ""} bekannt`;
     $("forecastTables").innerHTML =
-      block("Deutsche Ausfuhren, monatlich (Comext, EU27 als Exporteure)", F.forecast_germany.summary_monthly, "h", mh) +
-      block("Deutsche Ausfuhren, monatlich, ohne März 2020 bis Juni 2021", F.forecast_germany.summary_monthly_excl_covid, "h", mh) +
-      block("Deutsche Ausfuhren, Quartal", F.forecast_germany.summary_quarterly, "known_months", qh) +
-      block("Welthandel, monatlich (IMF IMTS, 210 Länder)", F.forecast_world.summary_monthly, "h", mh) +
-      block("Welthandel, Quartal", F.forecast_world.summary_quarterly, "known_months", qh);
+      block(L("Deutsche Ausfuhren, monatlich (Comext, EU27 als Exporteure)", "German exports, monthly (Comext, EU27 as exporters)"), F.forecast_germany.summary_monthly, "h", mh) +
+      block(L("Deutsche Ausfuhren, monatlich, ohne März 2020 bis Juni 2021", "German exports, monthly, excluding March 2020 to June 2021"), F.forecast_germany.summary_monthly_excl_covid, "h", mh) +
+      block(L("Deutsche Ausfuhren, Quartal", "German exports, quarterly"), F.forecast_germany.summary_quarterly, "known_months", qh) +
+      block(L("Welthandel, monatlich (IMF IMTS, 210 Länder)", "World trade, monthly (IMF IMTS, 210 countries)"), F.forecast_world.summary_monthly, "h", mh) +
+      block(L("Welthandel, Quartal", "World trade, quarterly"), F.forecast_world.summary_quarterly, "known_months", qh);
   }
 
   function renderMethod() {
-    $("sources").innerHTML = D.meta.sources.map((s) => `<li>${esc(s)}</li>`).join("");
-    $("built").textContent = `Stand der Berechnung: ${new Date(D.meta.built).toLocaleDateString("de-DE")}. ${D.meta.n_countries} Länder, ${D.meta.n_products} Warengruppen (${D.meta.level}).`;
+    $("sources").innerHTML = D.meta.sources.map((s) => `<li>${esc(EN ? s.replace("(Szenarien)", "(scenarios)") : s)}</li>`).join("");
+    $("built").textContent = EN ? `Calculated on ${fmtDate(D.meta.built)}. ${D.meta.n_countries} countries, ${D.meta.n_products.toLocaleString(LOC)} product groups (${D.meta.level}).` : `Stand der Berechnung: ${new Date(D.meta.built).toLocaleDateString("de-DE")}. ${D.meta.n_countries} Länder, ${D.meta.n_products} Warengruppen (${D.meta.level}).`;
   }
 
   // ---------------------------------------------------------------- start
@@ -489,10 +520,10 @@
     const [meta, eci, products, edges, forecast] = await Promise.all(["meta", "eci", "products", "edges", "forecast"].map((f) => getJSON(`data/${f}.json`)));
     D = { meta, eci, products, edges, forecast };
     const sel = $("country");
-    sel.innerHTML = Object.keys(eci.countries).sort((a, b) => cname(a).localeCompare(cname(b), "de")).map((i) => `<option value="${i}"${i === state.iso ? " selected" : ""}>${esc(cname(i))}</option>`).join("");
+    sel.innerHTML = Object.keys(eci.countries).sort((a, b) => cname(a).localeCompare(cname(b), L("de", "en"))).map((i) => `<option value="${i}"${i === state.iso ? " selected" : ""}>${esc(cname(i))}</option>`).join("");
     sel.addEventListener("change", () => { state.iso = sel.value; state.highlight = null; state.snapYear = null; route(); });
-    $("countryHint").textContent = `${eci.n_countries} Länder, ${meta.years[0]} bis ${meta.years[1]}`;
-    $("stand").textContent = `Stand ${new Date(meta.built).toLocaleDateString("de-DE")} · Handelsdaten bis ${meta.years[1]}`;
+    $("countryHint").textContent = L(`${eci.n_countries} Länder, ${meta.years[0]} bis ${meta.years[1]}`, `${eci.n_countries} countries, ${meta.years[0]} to ${meta.years[1]}`);
+    $("stand").textContent = L(`Stand ${new Date(meta.built).toLocaleDateString("de-DE")} · Handelsdaten bis ${meta.years[1]}`, `As of ${fmtDate(meta.built)} · trade data to ${meta.years[1]}`);
     setupFigures();
     $("profPrint").addEventListener("click", () => window.print());
     $("colorMode").addEventListener("change", (e) => { state.colorMode = e.target.value; renderSpace(); });
@@ -505,5 +536,7 @@
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", route);
     route();
   }
-  start().catch((e) => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="note">Die Daten konnten nicht geladen werden (${esc(e.message)}).</p>`); });
+  // language switch: keep the current view when changing language
+  document.querySelectorAll(".lang a").forEach((a) => a.addEventListener("click", () => { if (location.hash) a.href = a.getAttribute("href").split("#")[0] + location.hash; }));
+  start().catch((e) => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="note">${L("Die Daten konnten nicht geladen werden", "The data could not be loaded")} (${esc(e.message)}).</p>`); });
 })();

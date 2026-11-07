@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Produktraum-Monitor</title>
+<meta name="description" content="How complex are a country's exports, and where are its next opportunities? Economic complexity from BACI trade data, 1995 to 2024.">
+<link rel="stylesheet" href="../fonts/fonts.css">
+<link rel="stylesheet" href="../style.css">
+<link rel="alternate" hreflang="de" href="../">
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <div class="brand">
+      <h1>Produktraum-Monitor</h1>
+      <span class="stand" id="stand"></span>
+      <span class="lang"><a href="../" lang="de" hreflang="de">DE</a> | <a href="./" lang="en" aria-current="true">EN</a></span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#ueberblick">Overview</a>
+      <a href="#laender">Countries</a>
+      <a href="#profil">Country profile</a>
+      <a href="#produktraum">Product space</a>
+      <a href="#branchen">Sectors</a>
+      <a href="#szenarien">Scenarios</a>
+      <a href="#prognose">Forecast test</a>
+      <a href="#methodik">Methodology</a>
+    </nav>
+  </div>
+</header>
+
+<main class="inner">
+  <div class="controls" id="controls">
+    <label for="country">Country</label>
+    <select id="country"></select>
+    <span class="hint" id="countryHint"></span>
+  </div>
+
+  <section id="view-ueberblick" class="view">
+    <h2>How complex are a country's exports?</h2>
+    <div class="intro">
+      <p class="answer" id="ovAnswer"></p>
+      <p class="explain">The monitor measures which products a country exports with an advantage, how sophisticated those products are and which related products it could reach next. It is based on bilateral trade data for 130 countries and 1,203 product groups from 1995 to 2024.</p>
+    </div>
+    <div class="kpis" id="facts"></div>
+    <div class="findings">
+      <div class="finding">
+        <h3>Where does Germany stand?</h3>
+        <p>Germany falls in the complexity ranking from 2nd place (1995) to 5th (2024) as Korea, Taiwan and China catch up. On a fixed scale, the German export basket is about as complex as before. Germany keeps its tightly connected core of machinery, chemicals, metals and vehicles and loses advantages at its edges. <a href="#laender">→ Countries</a></p>
+      </div>
+      <div class="finding">
+        <h3>What do US tariffs cost, and what is the single market worth?</h3>
+        <p>Under the US tariffs of August 2026, Germany loses about 0.07&#8239;% of real income in a multi-sector model, and exports to the US fall by just over 7&#8239;%. Without the EU single market the loss would be 1.5&#8239;%; a diversion around Africa as in 2024 costs about 0.06&#8239;%. <a href="#szenarien">→ Scenarios</a></p>
+      </div>
+      <div class="finding">
+        <h3>Is the gravity model any good for short-term forecasts?</h3>
+        <p>No. A gravity model with fixed effects forecasts German exports 1 to 6 months ahead 19 to 27&#8239;% less accurately than a simple AR model. For world trade it is at best on a par. <a href="#prognose">→ Forecast test</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-laender" class="view" hidden>
+    <h2 id="laenderTitle">How complex are a country's exports compared with others?</h2>
+    <div class="intro">
+      <p class="answer" id="laAnswer"></p>
+      <p class="explain">The Economic Complexity Index (ECI) ranks 130 countries by how diverse and how rare their export advantages are. It is renormalised every year and shows only relative position. Up to five comparison countries can be added.</p>
+    </div>
+    <div class="compare" id="compare"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="rank">
+      <p class="cask">Where does the country rank?</p>
+      <h3><span class="fignum"></span><span class="ftitle">ECI rank, 1 = most complex export basket</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rankChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Rank among 130 countries with at least 1 million inhabitants and USD 1 bn of exports. A country can also move up because others fall back.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab Open Licence 2.0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="fixed">
+      <p class="cask">Is the export basket itself becoming more sophisticated?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Complexity of the export basket on a fixed scale</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="fixedChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Average product complexity (PCI, averaged over 1995 to 2024) of the goods with an export advantage. Unlike the ECI, the fixed scale shows whether a country is improving in its own right.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab Open Licence 2.0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <div class="tablewrap"><table id="rankTable"></table></div>
+    <p class="tnote">Fitness and GENEPY are alternative ways of measuring complexity; they confirm the ranking.</p>
+  </section>
+
+  <section id="view-profil" class="view" hidden>
+    <h2 id="profTitle">Country profile</h2>
+    <div class="intro">
+      <p class="answer" id="profAnswer"></p>
+      <p class="explain">The profile brings together, for one country, the complexity of its exports, its strongest sectors, its next export opportunities and the effect of tariffs, the single market and closed sea routes. Choose the country above.</p>
+    </div>
+    <div class="kpis" id="profFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="profil">
+      <p class="cask">How hard do tariffs, the single market and sea routes hit the country?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="profChartTitle">Real income by scenario</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="profChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Dot: central case; line: range across the assumptions on the trade elasticity. Long-run adjustment in the multi-sector model. Countries outside the model's 80 economies show the values for the rest of the world.</p></aside>
+      </div>
+      <p class="src">Source: own calculations, multi-sector model after Caliendo and Parro (2015); OECD ICIO 2025, CEPII, MAcMap, USITC ITPD-E. Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3>Strongest sectors</h3>
+    <div class="tablewrap"><table id="profSectors"></table></div>
+    <h3>Next opportunities</h3>
+    <div class="tablewrap"><table id="profOpps"></table></div>
+    <p class="tnote">Sectors: share of world trade in the sector. Opportunities: products without an export advantage, sorted by complexity outlook gain. <button type="button" class="copy" id="profPrint">Print profile</button></p>
+  </section>
+
+  <section id="view-produktraum" class="view" hidden>
+    <h2>Where are the next export opportunities?</h2>
+    <div class="intro">
+      <p class="answer" id="prAnswer"></p>
+      <p class="explain">Each dot is a product group (HS4). Products that are often exported by the same countries sit close together. A country that makes one product reaches its neighbours more easily than distant products.</p>
+    </div>
+    <div class="toolbar">
+      <label for="colorMode">Colour by</label>
+      <select id="colorMode">
+        <option value="status">Country's advantages in 1995 and 2024</option>
+        <option value="year">Advantages in one year</option>
+        <option value="group">Product groups</option>
+      </select>
+      <label for="snapYear" id="snapYearLabel" hidden>Year</label>
+      <select id="snapYear" hidden></select>
+    </div>
+    <div class="charts">
+    <figure class="card fig" data-fig="space">
+      <p class="cask">Which products has the country mastered, and which are close by?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Product space: product groups and their proximity</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div class="spacewrap"><canvas id="space" aria-label="Map of the product space"></canvas><div id="tip" class="tip" hidden></div></div><div class="legend" id="spaceLegend"></div></div>
+        <aside class="cside"><p class="capnote">Dot size: world trade in 2024. Lines: maximum spanning tree of the proximity matrix and all links of 0.55 or more. Clicking a row in the opportunities table highlights the product.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab Open Licence 2.0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3>Next opportunities</h3>
+    <p class="tnote">Products without an export advantage in 2024, sorted by complexity outlook gain: how much would entering the product raise proximity to complex products? Proximity from 0 to 1, complexity as PCI. Click a row to highlight the product on the map.</p>
+    <div class="tablewrap"><table id="oppTable"></table></div>
+  </section>
+
+  <section id="view-branchen" class="view" hidden>
+    <h2 id="branchenTitle">In which sectors does a country gain or lose world market share?</h2>
+    <div class="intro">
+      <p class="answer" id="brAnswer"></p>
+      <p class="explain">The country's share of world trade in each sector, 1995 and 2024, as a three-year moving average. Sectors are based on HS chapters.</p>
+    </div>
+    <div class="tablewrap"><table id="sectorTable"></table></div>
+  </section>
+
+  <section id="view-szenarien" class="view" hidden>
+    <h2>What do tariffs cost, and what are the single market and open sea routes worth?</h2>
+    <div class="toolbar">
+      <label for="scenario">Scenario</label>
+      <select id="scenario"></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="scenAnswer"></p>
+      <p class="explain" id="scenShock"></p>
+    </div>
+    <div class="kpis" id="scenFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="scen">
+      <p class="cask">Which countries are hit hardest?</p>
+      <h3><span class="fignum"></span><span class="ftitle"><span id="scenChartTitle">Real income</span></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="scenChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Bar: central case. Line: range across four assumptions on the trade elasticity. Real income: income including tariff revenue, deflated by consumer prices. Long-run adjustment.</p></aside>
+      </div>
+      <p class="src">Source: own calculations, multi-sector model after Caliendo and Parro (2015); OECD ICIO 2025, CEPII, MAcMap, USITC ITPD-E. Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3>Germany by sector</h3>
+    <p class="tnote">The 15 sectors with the largest exports to the partner in 2022, only sectors with output of at least USD 5 bn. Changes in %.</p>
+    <div class="tablewrap"><table id="scenSectors"></table></div>
+    <details class="fold"><summary>All countries</summary><div class="tablewrap"><table id="scenAll"></table></div></details>
+    <details class="fold"><summary>Model, assumptions and limits</summary>
+      <div class="prose">
+        <p><b>Model.</b> Static multi-sector model after Caliendo and Parro (2015, Review of Economic Studies) with 81 economies and 50 sectors, input-output linkages and tariff revenue that flows back to households. Solved in changes relative to the baseline ("exact hat algebra").</p>
+        <p><b>Data.</b> Baseline: OECD Inter-Country Input-Output Tables, 2025 edition, year 2022. US tariffs: CEPII (Guimbard 2026) by country of origin and HS heading, weighted by US imports in 2024. Elasticities: ProTEE (Fontagné, Guimbard and Orefice 2022, Journal of International Economics), sector median, capped at 15. Single market: estimates following Head and Mayer (2021, Journal of Economic Perspectives) with the USITC's ITPD-E. Sea routes: shortest routes between the main ports in the sea route network of searoute (Eurostat SeaRoute), with and without the Suez or Panama Canal; trade responds to longer sea routes with an elasticity of 0.5 taken from the closure of the Suez Canal from 1967 to 1975 (Feyrer 2021, Journal of Development Economics), upper variant 1.0.</p>
+        <p><b>Limits.</b> Long-run adjustment, no dynamics and no capital. Retaliation only in the two retaliation scenarios, where it mirrors US tariffs by sector. Trade balances stay fixed, so with retaliation US imports must fall too. Tariffs of all other countries in the baseline: MAcMap-HS6 2019 (ITC and CEPII), aggregated to sectors with trade weights. Countries outside the 80 ICIO economies form the rest of the world. For sea routes, all goods trade on longer routes is treated as sea freight; Egypt's lost Suez Canal revenue is not included.</p>
+        <p><b>Range.</b> Central case and three variants: ProTEE without the cap, and uniform elasticities of 4 and 8; for sea routes also the distance elasticity of 1.0. A result counts as robust if all variants have the same sign.</p>
+      </div>
+    </details>
+    <h3>Checks</h3>
+    <div class="tablewrap"><table id="scenChecks"></table></div>
+    <p class="tnote"><span id="scenStand"></span> Results as JSON: <a href="../data/scenarios.json">scenarios.json</a>. Code: scripts 33 to 38 in the project archive.</p>
+  </section>
+
+  <section id="view-prognose" class="view" hidden>
+    <h2>Are gravity models any good for short-term forecasts?</h2>
+    <div class="intro">
+      <p class="answer">No. The gravity model forecasts German exports 1 to 6 months ahead 19 to 27&#8239;% less accurately than a simple AR model, and world trade at best equally well.</p>
+      <p class="explain">All models were tested outside the estimation sample, with forecast origins from December 2014.</p>
+    </div>
+    <div id="forecastTables"></div>
+    <p class="tnote">Values: forecast error (RMSE) relative to the AR model; below 1 means better than AR. p: Diebold-Mariano test against AR. Naive: unchanged year-on-year rate. AR by destination: AR forecasts for each destination country, summed. Gravity: PPML with exporter-month, importer-month and country-pair effects on 60-month windows. Current data vintage, without revisions.</p>
+  </section>
+
+  <section id="view-methodik" class="view" hidden>
+    <h2>Methodology and sources</h2>
+    <div class="prose">
+      <h3>Data</h3>
+      <p>Bilateral exports from BACI HS92 (CEPII), summed over destination countries and aggregated to HS4 headings. Fixed panel: countries with at least 1 million inhabitants and average exports of at least USD 1 bn, products with at least USD 40 million of world trade. Exports as a three-year moving average.</p>
+      <h3>Measures</h3>
+      <p>Revealed comparative advantage after Balassa, threshold 1. Economic Complexity Index and Product Complexity Index from the eigenvector of the second-largest eigenvalue (equivalent to the method of reflections in the limit). Proximity between products as the smaller of the two conditional probabilities of joint export advantages; density and complexity outlook after Hausmann et al. (2014). The product space shows the maximum spanning tree of the 2024 proximity matrix and all links of 0.55 or more.</p>
+      <h3>Robustness checks</h3>
+      <p>RCA thresholds from 0.75 to 2, smoothing over 1 to 5 years, HS6 instead of HS4, excluding re-export hubs, fitness-complexity and GENEPY as alternative methods, comparison with the Atlas of Economic Complexity (rank correlation 0.95 to 0.97).</p>
+      <h3>Sources and licences</h3>
+      <ul id="sources"></ul>
+      <p>Downloads for each figure: XLSX with a data and an info sheet, PPTX in 16:9 format, PNG, CSV. They are created in the browser with PptxGenJS (MIT licence) and SheetJS (Apache licence 2.0), both loaded from the same server.</p>
+      <p>Product group names: the English descriptions of the Harvard Growth Lab; the HS code is authoritative. Country names: browser default.</p>
+      <h3>Download the data</h3>
+      <p>All results are available as JSON in the <a href="../data/">data</a> folder, for example <a href="../data/eci.json">eci.json</a> (time series by country) and <a href="../data/products.json">products.json</a> (products with complexity and map position).</p>
+      <p class="note" id="built"></p>
+    </div>
+  </section>
+</main>
+
+<footer class="inner foot">
+  <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Also: <a href="https://wfhungerland.github.io/konjunkturmonitor/en/">Konjunkturmonitor</a> · <a href="../impressum.html" hreflang="de">Legal notice</a> · <a href="../datenschutz.html" hreflang="de">Privacy</a> · Text and figures: <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a></span>
+  <span>Own calculations based on CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII tariff data and searoute.</span>
+</footer>
+<script src="../app.js"></script>
+</body>
+</html>

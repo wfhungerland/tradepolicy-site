@@ -29,6 +29,8 @@ a:hover { text-decoration: underline; }
 .brand { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
 .brand h1 { font-size: 19px; margin: 0; }
 .stand { font-size: 13.5px; }
+.lang { font-size: 13.5px; }
+.lang a[aria-current] { font-weight: 600; }
 nav { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; }
 nav a { padding: 2px 0; border-bottom: 2px solid transparent; }
 nav a[aria-current="page"] { font-weight: 600; border-bottom-color: var(--fg); }
@@ -36,7 +38,7 @@ nav a:hover { text-decoration: none; border-bottom-color: var(--line); }
 nav a:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 @media (max-width: 600px) {
   .top .inner { padding-block: 6px 4px; gap: 2px 6px; }
-  .brand h1 { font-size: 15px; } .stand { font-size: 12px; }
+  .brand h1 { font-size: 15px; } .stand { font-size: 12px; } .lang { font-size: 12px; }
   nav { width: 100%; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; padding-bottom: 2px; }
   nav::-webkit-scrollbar { display: none; }
 }
