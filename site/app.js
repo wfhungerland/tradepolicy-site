@@ -53,7 +53,9 @@
       f.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", () => figAction(f, b)));
     });
   }
-  function figName(f) { return `Produktraum-Monitor (${D.meta.built}, ${f.id.replace("abb-", "Abb. ")}) ${f.dataset.fig}`; }
+  // file names as in the Konjunkturmonitor (docs/Regelwerk_Dateinamen.txt): "Product (date, Abb. NN) short title"
+  const FIGSHORT = { rank: "ECI-Rang", fixed: "Fester Massstab", profil: "Laenderprofil Szenarien", space: "Produktraum", scen: "Szenario Realeinkommen" };
+  function figName(f) { const n = f.id.replace("abb-", "").padStart(2, "0"); return `Produktraum-Monitor (${D.meta.built}, Abb. ${n}) ${FIGSHORT[f.dataset.fig] || f.dataset.fig}`; }
   function figAction(f, b) {
     const act = b.dataset.act;
     if (act === "link") {
@@ -68,19 +70,68 @@
       save(new Blob([csv], { type: "text/csv;charset=utf-8" }), figName(f) + ".csv");
       return;
     }
-    if (act === "png") {
-      const canvas = f.querySelector("canvas"), svg = f.querySelector("svg");
-      if (canvas) { canvas.toBlob((bl) => save(bl, figName(f) + ".png")); return; }
-      if (!svg) return;
-      const vb = svg.viewBox.baseVal, s = 2, clone = svg.cloneNode(true);
-      clone.setAttribute("width", vb.width); clone.setAttribute("height", vb.height);
-      clone.querySelectorAll("text").forEach((tx) => { if (!tx.getAttribute("fill") && !tx.style.fill) tx.setAttribute("fill", "#000"); tx.setAttribute("font-family", "Source Sans 3, Arial, sans-serif"); });
-      clone.querySelectorAll(".grid").forEach((g) => { g.setAttribute("stroke", "#D9D9D9"); g.setAttribute("stroke-width", "0.5"); });
-      const src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(clone));
-      const img = new Image();
-      img.onload = () => { const c = document.createElement("canvas"); c.width = vb.width * s; c.height = vb.height * s; const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height); c.toBlob((bl) => save(bl, figName(f) + ".png")); };
-      img.src = src;
+    if (act === "png") { figPng(f).then((url) => fetch(url)).then((r) => r.blob()).then((bl) => save(bl, figName(f) + ".png")); return; }
+    if (act === "xlsx") {
+      const d = FIGDATA[f.dataset.fig]; if (!d) return;
+      loadScript("lib/xlsx.mini.min.js").then(() => {
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([d.header, ...d.rows]), "Daten");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ["Abbildung", f.id.replace("abb-", "Abb. ")], ["Frage", f.querySelector(".cask").textContent], ["Titel", f.querySelector(".ftitle").textContent],
+          ["Erläuterung", f.querySelector(".capnote").textContent], ["Quelle", f.querySelector(".src").textContent],
+          ["Stand", D.meta.built], ["Link", location.href.split("#")[0] + "#" + f.id]]), "Info");
+        XLSX.writeFile(wb, figName(f) + ".xlsx");
+      });
+      return;
     }
+    if (act === "pptx") {
+      Promise.all([loadScript("lib/pptxgen.bundle.js"), figPng(f)]).then(([, url]) => {
+        // slide master as in the Konjunkturmonitor: 16:9, grey frame, kicker, title, source line, no logo
+        const pres = new PptxGenJS(); pres.layout = "LAYOUT_WIDE";
+        const s = pres.addSlide(), font = "Arial";
+        s.addShape(pres.ShapeType.rect, { x: 0.3, y: 0.3, w: 12.73, h: 6.9, line: { color: "8C8C8C", width: 0.75 }, fill: { color: "FFFFFF" } });
+        s.addText(f.querySelector(".cask").textContent, { x: 0.6, y: 0.45, w: 12.1, h: 0.4, fontFace: font, fontSize: 14, color: "595959" });
+        s.addText(f.querySelector(".ftitle").textContent, { x: 0.6, y: 0.85, w: 12.1, h: 0.8, fontFace: font, fontSize: 20, bold: true, color: "000000", valign: "top" });
+        const img = new Image(); img.src = url;
+        return new Promise((ok) => { img.onload = () => ok(img); }).then((im) => {
+          const maxW = 12.1, maxH = 4.8, r = Math.min(maxW / im.width, maxH / im.height);
+          s.addImage({ data: url, x: 0.6 + (maxW - im.width * r) / 2, y: 1.7, w: im.width * r, h: im.height * r });
+          s.addText(f.querySelector(".src").textContent + " · " + D.meta.built, { x: 0.6, y: 6.6, w: 12.1, h: 0.4, fontFace: font, fontSize: 10, color: "000000" });
+          return pres.writeFile({ fileName: figName(f) + ".pptx" });
+        });
+      });
+    }
+  }
+  const scripts = {};
+  function loadScript(src) {
+    if (!scripts[src]) scripts[src] = new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+    return scripts[src];
+  }
+  // an svg drawn as an image cannot use the page's web fonts: embed Source Sans 3 as data URLs
+  let fontCss = null;
+  function embeddedFonts() {
+    if (!fontCss) fontCss = Promise.all([400, 600, 700].map((w) => fetch(`fonts/SourceSans3-${w}-latin.woff2`).then((r) => r.blob())
+      .then((b) => new Promise((ok) => { const fr = new FileReader(); fr.onload = () => ok(`@font-face{font-family:'Source Sans 3';font-weight:${w};src:url(${fr.result}) format('woff2');}`); fr.readAsDataURL(b); }))))
+      .then((parts) => parts.join(""));
+    return fontCss;
+  }
+  function figPng(f) {
+    // PNG data URL of a figure: the canvas as is, an svg drawn on a white canvas at twice its size
+    const canvas = f.querySelector("canvas"), svg = f.querySelector(".cmain svg");
+    if (canvas) return Promise.resolve(canvas.toDataURL("image/png"));
+    const vb = svg.viewBox.baseVal, k = 2, clone = svg.cloneNode(true);
+    clone.setAttribute("width", vb.width); clone.setAttribute("height", vb.height);
+    clone.querySelectorAll("text").forEach((tx) => { if (!tx.getAttribute("fill")) tx.setAttribute("fill", "#000"); tx.setAttribute("font-family", "'Source Sans 3', Arial, sans-serif"); tx.setAttribute("font-size", tx.getAttribute("font-size") || "13"); });
+    clone.querySelectorAll(".grid").forEach((g) => { g.setAttribute("stroke", "#D9D9D9"); g.setAttribute("stroke-width", "0.5"); });
+    return embeddedFonts().then((css) => {
+    const st = document.createElementNS("http://www.w3.org/2000/svg", "style"); st.textContent = css; clone.insertBefore(st, clone.firstChild);
+    const src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+    return new Promise((ok) => {
+      const img = new Image();
+      img.onload = () => { const c = document.createElement("canvas"); c.width = vb.width * k; c.height = vb.height * k; const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height); ok(c.toDataURL("image/png")); };
+      img.src = src;
+    });
+    });
   }
   function save(blob, name) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
 
@@ -100,7 +151,7 @@
     if (opt.int && opt.min === 1 && !ticks.includes(1)) ticks.unshift(1);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "")}">`;
     series.forEach((ser, k) => { const lx = m.l + (k % 4) * 200, ly = 14 + Math.floor(k / 4) * 20; s += `<line x1="${lx}" x2="${lx + 18}" y1="${ly}" y2="${ly}" stroke="${ser.color}" stroke-width="${ser.bold ? 3 : 2}"/><text x="${lx + 24}" y="${ly + 4}" style="font-weight:${ser.bold ? 600 : 400}">${esc(ser.label)}</text>`; });
-    ticks.forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${W - m.r + 8}" y="${y(t) + 4}">${opt.int ? t : fmt(t, 1)}</text>`; });
+    ticks.forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${W - m.r + 8}" y="${y(t) + 4}">${opt.int ? t : fmt(t, tickDec(ticks))}</text>`; });
     if (opt.unit) { const tt = opt.invert ? ticks[0] : ticks[ticks.length - 1]; s += `<text x="${W}" y="${y(tt) - 10}" text-anchor="end">${esc(opt.unit)}</text>`; }
     years.forEach((yr, i) => { if (yr % 5 === 0 || i === years.length - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${yr}</text>`; });
     series.slice().reverse().forEach((ser) => {
@@ -111,6 +162,8 @@
     el.innerHTML = s;
   }
 
+  // decimals that show every tick of a series exactly (0.25 steps need two)
+  const tickDec = (ticks) => Math.max(0, ...ticks.map((v) => { const s = String(Math.abs(v)); return s.includes(".") ? s.split(".")[1].length : 0; }));
   function niceTicks(lo, hi, n) {
     const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
     const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((k) => span / k <= n) || mag * 10;
@@ -322,7 +375,7 @@
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.05 || 0.1; lo -= pd; hi += pd;
     const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen nach Ländern">`;
-    niceTicks(lo, hi, 6).forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, 1)}</text>`; });
+    const tks = niceTicks(lo, hi, 6), td = tickDec(tks); tks.forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, td)}</text>`; });
     s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
     list.forEach((k, i) => {
       const y = m.t + i * row, c = C[k], sel = k === iso || k === "EU27";
@@ -384,7 +437,7 @@
     let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals); const pd = (hi - lo) * 0.06 || 0.1; lo -= pd; hi += pd;
     const X = (x) => m.l + (x - lo) / (hi - lo) * (W - m.l - m.r);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Realeinkommen je Szenario">`;
-    niceTicks(lo, hi, 6).forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, Math.abs(hi - lo) < 1 ? 2 : 1)}</text>`; });
+    const tks = niceTicks(lo, hi, 6), td = tickDec(tks); tks.forEach((tk) => { s += `<line class="grid" x1="${X(tk)}" x2="${X(tk)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(tk)}" y="${H - 8}" text-anchor="middle">${fmt(tk, td)}</text>`; });
     s += `<line x1="${X(0)}" x2="${X(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/>`;
     rows.forEach((r, i) => {
       const y = m.t + i * row + row / 2, col = r.v[0] < 0 ? "#C00000" : "#002060";
@@ -410,7 +463,7 @@
       models.forEach((m) => {
         t += `<tr><td>${names[m]}</td>` + hs.map((h) => {
           const r = rows.find((x) => x[hkey] === h && x.model === m); if (!r) return "<td></td>";
-          if (m === "ar") return `<td class="num">RMSE ${fmt(r.rmse, 1)} %</td>`;
+          if (m === "ar") return `<td class="num">RMSE ${fmt(r.rmse, 1)}\u202f%</td>`;
           const cls = r.dm_pvalue < 0.1 ? (r.rel_rmse < 1 ? "good" : "bad") : "even";
           return `<td class="num"><span class="chip ${cls}">${fmt(r.rel_rmse)}</span> <span class="hint">p ${fmt(r.dm_pvalue)}</span></td>`;
         }).join("") + "</tr>";
