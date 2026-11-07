@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -193,6 +193,7 @@
     if (view === "produktraum") await renderSpace();
     if (view === "branchen") await renderSectors();
     if (view === "szenarien") await renderScenarios();
+    if (view === "abhaengigkeiten") await renderDependencies();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -356,7 +357,7 @@
     const S = await getJSON("data/scenarios.json");
     const sel = $("scenario");
     if (!sel.options.length) {
-      const grp = EN ? { us: "US tariffs and retaliation", eu: "EU single market", transport: "Transport costs" } : { us: "US-Zölle und Gegenzölle", eu: "EU-Binnenmarkt", transport: "Transportkosten" };
+      const grp = EN ? { us: "US tariffs and retaliation", eu: "EU single market", transport: "Transport costs", china: "Dependencies" } : { us: "US-Zölle und Gegenzölle", eu: "EU-Binnenmarkt", transport: "Transportkosten", china: "Abhängigkeiten" };
       sel.innerHTML = Object.keys(grp).map((g) => `<optgroup label="${grp[g]}">` +
         S.scenarios.filter((s) => s.group === g).map((s) => `<option value="${s.id}">${esc(EN ? s.title_en : s.title)}</option>`).join("") + "</optgroup>").join("");
       sel.addEventListener("change", () => { state.scenario = sel.value; renderScenarios(); });
@@ -366,14 +367,16 @@
     const sc = S.scenarios.find((s) => s.id === state.scenario), C = sc.countries;
     const iso = C[state.iso] ? state.iso : "DEU", name = scName(iso, S), v = C[iso];
     const partner = EN ? (sc.partner === "USA" ? "to the US" : sc.partner === "EU" ? "to the EU" : "on longer sea routes") : sc.partner === "USA" ? "in die USA" : sc.partner === "EU" ? "in die EU" : "auf längeren Seewegen";
+    const CHN = sc.partner === "CHN";
+    const flow = CHN ? L("Importe aus China", "Imports from China") : L(`Exporte ${partner}`, `Exports ${partner}`);
     const title = EN ? sc.title_en : sc.title;
     $("scenShock").textContent = EN ? sc.shock_en : sc.shock;
     const note = iso !== state.iso ? L(`${cname(state.iso)} ist im Modell Teil des „Rests der Welt“; gezeigt wird Deutschland. `, `In the model ${sname(state.iso)} is part of the rest of the world; Germany is shown instead. `) : "";
     const [rc, rl] = robust(v);
     const sent = EN ? `${title}: real income ${iso === "DEU" ? "in Germany" : "in " + sname(iso)} changes by ${pct(v[0])} (range ${pct(v[1])} to ${pct(v[2])}). ` +
-      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Exports ${partner} change by ${pct(v[4], 1)}, total exports by ${pct(v[3], 1)}.` : "")
+      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `${flow} change by ${pct(v[4], 1)}, total exports by ${pct(v[3], 1)}.` : "")
       : `${sc.title}: Das Realeinkommen ${iso === "DEU" ? "in Deutschland" : "von " + name} ändert sich um ${pct(v[0])} (Spanne ${pct(v[1])} bis ${pct(v[2])}). ` +
-      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `Die Exporte ${partner} ändern sich um ${pct(v[4], 1)}, die gesamten Exporte um ${pct(v[3], 1)}.` : "");
+      (v[4] !== null && !(sc.partner === "USA" && iso === "USA") ? `${CHN ? "Die Importe aus China" : "Die Exporte " + partner} ändern sich um ${pct(v[4], 1)}, die gesamten Exporte um ${pct(v[3], 1)}.` : "");
     $("scenAnswer").innerHTML = `${esc(note + sent)} <span class="chip ${rc}">${rl}</span> <button type="button" class="copy" id="copyScen">⧉ ${L("Textbaustein", "Copy text")}</button>`;
     $("copyScen").addEventListener("click", (e) => {
       const txt = sent + L(" Quelle: Produktraum-Monitor, Modell nach Caliendo und Parro (2015), OECD ICIO 2022; ", " Source: Produktraum-Monitor, model after Caliendo and Parro (2015), OECD ICIO 2022; ") + location.href.split("#")[0] + "#szenarien";
@@ -382,7 +385,7 @@
     const tile = (big, label) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${L("langfristig, zentraler Fall", "long run, central case")}</span></div>`;
     $("scenFacts").innerHTML = [
       tile(pct(v[0]), L(`Realeinkommen ${name}`, `Real income, ${name}`)),
-      v[4] !== null ? tile(pct(v[4], 1), L(`Exporte ${partner}`, `Exports ${partner}`)) : tile(pct(v[3], 1), L("Exporte insgesamt", "Total exports")),
+      v[4] !== null ? tile(pct(v[4], 1), flow) : tile(pct(v[3], 1), L("Exporte insgesamt", "Total exports")),
       tile(pct(C.EU27[0]), L("Realeinkommen EU27", "Real income, EU27")),
       sc.partner === "USA" ? tile(pct(C.USA[0]), L("Realeinkommen USA", "Real income, US")) : tile(pct(C.CHN[0]), L("Realeinkommen China", "Real income, China")),
     ].join("");
@@ -408,18 +411,19 @@
       s += `<text x="${W - m.r + 6}" y="${y + row / 2 + 4}">${pct(c[0])}</text>`;
     });
     $("scenChart").innerHTML = s + "</svg>";
-    FIGDATA.scen = { header: EN ? ["Country", "Real income in %", "Range from", "Range to", "Total exports in %", `Exports ${partner} in %`] : ["Land", "Realeinkommen in %", "Spanne von", "Spanne bis", "Exporte insgesamt in %", `Exporte ${partner} in %`],
+    FIGDATA.scen = { header: EN ? ["Country", "Real income in %", "Range from", "Range to", "Total exports in %", `${flow} in %`] : ["Land", "Realeinkommen in %", "Spanne von", "Spanne bis", "Exporte insgesamt in %", `${flow} in %`],
       rows: Object.keys(C).map((k) => [scName(k, S), C[k][0], C[k][1], C[k][2], C[k][3], C[k][4]]) };
     // German sectors
     const usS = sc.partner === "USA";
     // the 15 sectors with the largest German exports to the partner in 2022 (small sectors give extreme percentages)
-    const bySize = sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => (b[4] || 0) - (a[4] || 0)).slice(0, 15);
+    const bySize = CHN ? sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 15)
+      : sc.sectors_deu.filter((r) => r[1] !== null && (r[5] || 0) >= 5).sort((a, b) => (b[4] || 0) - (a[4] || 0)).slice(0, 15);
     const chip = (x, d = 1) => `<span class="chip ${x === null || Math.abs(x) < 0.05 ? "even" : x > 0 ? "good" : "bad"}">${pct(x, d)}</span>`;
     const secNames = EN ? S.sector_names_en : S.sector_names;
-    $("scenSectors").innerHTML = `<thead><tr><th>${L("Branche", "Sector")}</th>${usS ? `<th class="num">${L("US-Zoll", "US tariff")}</th>` : ""}<th class="num">${L("Exporte", "Exports")} ${partner} 2022</th><th class="num">${L("Exporte", "Exports")} ${partner}</th><th class="num">${L("Produktion", "Output")}</th></tr></thead><tbody>` +
-      bySize.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)}\u202f%</td>` : ""}<td class="num">${bn(fmt(r[4], 1))}</td><td class="num">${chip(r[2])}</td><td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
+    $("scenSectors").innerHTML = `<thead><tr><th>${L("Branche", "Sector")}</th>${usS ? `<th class="num">${L("US-Zoll", "US tariff")}</th>` : ""}${CHN ? `<th class="num">${L("Produktion 2022", "Output 2022")}</th>` : `<th class="num">${L("Exporte", "Exports")} ${partner} 2022</th><th class="num">${L("Exporte", "Exports")} ${partner}</th>`}<th class="num">${L("Produktion", "Output")}</th></tr></thead><tbody>` +
+      bySize.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td>${usS ? `<td class="num">${fmt(r[3], 1)}\u202f%</td>` : ""}${CHN ? `<td class="num">${bn(fmt(r[5], 0))}</td>` : `<td class="num">${bn(fmt(r[4], 1))}</td><td class="num">${chip(r[2])}</td>`}<td class="num">${chip(r[1], 2)}</td></tr>`).join("") + "</tbody>";
     // all countries
-    $("scenAll").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Realeinkommen", "Real income")}</th><th class="num">${L("Spanne", "Range")}</th><th class="num">${L("Exporte", "Exports")} ${partner}</th><th class="num">${L("Exporte insgesamt", "Total exports")}</th>${usS ? `<th class="num">${L("US-Zoll im Mittel", "Average US tariff")}</th>` : ""}</tr></thead><tbody>` +
+    $("scenAll").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Realeinkommen", "Real income")}</th><th class="num">${L("Spanne", "Range")}</th><th class="num">${flow}</th><th class="num">${L("Exporte insgesamt", "Total exports")}</th>${usS ? `<th class="num">${L("US-Zoll im Mittel", "Average US tariff")}</th>` : ""}</tr></thead><tbody>` +
       all.sort((a, b) => scName(a, S).localeCompare(scName(b, S), L("de", "en"))).map((k) => { const c = C[k]; return `<tr${k === iso ? ' class="sel"' : ""}><td>${esc(scName(k, S))}</td><td class="num">${pct(c[0])}</td><td class="num">${c[1] === null ? "–" : pct(c[1]) + L(" bis ", " to ") + pct(c[2])}</td><td class="num">${pct(c[4], 1)}</td><td class="num">${pct(c[3], 1)}</td>${usS ? `<td class="num">${c[6] === null ? "–" : fmt(c[6], 1) + " %"}</td>` : ""}</tr>`; }).join("") + "</tbody>";
     const rcls = { "bestanden": "good", "plausibel": "good", "erklärt": "even", "Abweichung": "bad", "teilweise": "even", "partly": "even", "passed": "good", "plausible": "good", "explained": "even", "deviation": "bad" };
     $("scenChecks").innerHTML = `<thead><tr><th>${L("Prüfung", "Check")}</th><th>${L("Ergebnis", "Result")}</th><th>${L("Befund", "Finding")}</th></tr></thead><tbody>` +
@@ -451,14 +455,14 @@
       tile(pct(cur[0]), L("Realeinkommen bei US-Zöllen", "Real income under US tariffs"), iso === "ROW" ? L("Rest der Welt, August 2026", "Rest of the world, August 2026") : L("August 2026, langfristig", "August 2026, long run")),
     ].join("");
     // dot and whisker chart over all scenarios
-    const grpName = EN ? { us: "Tariffs", eu: "Single market", transport: "Sea routes" } : { us: "Zölle", eu: "Binnenmarkt", transport: "Seewege" };
+    const grpName = EN ? { us: "Tariffs", eu: "Single market", transport: "Sea routes", china: "Dependencies" } : { us: "Zölle", eu: "Binnenmarkt", transport: "Seewege", china: "Abhängigkeiten" };
     const SHORT = EN ? { peak_2025_04: "US tariffs April 2025", deal_2025_09: "US tariffs September 2025", current_2026_08: "US tariffs August 2026",
       retaliation_eu: "plus EU retaliation", retaliation_all: "plus retaliation by all", no_single_market: "No single market",
       trend_2030: "Integration to 2030", services_deeper: "Deeper services market", red_sea_2024: "Red Sea as in 2024",
-      red_sea_closed: "Red Sea closed", panama_closed: "Panama Canal closed" } : { peak_2025_04: "US-Zölle April 2025", deal_2025_09: "US-Zölle September 2025", current_2026_08: "US-Zölle August 2026",
+      red_sea_closed: "Red Sea closed", panama_closed: "Panama Canal closed", china_dependencies: "China stops dependent goods" } : { peak_2025_04: "US-Zölle April 2025", deal_2025_09: "US-Zölle September 2025", current_2026_08: "US-Zölle August 2026",
       retaliation_eu: "dazu Gegenzölle der EU", retaliation_all: "dazu Gegenzölle aller Länder", no_single_market: "Ohne Binnenmarkt",
       trend_2030: "Integration bis 2030", services_deeper: "Tieferer Dienstleistungsmarkt", red_sea_2024: "Rotes Meer wie 2024",
-      red_sea_closed: "Rotes Meer gesperrt", panama_closed: "Panamakanal gesperrt" };
+      red_sea_closed: "Rotes Meer gesperrt", panama_closed: "Panamakanal gesperrt", china_dependencies: "Lieferstopp China, abhängige Waren" };
     const rows = S.scenarios.map((s) => ({ id: s.id, g: grpName[s.group], t: SHORT[s.id] || (EN ? s.title_en : s.title), v: s.countries[iso] })).filter((r) => r.v);
     $("profChartTitle").textContent = EN ? `Real income, ${iso === "ROW" ? "rest of the world" : name}, by scenario, change in %` : `Realeinkommen ${iso === "ROW" ? "Rest der Welt" : name} je Szenario, Änderung in %`;
     const W = 860, row = 28, m = { l: 300, r: 80, t: 10, b: 30 }, H = m.t + m.b + row * rows.length;
@@ -480,6 +484,51 @@
       sh.slice(0, 6).map((r) => { const d = (r.b - r.a) * 100, sym = Math.abs(d) < 0.05 ? "■" : d > 0 ? "▲" : "▼"; return `<tr><td>${esc(sectorDe(r.s))}</td><td class="num">${fmt(r.a * 100, 1)} %</td><td class="num">${fmt(r.b * 100, 1)} %</td><td class="num"><span class="chip ${Math.abs(d) < 0.05 ? "even" : "down"}">${sym}</span> ${d > 0 ? "+" : ""}${fmt(d, 1)} ${PP}</td></tr>`; }).join("") + "</tbody>";
     $("profOpps").innerHTML = `<thead><tr><th>HS4</th><th>${L("Warengruppe", "Product group")}</th><th class="num">${L("Nähe", "Proximity")}</th><th class="num">${L("Komplexität", "Complexity")}</th></tr></thead><tbody>` +
       cd.opportunities.slice(0, 10).map(([i, dens, cog, pci]) => `<tr><td class="num">${P[i][0]}</td><td>${esc(P[i][PN])}${P[i][9] && !EN ? `<span class="ex">z. B. ${esc(P[i][9])}</span>` : ""}</td><td class="num">${fmt(dens)}</td><td class="num">${fmt(pci)}</td></tr>`).join("") + "</tbody>";
+  }
+
+
+  // strategic dependencies ------------------------------------------------------
+  async function renderDependencies() {
+    const [Dd, S] = await Promise.all([getJSON("data/dependencies.json"), getJSON("data/scenarios.json")]);
+    const sel = $("depLevel");
+    if (!sel.dataset.ready) { sel.dataset.ready = "1"; sel.addEventListener("change", () => renderDependencies()); }
+    const lv = sel.value, X = Dd.levels[lv], who = lv === "EU27" ? L("Die EU", "The EU") : L("Deutschland", "Germany");
+    const secEn = { "Tiere": "Animals", "Pflanzen": "Plants", "Fette": "Fats", "Nahrungsmittel": "Food", "Mineralien, Energie": "Minerals, energy", "Chemie, Pharma": "Chemicals, pharma",
+      "Kunststoff, Kautschuk": "Plastics, rubber", "Leder": "Leather", "Holz, Papier": "Wood, paper", "Textilien": "Textiles", "Schuhe": "Footwear", "Steine, Glas, Edelmetalle": "Stone, glass, precious metals",
+      "Metalle": "Metals", "Maschinen, Elektronik": "Machinery, electronics", "Fahrzeuge": "Vehicles", "Instrumente": "Instruments", "Sonstiges": "Other" };
+    const secName = (s) => EN ? (secEn[s] || s) : s;
+    const sc = S.scenarios.find((s) => s.id === "china_dependencies"), cv = sc && sc.countries[lv === "EU27" ? "EU27" : "DEU"];
+    $("depAnswer").textContent = L(
+      `${who} ist ${Dd.year} bei ${X.n_dependent} von ${X.n_products.toLocaleString(LOC)} Waren abhängig: wenige Lieferländer außerhalb der EU, kaum eigener Ersatz. Bei ${X.n_china_main} davon ist China Hauptlieferant. Rund ${fmt(X.red_sea_share * 100, 0)} % dieser Importe kommen über das Rote Meer. Ein Lieferstopp Chinas bei diesen Waren kostete langfristig ${pct(cv[0])} Realeinkommen.`,
+      `In ${Dd.year} ${lv === "EU27" ? "the EU depends" : "Germany depends"} on ${X.n_dependent} of ${X.n_products.toLocaleString(LOC)} goods: few suppliers outside the EU and little own substitute. China is the main supplier for ${X.n_china_main} of them. About ${fmt(X.red_sea_share * 100, 0)} % of these imports come through the Red Sea. A Chinese supply stop for these goods would cost ${pct(cv[0])} of real income in the long run.`);
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("depFacts").innerHTML = [
+      tile(String(X.n_dependent), L("Abhängige Waren", "Dependent goods"), L(`HS6, von ${X.n_products.toLocaleString(LOC)}`, `HS6, of ${X.n_products.toLocaleString(LOC)}`)),
+      tile(bn(fmt(X.extra_imports_bn, 0)), L("Importe außerhalb der EU", "Imports from outside the EU"), L(`${fmt(X.share_of_extra_imports * 100, 1)} % aller Importe von dort`, `${fmt(X.share_of_extra_imports * 100, 1)} % of all such imports`)),
+      tile(String(X.n_china_main), L("davon China Hauptlieferant", "of which China main supplier"), bn(fmt(X.china_main_bn, 0))),
+      tile(`${fmt(X.red_sea_share * 100, 0)} %`, L("über das Rote Meer", "via the Red Sea"), L(`Malakka: ${fmt(X.malacca_share * 100, 0)} %`, `Malacca: ${fmt(X.malacca_share * 100, 0)} %`)),
+    ].join("");
+    // bar chart: dependent goods by HS section, China as main supplier in dark blue
+    const rows = X.sections, W = 860, row = 24, m = { l: 230, r: 60, t: 34, b: 10 }, H = m.t + m.b + row * rows.length;
+    const mx = Math.max(...rows.map((r) => r[1])), Xs = (v) => m.l + v / mx * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("Abhängige Waren nach Warengruppe", "Dependent goods by product group")}">`;
+    s += `<rect x="${m.l}" y="6" width="12" height="12" fill="#002060"/><text x="${m.l + 18}" y="16">${L("China Hauptlieferant", "China main supplier")}</text><rect x="${m.l + 190}" y="6" width="12" height="12" fill="#a6a6a6"/><text x="${m.l + 208}" y="16">${L("andere Hauptlieferanten", "other main supplier")}</text>`;
+    rows.forEach((r, i) => {
+      const y = m.t + i * row;
+      s += `<text x="${m.l - 8}" y="${y + row / 2 + 4}" text-anchor="end">${esc(secName(r[0]))}</text>`;
+      s += `<rect x="${m.l}" y="${y + 4}" width="${Xs(r[2]) - m.l}" height="${row - 8}" fill="#002060"><title>${esc(secName(r[0]))}: ${r[2]} ${L("mit China", "with China")}</title></rect>`;
+      s += `<rect x="${Xs(r[2])}" y="${y + 4}" width="${Xs(r[1]) - Xs(r[2])}" height="${row - 8}" fill="#a6a6a6"><title>${esc(secName(r[0]))}: ${r[1]}</title></rect>`;
+      s += `<text x="${Xs(r[1]) + 6}" y="${y + row / 2 + 4}">${r[1]}</text>`;
+    });
+    $("depChart").innerHTML = s + "</svg>";
+    FIGDATA.dep = { header: [L("Warengruppe", "Product group"), L("abhängige Waren", "dependent goods"), L("davon China Hauptlieferant", "China main supplier"), L("Importe in Mrd. USD", "Imports, USD bn")],
+      rows: rows.map((r) => [secName(r[0]), r[1], r[2], r[3]]) };
+    const P = X.products, pc = (x) => `${fmt(x * 100, 0)} %`;
+    $("depTable").innerHTML = `<thead><tr><th>HS6</th><th>${L("Ware", "Product")}</th><th>${L("Hauptlieferant", "Main supplier")}</th><th class="num">${L("Anteil", "Share")}</th><th class="num">${L("China", "China")}</th><th class="num">${L("Importe", "Imports")}</th><th class="num">${L("Rotes Meer", "Red Sea")}</th></tr></thead><tbody>` +
+      P.slice(0, 30).map((r) => `<tr><td class="num">${r[0]}</td><td>${esc(EN ? r[2] : (r[1] || r[2]))}${EN ? "" : `<span class="ex">${esc(r[2])}</span>`}</td><td>${esc(cname(r[3]) || r[3])}</td><td class="num">${pc(r[4])}</td><td class="num">${pc(r[5])}</td><td class="num">${bn(fmt(r[6], 2))}</td><td class="num">${pc(r[9])}</td></tr>`).join("") + "</tbody>";
+    const secNames = EN ? S.sector_names_en : S.sector_names;
+    $("depIndustries").innerHTML = `<thead><tr><th>${L("Branche in Deutschland", "Industry in Germany")}</th><th class="num">${L("Kostenanteil abhängiger Vorleistungen aus China", "Cost share of dependent inputs from China")}</th><th class="num">${L("Produktion bei Lieferstopp", "Output if China stops")}</th></tr></thead><tbody>` +
+      Dd.germany_industries.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td><td class="num">${fmt(r[1], 2)} %</td><td class="num">${pct(r[2], 1)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {

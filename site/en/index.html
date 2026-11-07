@@ -23,6 +23,7 @@
       <a href="#profil">Country profile</a>
       <a href="#produktraum">Product space</a>
       <a href="#branchen">Sectors</a>
+      <a href="#abhaengigkeiten">Dependencies</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -159,6 +160,37 @@
       <p class="explain">The country's share of world trade in each sector, 1995 and 2024, as a three-year moving average. Sectors are based on HS chapters.</p>
     </div>
     <div class="tablewrap"><table id="sectorTable"></table></div>
+  </section>
+
+  <section id="view-abhaengigkeiten" class="view" hidden>
+    <h2>Where do the EU and Germany rely on few suppliers?</h2>
+    <div class="toolbar">
+      <label for="depLevel">Level</label>
+      <select id="depLevel"><option value="EU27">EU</option><option value="DEU">Germany</option></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="depAnswer"></p>
+      <p class="explain">A good counts as a dependency when three criteria of the European Commission (2021) hold at once: imports from outside the EU come from few countries (concentration index above 0.4), they make up more than half of all imports, and they exceed own exports. The Commission limits its list to sensitive industrial ecosystems and finds 137 goods; here all goods are counted.</p>
+    </div>
+    <div class="kpis" id="depFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="dep">
+      <p class="cask">In which product groups do the dependencies lie?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Dependent goods by product group, 2024</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="depChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Number of HS6 lines meeting all three criteria. Dark blue: China is the main supplier. Chemicals and textiles account for most lines, machinery and electronics for much of the value.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS22 V202601 (Etalab licence 2.0), criteria of the European Commission (2021). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3>The largest dependencies by import value</h3>
+    <div class="tablewrap"><table id="depTable"></table></div>
+    <p class="tnote">Share: main supplier's share of imports from outside the EU. Red Sea: share of these imports whose shortest sea route to Hamburg passes the Red Sea.</p>
+    <h3>Which German industries rely on dependent inputs from China?</h3>
+    <div class="tablewrap"><table id="depIndustries"></table></div>
+    <p class="tnote">Cost share: inputs bought directly from China in product groups whose imports from China are dependent goods (OECD ICIO 2022). Output: long-run change in the scenario 'China stops supplying dependent goods'; other suppliers and own production step in. Short-run bottlenecks without substitutes cost much more and are not modelled.</p>
   </section>
 
   <section id="view-szenarien" class="view" hidden>

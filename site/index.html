@@ -23,6 +23,7 @@
       <a href="#profil">Länderprofil</a>
       <a href="#produktraum">Produktraum</a>
       <a href="#branchen">Branchen</a>
+      <a href="#abhaengigkeiten">Abhängigkeiten</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -159,6 +160,37 @@
       <p class="explain">Anteil des Landes am Welthandel der jeweiligen Branche, 1995 und 2024, gleitender Dreijahresdurchschnitt. Branchen nach HS-Kapiteln.</p>
     </div>
     <div class="tablewrap"><table id="sectorTable"></table></div>
+  </section>
+
+  <section id="view-abhaengigkeiten" class="view" hidden>
+    <h2>Wo hängen EU und Deutschland an wenigen Lieferländern?</h2>
+    <div class="toolbar">
+      <label for="depLevel">Ebene</label>
+      <select id="depLevel"><option value="EU27">EU</option><option value="DEU">Deutschland</option></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="depAnswer"></p>
+      <p class="explain">Abhängig ist eine Ware, wenn drei Kriterien der EU-Kommission (2021) zugleich gelten: Die Importe von außerhalb der EU kommen aus wenigen Ländern (Konzentrationsindex über 0,4), sie machen mehr als die Hälfte aller Importe aus, und sie übersteigen die eigenen Exporte. Die Kommission beschränkt ihre Liste auf sensible Wirtschaftsbereiche und kommt so auf 137 Waren; hier sind alle Waren gezählt.</p>
+    </div>
+    <div class="kpis" id="depFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="dep">
+      <p class="cask">In welchen Warengruppen liegen die Abhängigkeiten?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Abhängige Waren nach Warengruppe, 2024</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="depChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Zahl der HS6-Positionen, die alle drei Kriterien erfüllen. Dunkelblau: China ist Hauptlieferant. Chemie und Textilien stellen die meisten Positionen, Maschinen und Elektronik einen großen Teil des Werts.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von CEPII BACI HS22 V202601 (Etalab-Lizenz 2.0), Kriterien der EU-Kommission (2021). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3>Die größten Abhängigkeiten nach Importwert</h3>
+    <div class="tablewrap"><table id="depTable"></table></div>
+    <p class="tnote">Anteil: Anteil des Hauptlieferanten an den Importen von außerhalb der EU. Rotes Meer: Anteil dieser Importe, deren kürzester Seeweg nach Hamburg durch das Rote Meer führt. Warennamen: HS4-Bezeichnung, darunter die englische HS6-Bezeichnung von CEPII.</p>
+    <h3>Welche deutschen Branchen hängen an abhängigen Vorleistungen aus China?</h3>
+    <div class="tablewrap"><table id="depIndustries"></table></div>
+    <p class="tnote">Kostenanteil: direkt bezogene Vorleistungen aus China in Gütergruppen, deren China-Importe zu abhängigen Waren gehören (OECD ICIO 2022). Produktion: langfristige Änderung im Szenario „Lieferstopp Chinas bei abhängigen Waren“; andere Lieferanten und die eigene Produktion springen ein. Kurzfristige Engpässe ohne Ersatz kosten deutlich mehr, das Modell bildet sie nicht ab.</p>
   </section>
 
   <section id="view-szenarien" class="view" hidden>
