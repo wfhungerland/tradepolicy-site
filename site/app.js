@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -195,6 +195,7 @@
     if (view === "szenarien") await renderScenarios();
     if (view === "abhaengigkeiten") await renderDependencies();
     if (view === "wettbewerb") await renderCompetition();
+    if (view === "nullhandel") await renderZeroTrade();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -573,6 +574,86 @@
     const pc = (x) => `${fmt(x * 100, 0)} %`;
     $("compTable").innerHTML = `<thead><tr><th>HS6</th><th>${L("Ware", "Product")}</th><th class="num">${L("Deutsche Exporte", "German exports")}</th><th class="num">${L("China 2012", "China 2012")}</th><th class="num">${L("China 2024", "China 2024")}</th><th class="num">${L("Deutschland 2012", "Germany 2012")}</th><th class="num">${L("Deutschland 2024", "Germany 2024")}</th><th class="num">${L("Preisverhältnis", "Price ratio")}</th></tr></thead><tbody>` +
       C.products.slice(0, 30).map((r) => `<tr><td class="num">${r[0]}</td><td>${esc(EN ? r[2] : (r[1] || r[2]))}${EN ? "" : `<span class="ex">${esc(r[2])}</span>`}</td><td class="num">${bn(fmt(r[3], 2))}</td><td class="num">${pc(r[4])}</td><td class="num">${pc(r[5])}</td><td class="num">${pc(r[6])}</td><td class="num">${pc(r[7])}</td><td class="num">${fmt(r[8], 2)}</td></tr>`).join("") + "</tbody>";
+  }
+
+  async function renderZeroTrade() {
+    const ids = ["ztLevel", "ztView", "ztStat", "ztPeriod"];
+    if (!$("ztLevel").dataset.ready) { $("ztLevel").dataset.ready = "1"; ids.forEach((i) => $(i).addEventListener("change", () => renderZeroTrade())); }
+    const lv = $("ztLevel").value, vw = $("ztView").value, stat = $("ztStat").value;
+    const [Z, G] = await Promise.all([getJSON(`data/zerotrade_${lv}.json`), getJSON("data/zerotrade_germany.json")]);
+    const plab = { 2001: L("China in der WTO", "China joins the WTO"), 2004: L("EU-Osterweiterung", "EU eastern enlargement"), 2008: L("Finanzkrise", "financial crisis"), 2020: L("Pandemie", "pandemic") };
+    const ps = $("ztPeriod"), prev = ps.value;
+    ps.innerHTML = Z.starts.map((s, k) => `<option value="${s}">${L("seit", "since")} ${s} (${k === 0 ? (s === 1990 ? L("Wiedervereinigung", "German reunification") : L("alle Jahre", "all years")) : plab[s]})</option>`).join("");
+    if ([...ps.options].some((o) => o.value === prev)) ps.value = prev; else if (prev && +prev < Z.starts[1]) ps.value = Z.starts[0];
+    const start = +ps.value, N = Z.countries.length;
+    const raw = atob(Z.matrices[`${vw === "m" ? "x" : vw}_${stat}_${start}`]);
+    const val = (i, j) => vw === "m" ? raw.charCodeAt(j * N + i) : raw.charCodeAt(i * N + j);
+    const gamma = Z.binary ? 1 : 0.5, FLOOR = 0.12;
+    const grey = (b) => b === 0 ? 255 : Math.round(255 * (1 - (FLOOR + (1 - FLOOR) * Math.pow(b / 255, gamma))));
+    const k = 3, o = 10, cv = $("ztCanvas"), S = o + N * k;
+    cv.width = S; cv.height = S;
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(S, S);
+    img.data.fill(255);
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const g = grey(val(i, j));
+      for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) { const p = ((o + i * k + a) * S + o + j * k + b) * 4; img.data[p] = img.data[p + 1] = img.data[p + 2] = g; }
+    }
+    ctx.putImageData(img, 0, 0);
+    const iso = Z.countries.includes(state.iso) ? state.iso : "DEU", ci = Z.countries.indexOf(iso);
+    ctx.fillStyle = "#c00000"; ctx.fillRect(0, o + ci * k, o - 2, k); ctx.fillRect(o + ci * k, 0, k, o - 2);
+    // facts
+    let pos = 0, sum = 0, rowPos = 0, rowSum = 0;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { if (i === j) continue; const b = val(i, j); if (b > 0) { pos++; sum += b / 255; } if (i === ci) { if (b > 0) rowPos++; rowSum += b / 255; } }
+    const pairs = N * (N - 1), nm = cname(iso) || iso;
+    const lvName = $("ztLevel").selectedOptions[0].text, vwName = $("ztView").selectedOptions[0].text;
+    const unit = Z.binary ? (stat === "mean" ? L("Anteil der Jahre mit Handel", "share of years with trade") : L("Handel ja oder nein", "trade yes or no")) : L("Anteil der gehandelten Codes", "share of codes traded");
+    const per = L(`Seit ${start}`, `Since ${start}`), how = stat === "median" ? L("in mindestens der Hälfte der Jahre", "in at least half of the years") : L("zumindest zeitweise", "at least at times");
+    const dir = { x: L("Exporte", "exports"), m: L("Importe", "imports"), two: L("Handel in beide Richtungen", "two-way trade") }[vw];
+    $("ztAnswer").textContent = Z.binary
+      ? L(`${per} handeln ${fmt(pos / pairs * 100, 0)} % aller Länderpaare ${how} miteinander (${dir}). ${nm} hat mit ${rowPos} von ${N - 1} Ländern Handel.`,
+          `${per}, ${fmt(pos / pairs * 100, 0)} % of all country pairs trade ${how} (${dir}). ${nm} trades with ${rowPos} of ${N - 1} countries.`)
+      : L(`${per} handeln ${fmt(pos / pairs * 100, 0)} % aller Länderpaare überhaupt miteinander, im Mittel aber nur ${fmt(sum / pairs * 100, 1)} % der Codes auf Ebene ${lvName.split(" (")[0]} (${dir}). ${nm} handelt mit dem durchschnittlichen Partner ${fmt(rowSum / (N - 1) * 100, 0)} % der Codes.`,
+          `${per}, ${fmt(pos / pairs * 100, 0)} % of all country pairs trade at all, but on average only ${fmt(sum / pairs * 100, 1)} % of codes at level ${lvName.split(" (")[0]} (${dir}). ${nm} trades ${fmt(rowSum / (N - 1) * 100, 0)} % of codes with the average partner.`);
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("ztFacts").innerHTML = [
+      tile(`${fmt(pos / pairs * 100, 0)} %`, L("Paare mit Handel", "Pairs with trade"), L(`${N} Länder, ${pairs.toLocaleString(LOC)} Paare`, `${N} countries, ${pairs.toLocaleString(LOC)} pairs`)),
+      tile(`${fmt(100 - pos / pairs * 100, 0)} %`, L("Paare ohne Handel", "Pairs without trade"), L("weiße Zellen", "white cells")),
+      tile(`${rowPos}`, L(`Partner von ${nm}`, `Partners of ${nm}`), L(`von ${N - 1}`, `of ${N - 1}`)),
+      tile(Z.binary ? `${fmt(sum / pairs * 100, 0)} %` : `${fmt(sum / pairs * 100, 1)} %`, L("Mittlerer Wert je Paar", "Mean value per pair"), unit),
+    ].join("");
+    $("ztTitle").textContent = L(`Null-Handel-Matrix: ${lvName}, ${vwName}, ${stat === "median" ? "Median" : "Mittelwert"} seit ${start}`, `Zero-trade matrix: ${lvName}, ${vwName}, ${stat} since ${start}`);
+    $("ztNote").textContent = L(`Zeile: ${vw === "m" ? "importierendes Land" : vw === "two" ? "Land" : "exportierendes Land"}, Spalte: Partner. Weiß: kein Handel. ${unit}${Z.binary ? "" : ", Wurzelskala"}. Rote Marke: ${nm} (oben im Länderfeld wählbar). Sortiert nach Breite des Handels, die am stärksten vernetzten Länder oben links.`,
+      `Row: ${vw === "m" ? "importing country" : vw === "two" ? "country" : "exporting country"}, column: partner. White: no trade. ${unit}${Z.binary ? "" : ", square-root scale"}. Red mark: ${nm} (choose in the country field above). Sorted by breadth of trade, the most connected countries top left.`);
+    const stops = [0, 0.1, 0.25, 0.5, 1];
+    $("ztLegend").innerHTML = `<div class="hint">${stops.map((s) => { const g = grey(Math.round(s * 255)); return `<span style="display:inline-block;width:14px;height:14px;border:1px solid #d9d9d9;background:rgb(${g},${g},${g});vertical-align:middle"></span> ${s === 0 ? "0" : fmt(s * 100, 0) + " %"}`; }).join("&nbsp; ")}</div>`;
+    const src = lv === "country" ? L("IMF IMTS, Spiegeldaten, 1990 bis 2024", "IMF IMTS, mirror data, 1990 to 2024") : L("CEPII BACI HS92 V202601 (Etalab-Lizenz 2.0), 1995 bis 2024", "CEPII BACI HS92 V202601 (Etalab licence 2.0), 1995 to 2024");
+    $("ztSrc").textContent = L(`Quelle: eigene Berechnungen auf Basis von ${src}; Länder, die in allen Jahren vorkommen. Lizenz der Abbildung: CC BY 4.0.`, `Source: own calculations based on ${src}; countries present in all years. Licence of the figure: CC BY 4.0.`);
+    cv.onmousemove = (e) => {
+      const r = cv.getBoundingClientRect(), sx = (e.clientX - r.left) * S / r.width, sy = (e.clientY - r.top) * S / r.height;
+      const j = Math.floor((sx - o) / k), i = Math.floor((sy - o) / k);
+      if (i < 0 || j < 0 || i >= N || j >= N) return;
+      const b = val(i, j), a = cname(Z.countries[i]) || Z.countries[i], c = cname(Z.countries[j]) || Z.countries[j];
+      const v = b === 0 ? L("kein Handel", "no trade") : Z.binary && stat === "median" ? L("Handel", "trade") : `${fmt(b / 255 * 100, Z.binary ? 0 : 1)} %`;
+      $("ztHover").textContent = `${a} ${vw === "m" ? "←" : vw === "two" ? "↔" : "→"} ${c}: ${v}`;
+    };
+    FIGDATA.zt = { header: [L("Land", "Country"), ...Z.countries], rows: Z.countries.map((c, i) => [c, ...Z.countries.map((_, j) => i === j ? "" : +(val(i, j) / 255).toFixed(3))]) };
+    // Germany: stacked bars per year
+    const g = G[lv], cats = [["two_way", L("beidseitig", "two-way"), "#002060"], ["export_only", L("nur Export", "export only"), "#5b9bd5"], ["import_only", L("nur Import", "import only"), "#a6a6a6"], ["none", L("kein Handel", "no trade"), "#f2f2f2"]];
+    $("ztGerAsk").textContent = L("Mit wie vielen Partnern und Waren handelt Deutschland?", "With how many partners and goods does Germany trade?");
+    $("ztGerTitle").textContent = L(`Deutschland: Handel nach Partnern${lv === "country" ? "" : " und Codes"}, ${lvName}, in %`, `Germany: trade by partner${lv === "country" ? "" : " and code"}, ${lvName}, in %`);
+    $("ztGerSrc").textContent = $("ztSrc").textContent;
+    const W = 860, H = 300, m = { l: 16, r: 46, t: 34, b: 28 }, n = g.years.length, bw = (W - m.l - m.r) / n;
+    const Y = (v) => H - m.b - v / 100 * (H - m.t - m.b);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc($("ztGerTitle").textContent)}">`;
+    cats.forEach((c, q) => { s += `<rect x="${m.l + q * 140}" y="6" width="12" height="12" fill="${c[2]}" stroke="#bfbfbf" stroke-width="0.5"/><text x="${m.l + q * 140 + 18}" y="16">${c[1]}</text>`; });
+    [0, 25, 50, 75, 100].forEach((v) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#e6e6e6"/><text x="${W - m.r + 6}" y="${Y(v) + 4}">${v}</text>`; });
+    g.years.forEach((y, i) => {
+      let acc = 0; const x = m.l + i * bw + 1;
+      cats.forEach((c) => { const v = g[c[0]][i] * 100; s += `<rect x="${x}" y="${Y(acc + v)}" width="${bw - 2}" height="${Y(acc) - Y(acc + v)}" fill="${c[2]}"><title>${y}, ${c[1]}: ${fmt(v, 1)} %</title></rect>`; acc += v; });
+      if (y % 5 === 0) s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${y}</text>`;
+    });
+    $("ztGerChart").innerHTML = s + "</svg>";
+    FIGDATA.ztger = { header: [L("Jahr", "Year"), ...cats.map((c) => c[1] + " (%)")], rows: g.years.map((y, i) => [y, ...cats.map((c) => +(g[c[0]][i] * 100).toFixed(2))]) };
   }
 
   function renderForecast() {

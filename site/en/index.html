@@ -25,6 +25,7 @@
       <a href="#branchen">Sectors</a>
       <a href="#abhaengigkeiten">Dependencies</a>
       <a href="#wettbewerb">China competition</a>
+      <a href="#nullhandel">Zero trade</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -216,6 +217,47 @@
     <h3>German export goods under price pressure from China</h3>
     <div class="tablewrap"><table id="compTable"></table></div>
     <p class="tnote">Selection: German exports in 2024 of at least USD 100 million, China's world market share up by at least 5 percentage points since 2012, Chinese unit value at least half the German one, quality ladder shorter than the median. Price ratio: Chinese over German unit value, weighted across destinations. Unit values per ton mix quality, model mix and weight, so single values are rough. Product names: HS4 description, below it the English HS6 description from CEPII (HS 1992; electric cars fall under 870390).</p>
+  </section>
+
+  <section id="view-nullhandel" class="view" hidden>
+    <h2>Who trades with whom at all?</h2>
+    <div class="toolbar">
+      <label for="ztLevel">Level</label>
+      <select id="ztLevel"><option value="country">Countries</option><option value="section">HS sections (21)</option><option value="hs2">HS2 (chapters)</option><option value="hs4">HS4 (headings)</option><option value="hs6">HS6 (subheadings)</option></select>
+      <label for="ztView">Direction</label>
+      <select id="ztView"><option value="x">Exports</option><option value="m">Imports</option><option value="two">two-way</option></select>
+      <label for="ztStat">Statistic</label>
+      <select id="ztStat"><option value="median">Median</option><option value="mean">Mean</option></select>
+      <label for="ztPeriod">Period</label>
+      <select id="ztPeriod"></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="ztAnswer"></p>
+      <p class="explain">Presentation after Helpman, Melitz and Rubinstein (2008): each row is a country, each column a partner, both in the same order, sorted by breadth of trade (partners times HS6 goods). White means no trade. At country level a cell is black if the pair trades; for the mean the grey shows the share of years with trade. At HS levels the grey shows the share of product codes traded between the two countries. Two-way counts only trade that runs both ways, at HS levels in the same code.</p>
+    </div>
+    <div class="kpis" id="ztFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="zt">
+      <p class="cask">Which country pairs trade with each other, and how broadly?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="ztTitle">Zero-trade matrix</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div class="ztwrap"><canvas id="ztCanvas" width="210" height="210"></canvas></div><p class="hint" id="ztHover">Point at a cell: country pair and value.</p></div>
+        <aside class="cside"><p class="capnote" id="ztNote"></p><div id="ztLegend"></div></aside>
+      </div>
+      <p class="src" id="ztSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="ztger">
+      <p class="cask" id="ztGerAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="ztGerTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="ztGerChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Country level: share of all partner countries. HS levels: share of all combinations of partner and product code. Two-way: the country exports and imports the same code with the same partner.</p></aside>
+      </div>
+      <p class="src" id="ztGerSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
   </section>
 
   <section id="view-szenarien" class="view" hidden>

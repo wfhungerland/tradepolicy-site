@@ -25,6 +25,7 @@
       <a href="#branchen">Branchen</a>
       <a href="#abhaengigkeiten">Abhängigkeiten</a>
       <a href="#wettbewerb">China-Wettbewerb</a>
+      <a href="#nullhandel">Null-Handel</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -216,6 +217,47 @@
     <h3>Deutsche Exportwaren unter Preisdruck aus China</h3>
     <div class="tablewrap"><table id="compTable"></table></div>
     <p class="tnote">Auswahl: deutsche Exporte 2024 von mindestens 100 Mio. USD, Chinas Weltmarktanteil seit 2012 um mindestens 5 Prozentpunkte gestiegen, chinesischer Stückwert mindestens halb so hoch wie der deutsche, Qualitätsleiter kürzer als im Median. Preisverhältnis: chinesischer zu deutschem Stückwert, gewichtet über die Zielländer. Stückwerte je Tonne vermischen Qualität, Modellmix und Gewicht; einzelne Werte sind daher grob. Warennamen: HS4-Bezeichnung, darunter die englische HS6-Bezeichnung von CEPII (HS 1992; Elektroautos fallen unter 870390).</p>
+  </section>
+
+  <section id="view-nullhandel" class="view" hidden>
+    <h2>Wer handelt überhaupt mit wem?</h2>
+    <div class="toolbar">
+      <label for="ztLevel">Ebene</label>
+      <select id="ztLevel"><option value="country">Länder</option><option value="section">HS-Abschnitte (21)</option><option value="hs2">HS2 (Kapitel)</option><option value="hs4">HS4 (Positionen)</option><option value="hs6">HS6 (Unterpositionen)</option></select>
+      <label for="ztView">Richtung</label>
+      <select id="ztView"><option value="x">Exporte</option><option value="m">Importe</option><option value="two">beidseitig</option></select>
+      <label for="ztStat">Kennzahl</label>
+      <select id="ztStat"><option value="median">Median</option><option value="mean">Mittelwert</option></select>
+      <label for="ztPeriod">Zeitraum</label>
+      <select id="ztPeriod"></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="ztAnswer"></p>
+      <p class="explain">Darstellung nach Helpman, Melitz und Rubinstein (2008): Jede Zeile ist ein Land, jede Spalte ein Partnerland, beide in derselben Reihenfolge, sortiert nach der Breite des Handels (Partner mal HS6-Waren). Weiß heißt kein Handel. Auf Länderebene ist eine Zelle schwarz, wenn gehandelt wird; im Mittelwert zeigt der Grauton den Anteil der Jahre mit Handel. Auf HS-Ebenen zeigt der Grauton den Anteil der Warencodes, die zwischen beiden Ländern gehandelt werden. Beidseitig zählt nur Handel, der in beide Richtungen läuft, auf HS-Ebenen im selben Code.</p>
+    </div>
+    <div class="kpis" id="ztFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="zt">
+      <p class="cask">Welche Länderpaare handeln miteinander, und wie breit?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="ztTitle">Null-Handel-Matrix</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div class="ztwrap"><canvas id="ztCanvas" width="210" height="210"></canvas></div><p class="hint" id="ztHover">Zeiger auf eine Zelle: Länderpaar und Wert.</p></div>
+        <aside class="cside"><p class="capnote" id="ztNote"></p><div id="ztLegend"></div></aside>
+      </div>
+      <p class="src" id="ztSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="ztger">
+      <p class="cask" id="ztGerAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="ztGerTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="ztGerChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Länderebene: Anteil aller Partnerländer. HS-Ebenen: Anteil aller Kombinationen aus Partnerland und Warencode. Beidseitig: Das Land exportiert und importiert denselben Code mit demselben Partner.</p></aside>
+      </div>
+      <p class="src" id="ztGerSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
   </section>
 
   <section id="view-szenarien" class="view" hidden>
