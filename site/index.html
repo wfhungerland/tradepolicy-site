@@ -24,6 +24,7 @@
       <a href="#produktraum">Produktraum</a>
       <a href="#branchen">Branchen</a>
       <a href="#abhaengigkeiten">Abhängigkeiten</a>
+      <a href="#wettbewerb">China-Wettbewerb</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -191,6 +192,30 @@
     <h3>Welche deutschen Branchen hängen an abhängigen Vorleistungen aus China?</h3>
     <div class="tablewrap"><table id="depIndustries"></table></div>
     <p class="tnote">Alle Werte in % der Produktion der Branche (OECD ICIO 2022). Direkt: unmittelbar aus China bezogene Vorleistungen in Gütergruppen, deren China-Importe zu abhängigen Waren gehören. Mit indirekten Lieferketten: derselbe Wert hochgerechnet mit dem Lieferketten-Multiplikator der Branche, also einschließlich chinesischer Vorleistungen, die über Drittländer oder andere deutsche Branchen kommen (globale Leontief-Inverse). Chinesische Wertschöpfung: Anteil Chinas an der Produktion der Branche über alle Stufen, alle Waren (Johnson und Noguera 2012). Etwa die Hälfte der chinesischen Wertschöpfung in deutscher Produktion kommt auf indirektem Weg. Produktion: langfristige Änderung bei einem Lieferstopp Chinas; kurzfristige Engpässe ohne Ersatz kosten deutlich mehr.</p>
+  </section>
+
+  <section id="view-wettbewerb" class="view" hidden>
+    <h2>Wo konkurrieren deutsche und chinesische Exporte?</h2>
+    <div class="intro">
+      <p class="answer" id="compAnswer"></p>
+      <p class="explain">Verglichen werden die Exporte Deutschlands und Chinas in alle anderen Länder, Ware für Ware (HS6). Exportähnlichkeit nach Finger und Kreinin (1979): 0 heißt keine gemeinsamen Waren, 1 dieselbe Warenstruktur. Preisabstand: chinesischer gegenüber deutschem Stückwert bei derselben Ware im selben Zielland (Schott 2008). Qualitätsleiter: Spanne der Stückwerte aller Lieferländer in die EU, vereinfacht nach Khandelwal (2010). Bei kurzer Leiter lässt sich wenig über Qualität absetzen, der Preis zählt mehr.</p>
+    </div>
+    <div class="kpis" id="compFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="comp">
+      <p class="cask">Wo hat China Weltmarktanteile gewonnen, und wie hielt sich Deutschland?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Weltmarktanteile nach Warengruppe, 2012 und 2024</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="compChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Anteile an den Weltexporten der Warengruppe ohne Lieferungen nach Deutschland und China, gewichtet mit den deutschen Exporten 2024. Kreis: 2012, Punkt: 2024. Nur Waren mit mindestens 100 Mio. USD deutschen Exporten.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von CEPII BACI HS92 V202601 (Etalab-Lizenz 2.0). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3>Deutsche Exportwaren unter Preisdruck aus China</h3>
+    <div class="tablewrap"><table id="compTable"></table></div>
+    <p class="tnote">Auswahl: deutsche Exporte 2024 von mindestens 100 Mio. USD, Chinas Weltmarktanteil seit 2012 um mindestens 5 Prozentpunkte gestiegen, chinesischer Stückwert mindestens halb so hoch wie der deutsche, Qualitätsleiter kürzer als im Median. Preisverhältnis: chinesischer zu deutschem Stückwert, gewichtet über die Zielländer. Stückwerte je Tonne vermischen Qualität, Modellmix und Gewicht; einzelne Werte sind daher grob. Warennamen: HS4-Bezeichnung, darunter die englische HS6-Bezeichnung von CEPII (HS 1992; Elektroautos fallen unter 870390).</p>
   </section>
 
   <section id="view-szenarien" class="view" hidden>

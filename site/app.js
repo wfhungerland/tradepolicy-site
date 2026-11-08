@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -194,6 +194,7 @@
     if (view === "branchen") await renderSectors();
     if (view === "szenarien") await renderScenarios();
     if (view === "abhaengigkeiten") await renderDependencies();
+    if (view === "wettbewerb") await renderCompetition();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -531,6 +532,47 @@
     const secNames = EN ? S.sector_names_en : S.sector_names;
     $("depIndustries").innerHTML = `<thead><tr><th>${L("Branche in Deutschland", "Industry in Germany")}</th><th class="num">${L("Abhängige Vorleistungen aus China, direkt", "Dependent inputs from China, direct")}</th><th class="num">${L("mit indirekten Lieferketten", "incl. indirect supply chains")}</th><th class="num">${L("Chinesische Wertschöpfung insgesamt", "Chinese value added, all goods")}</th><th class="num">${L("Produktion bei Lieferstopp", "Output if China stops")}</th></tr></thead><tbody>` +
       Dd.germany_industries.map((r) => `<tr><td>${esc(secNames[r[0]] || r[0])}</td><td class="num">${fmt(r[1], 2)}\u202f%</td><td class="num">${fmt(r[4], 2)}\u202f%</td><td class="num">${fmt(r[5], 1)}\u202f%</td><td class="num">${pct(r[2], 1)}</td></tr>`).join("") + "</tbody>";
+  }
+
+  async function renderCompetition() {
+    const C = await getJSON("data/competition.json");
+    const secEn = { "Tiere": "Animals", "Pflanzen": "Plants", "Fette": "Fats", "Nahrungsmittel": "Food", "Mineralien, Energie": "Minerals, energy", "Chemie, Pharma": "Chemicals, pharma",
+      "Kunststoff, Kautschuk": "Plastics, rubber", "Leder": "Leather", "Holz, Papier": "Wood, paper", "Textilien": "Textiles", "Schuhe": "Footwear", "Steine, Glas, Edelmetalle": "Stone, glass, precious metals",
+      "Metalle": "Metals", "Maschinen, Elektronik": "Machinery, electronics", "Fahrzeuge": "Vehicles", "Instrumente": "Instruments", "Sonstiges": "Other" };
+    const secName = (s) => EN ? (secEn[s] || s) : s;
+    const S = C.similarity, e0 = S[0], e1 = S[S.length - 1], pr = C.price_ratio_weighted;
+    const veh = C.sections.find((r) => r[0] === "Fahrzeuge");
+    $("compAnswer").textContent = L(
+      `Die Exporte Deutschlands und Chinas ähneln sich immer mehr: Die Exportähnlichkeit stieg von ${fmt(e0[1], 2)} (${e0[0]}) auf ${fmt(e1[1], 2)} (${e1[0]}). Bei derselben Ware im selben Zielland liegt der chinesische Stückwert im Median bei ${fmt(pr * 100, 0)} % des deutschen. Unter Preisdruck stehen ${C.n_exposed} deutsche Exportwaren mit ${bn(fmt(C.exposed_bn, 0))}, rund die Hälfte davon Fahrzeuge und Teile.${veh ? ` Dort stieg Chinas Weltmarktanteil von ${fmt(veh[4] * 100, 0)} % auf ${fmt(veh[3] * 100, 0)} %.` : ""}`,
+      `German and Chinese exports are becoming more alike: export similarity rose from ${fmt(e0[1], 2)} (${e0[0]}) to ${fmt(e1[1], 2)} (${e1[0]}). For the same good in the same destination the Chinese unit value is at the median ${fmt(pr * 100, 0)} % of the German one. ${C.n_exposed} German export goods worth ${bn(fmt(C.exposed_bn, 0))} are under price pressure, about half of it vehicles and parts.${veh ? ` There China's world market share rose from ${fmt(veh[4] * 100, 0)} % to ${fmt(veh[3] * 100, 0)} %.` : ""}`);
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("compFacts").innerHTML = [
+      tile(fmt(e1[1], 2), L("Exportähnlichkeit", "Export similarity"), S.map((r) => `${r[0]}: ${fmt(r[1], 2)}`).join(" · ")),
+      tile(`${fmt(pr * 100, 0)} %`, L("Preis China zu Deutschland", "Price China to Germany"), L("Median, gewichtet mit deutschen Exporten", "median, weighted by German exports")),
+      tile(String(C.n_exposed), L("Waren unter Preisdruck", "Goods under price pressure"), L("HS6, Auswahl siehe Tabelle", "HS6, selection see table")),
+      tile(bn(fmt(C.exposed_bn, 0)), L("deutsche Exporte darin", "German exports in them"), L(`${fmt(C.exposed_bn / C.deu_exports_bn * 100, 0)} % aller deutschen Exporte`, `${fmt(C.exposed_bn / C.deu_exports_bn * 100, 0)} % of all German exports`)),
+    ].join("");
+    // dumbbell chart: China and Germany shares 2012 -> 2024 by product group
+    const rows = C.sections.filter((r) => r[1] >= 10), W = 860, row = 30, m = { l: 230, r: 30, t: 40, b: 30 }, H = m.t + m.b + row * rows.length;
+    const mx = Math.ceil(Math.max(...rows.flatMap((r) => [r[3], r[4], r[5], r[6]])) * 20) / 20, ticks = niceTicks(0, mx * 100, 5);
+    const Xs = (v) => m.l + v / mx * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L("Weltmarktanteile nach Warengruppe", "World market shares by product group")}">`;
+    s += `<circle cx="${m.l + 6}" cy="12" r="5" fill="#002060"/><text x="${m.l + 16}" y="16">China</text><circle cx="${m.l + 96}" cy="12" r="5" fill="#a6a6a6"/><text x="${m.l + 106}" y="16">${L("Deutschland", "Germany")}</text>`;
+    ticks.forEach((t) => { const x = Xs(t / 100); s += `<line x1="${x}" x2="${x}" y1="${m.t - 6}" y2="${H - m.b}" stroke="#e6e6e6"/><text x="${x}" y="${H - m.b + 18}" text-anchor="middle">${fmt(t, tickDec(ticks))} %</text>`; });
+    rows.forEach((r, i) => {
+      const y = m.t + i * row + row / 2;
+      s += `<text x="${m.l - 8}" y="${y + 4}" text-anchor="end">${esc(secName(r[0]))}</text>`;
+      [[r[4], r[3], "#002060", "China"], [r[6], r[5], "#a6a6a6", L("Deutschland", "Germany")]].forEach(([a, b, c, n], k) => {
+        const yy = y + (k ? 5 : -5);
+        s += `<line x1="${Xs(a)}" x2="${Xs(b)}" y1="${yy}" y2="${yy}" stroke="${c}" stroke-width="2"/><circle cx="${Xs(a)}" cy="${yy}" r="4" fill="#fff" stroke="${c}" stroke-width="1.5"/><circle cx="${Xs(b)}" cy="${yy}" r="4.5" fill="${c}"><title>${esc(secName(r[0]))}, ${n}: ${fmt(a * 100, 1)} % → ${fmt(b * 100, 1)} %</title></circle>`;
+      });
+    });
+    $("compChart").innerHTML = s + "</svg>";
+    FIGDATA.comp = { header: [L("Warengruppe", "Product group"), L("China 2012 (%)", "China 2012 (%)"), L("China 2024 (%)", "China 2024 (%)"), L("Deutschland 2012 (%)", "Germany 2012 (%)"), L("Deutschland 2024 (%)", "Germany 2024 (%)"), L("deutsche Exporte 2024, Mrd. USD", "German exports 2024, USD bn")],
+      rows: rows.map((r) => [secName(r[0]), +(r[4] * 100).toFixed(1), +(r[3] * 100).toFixed(1), +(r[6] * 100).toFixed(1), +(r[5] * 100).toFixed(1), r[1]]) };
+    const pc = (x) => `${fmt(x * 100, 0)} %`;
+    $("compTable").innerHTML = `<thead><tr><th>HS6</th><th>${L("Ware", "Product")}</th><th class="num">${L("Deutsche Exporte", "German exports")}</th><th class="num">${L("China 2012", "China 2012")}</th><th class="num">${L("China 2024", "China 2024")}</th><th class="num">${L("Deutschland 2012", "Germany 2012")}</th><th class="num">${L("Deutschland 2024", "Germany 2024")}</th><th class="num">${L("Preisverhältnis", "Price ratio")}</th></tr></thead><tbody>` +
+      C.products.slice(0, 30).map((r) => `<tr><td class="num">${r[0]}</td><td>${esc(EN ? r[2] : (r[1] || r[2]))}${EN ? "" : `<span class="ex">${esc(r[2])}</span>`}</td><td class="num">${bn(fmt(r[3], 2))}</td><td class="num">${pc(r[4])}</td><td class="num">${pc(r[5])}</td><td class="num">${pc(r[6])}</td><td class="num">${pc(r[7])}</td><td class="num">${fmt(r[8], 2)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {

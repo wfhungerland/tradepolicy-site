@@ -24,6 +24,7 @@
       <a href="#produktraum">Product space</a>
       <a href="#branchen">Sectors</a>
       <a href="#abhaengigkeiten">Dependencies</a>
+      <a href="#wettbewerb">China competition</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -191,6 +192,30 @@
     <h3>Which German industries rely on dependent inputs from China?</h3>
     <div class="tablewrap"><table id="depIndustries"></table></div>
     <p class="tnote">All values as % of the industry's output (OECD ICIO 2022). Direct: inputs bought directly from China in product groups whose imports from China are dependent goods. Incl. indirect: the same scaled by the supply-chain multiplier, i.e. including Chinese inputs that arrive via third countries or other German industries (global Leontief inverse). Chinese value added: China's share in the industry's output over all stages, all goods (Johnson and Noguera 2012). About half of the Chinese value added in German output arrives indirectly. Output: long-run change if China stops supplying dependent goods; short-run bottlenecks without substitutes cost much more.</p>
+  </section>
+
+  <section id="view-wettbewerb" class="view" hidden>
+    <h2>Where do German and Chinese exports compete?</h2>
+    <div class="intro">
+      <p class="answer" id="compAnswer"></p>
+      <p class="explain">The comparison covers German and Chinese exports to all other countries, good by good (HS6). Export similarity after Finger and Kreinin (1979): 0 means no common goods, 1 the same product mix. Price gap: Chinese over German unit value for the same good in the same destination (Schott 2008). Quality ladder: spread of unit values of all suppliers to the EU, simplified after Khandelwal (2010). On a short ladder there is little room to sell on quality, so price matters more.</p>
+    </div>
+    <div class="kpis" id="compFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="comp">
+      <p class="cask">Where has China gained world market share, and how did Germany hold up?</p>
+      <h3><span class="fignum"></span><span class="ftitle">World market shares by product group, 2012 and 2024</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="compChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Shares of world exports of the product group excluding deliveries to Germany and China, weighted by German exports in 2024. Circle: 2012, dot: 2024. Only goods with at least USD 100 million of German exports.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab licence 2.0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3>German export goods under price pressure from China</h3>
+    <div class="tablewrap"><table id="compTable"></table></div>
+    <p class="tnote">Selection: German exports in 2024 of at least USD 100 million, China's world market share up by at least 5 percentage points since 2012, Chinese unit value at least half the German one, quality ladder shorter than the median. Price ratio: Chinese over German unit value, weighted across destinations. Unit values per ton mix quality, model mix and weight, so single values are rough. Product names: HS4 description, below it the English HS6 description from CEPII (HS 1992; electric cars fall under 870390).</p>
   </section>
 
   <section id="view-szenarien" class="view" hidden>
