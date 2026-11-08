@@ -28,6 +28,7 @@
       <a href="#nullhandel">Null-Handel</a>
       <a href="#regime">Regierungsform</a>
       <a href="#mittelstand">Mittelstand</a>
+      <a href="#regionen">Regionen</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -369,6 +370,44 @@
     </figure>
 
     </div>
+  </section>
+
+  <section id="view-regionen" class="view" hidden>
+    <h2>Welche Regionen Europas trifft was?</h2>
+    <div class="toolbar">
+      <label for="regLayer">Karte</label>
+      <select id="regLayer">
+        <option value="us">US-Zölle: Produktion</option>
+        <option value="cn">Lieferstopp Chinas: Produktion</option>
+        <option value="rs">Rotes Meer wie 2024: Produktion</option>
+        <option value="en">Energieintensive Industrie</option>
+        <option value="gdp">BIP je Einwohner (Index)</option>
+        <option value="coh">EU-Kohäsionszahlungen</option>
+        <option value="port">Seehäfen: Umschlag</option>
+      </select>
+      <label for="regYear" id="regYearLab">Jahr</label>
+      <select id="regYear"></select>
+      <label for="regZoom">Ausschnitt</label>
+      <select id="regZoom"><option value="eu">EU</option><option value="de">Deutschland</option></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="regAnswer"></p>
+      <p class="explain" id="regExplain"></p>
+    </div>
+    <div class="charts">
+    <figure class="card fig" data-fig="reg">
+      <p class="cask" id="regAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="regTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="regMap" class="svgwrap"></div><p class="hint" id="regHover">Zeiger auf eine Region: Name und Wert.</p></div>
+        <aside class="cside"><div id="regLegend"></div><p class="capnote" id="regNote"></p></aside>
+      </div>
+      <p class="src" id="regSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3 id="regTabTitle"></h3>
+    <div class="tablewrap"><table id="regTable"></table></div>
   </section>
 
   <section id="view-szenarien" class="view" hidden>

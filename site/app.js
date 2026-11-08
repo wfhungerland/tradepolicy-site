@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -198,6 +198,7 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
+    if (view === "regionen") await renderRegions();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -797,6 +798,80 @@
     $("msActChart").innerHTML = c + "</svg>";
     $("msActTitle").textContent = L(`KMU-Anteil an den Exporten außerhalb der EU nach Branche, ${M.activity_year}, in %`, `SME share of exports outside the EU by industry, ${M.activity_year}, in %`);
     FIGDATA.msact = { header: [L("Branche", "Industry"), L("KMU-Anteil (%)", "SME share (%)"), L("Exporte, Mrd. EUR", "Exports, EUR bn")], rows: A.map((r) => [M.nace[r[0]] ? M.nace[r[0]][EN ? 1 : 0] : r[0], +(r[1] * 100).toFixed(1), r[2]]) };
+  }
+
+  async function renderRegions() {
+    const [E, H] = await Promise.all([getJSON("data/regional_exposure.json"), getJSON("data/regional_history.json")]);
+    const lay = $("regLayer"), ysel = $("regYear"), zsel = $("regZoom");
+    if (!lay.dataset.ready) {
+      lay.dataset.ready = "1"; ysel.innerHTML = H.years.filter((y) => y % 5 === 0 || y === H.years[H.years.length - 1]).map((y) => `<option${y === 2024 ? " selected" : ""}>${y}</option>`).join("");
+      [lay, ysel, zsel].forEach((s) => s.addEventListener("change", () => renderRegions()));
+    }
+    const k = lay.value, yr = +ysel.value, yi = H.years.indexOf(yr);
+    ysel.hidden = $("regYearLab").hidden = k !== "gdp";
+    const red = ["#7f0000", "#c00000", "#e06666", "#f4b183", "#fce4d6", "#deebf7", "#5b9bd5"], blue = ["#fce4d6", "#f2f2f2", "#deebf7", "#9dc3e6", "#5b9bd5", "#2e75b6", "#002060"];
+    const seq = ["#deebf7", "#9dc3e6", "#5b9bd5", "#2e75b6", "#1f4e79", "#002060"];
+    const C = {
+      us: { bins: [-9, -0.6, -0.45, -0.3, -0.15, 0, 0.15, 9], cols: red, unit: "%", dec: 2, get: (g) => E.regions[g] && E.regions[g].us,
+        t: L("US-Zölle (Stand August 2026): Produktion nach regionaler Branchenstruktur, in %", "US tariffs (August 2026): output by regional industry mix, in %"),
+        ask: L("Wo treffen die US-Zölle die Produktion am stärksten?", "Where do US tariffs hit output hardest?") },
+      cn: { bins: [-9, 0, 0.05, 0.1, 0.15, 0.2, 0.25, 9], cols: blue, unit: "%", dec: 2, get: (g) => E.regions[g] && E.regions[g].cn,
+        t: L("Lieferstopp Chinas bei abhängigen Waren: Produktion, in %", "Chinese stop of dependent goods: output, in %"),
+        ask: L("Wo ersetzt heimische Produktion fehlende Importe aus China?", "Where does domestic output replace missing imports from China?") },
+      rs: { bins: [-9, 0, 0.02, 0.04, 0.06, 0.08, 0.1, 9], cols: blue, unit: "%", dec: 2, get: (g) => E.regions[g] && E.regions[g].rs,
+        t: L("Umleitung um das Rote Meer wie 2024: Produktion, in %", "Red Sea rerouting as in 2024: output, in %"),
+        ask: L("Welche Regionen gewinnen oder verlieren durch längere Seewege?", "Which regions gain or lose from longer sea routes?") },
+      en: { bins: [0, 0.01, 0.02, 0.04, 0.06, 0.08, 1], cols: seq, unit: "%", dec: 1, scale: 100, get: (g) => E.regions[g] && E.regions[g].en,
+        t: L("Anteil energieintensiver Industrien an der Beschäftigung, in %", "Share of energy-intensive industries in employment, in %"),
+        ask: L("Wo hängen viele Arbeitsplätze an teurer Energie?", "Where do many jobs depend on costly energy?") },
+      gdp: { bins: [0, 50, 75, 90, 110, 125, 150, 1e9], cols: ["#7f0000", "#e06666", "#fce4d6", "#f2f2f2", "#deebf7", "#5b9bd5", "#002060"], unit: "", dec: 0, get: (g) => H.gdp_index[g] && H.gdp_index[g][yi],
+        t: L(`BIP je Einwohner ${yr}, Mittel aller Regionen = 100`, `GDP per head ${yr}, mean of all regions = 100`),
+        ask: L("Wie haben sich Europas Regionen seit 1980 entwickelt?", "How have Europe's regions developed since 1980?") },
+      coh: { bins: [0, 1000, 2500, 5000, 10000, 15000, 1e9], cols: seq, unit: " EUR", dec: 0, get: (g) => H.cohesion_pc[g],
+        t: L("EU-Kohäsionszahlungen 1989 bis 2023 je Einwohner, EUR", "EU cohesion payments 1989 to 2023 per head, EUR"),
+        ask: L("Wohin flossen die EU-Fördermittel?", "Where did EU cohesion funds go?") },
+      port: { bins: [0, 1, 5000, 20000, 50000, 100000, 1e12], cols: ["#f2f2f2", "#deebf7", "#9dc3e6", "#5b9bd5", "#1f4e79", "#002060"], unit: L(" Tsd. t", " kt"), dec: 0, get: (g) => H.ports_kt[g] === undefined ? 0 : H.ports_kt[g],
+        t: L("Güterumschlag der Seehäfen nach Region, Tausend Tonnen", "Seaport cargo throughput by region, thousand tonnes"),
+        ask: L("Über welche Regionen läuft der Seehandel?", "Through which regions does sea trade pass?") } }[k];
+    const sc = C.scale || 1, colOf = (v) => { if (v === null || v === undefined || isNaN(v)) return "#bfbfbf"; for (let i = 0; i < C.cols.length; i++) if (v < C.bins[i + 1]) return C.cols[i]; return C.cols[C.cols.length - 1]; };
+    const nm = (g) => (E.regions[g] && E.regions[g].n) || H.names[g] || g;
+    const fv = (v) => v === null || v === undefined || isNaN(v) ? "–" : `${fmt(v * sc, C.dec)}${C.unit === "%" ? " %" : C.unit}`;
+    // viewbox: full EU or Germany window (EU map coordinates, 600 wide)
+    const W = 600, Hh = E.height, vb = zsel.value === "de" ? [255 - 4, 120, 85, 115] : [0, 0, W, Hh];
+    const deScale = [(4020000 - 2500000) / (7400000 - 2500000) * W, (5450000 - 3580000) / (7400000 - 2500000) * W, (4700000 - 4020000) / (7400000 - 2500000) * W, (3580000 - 2650000) / (7400000 - 2500000) * W];
+    const box = zsel.value === "de" ? deScale : vb;
+    let s = `<svg viewBox="${box.map((x) => x.toFixed(1)).join(" ")}" role="img" aria-label="${esc(C.t)}" style="background:#fff;max-height:760px">`;
+    const paths = E.paths;
+    Object.keys(paths).forEach((g) => { const v = C.get(g); s += `<path d="${paths[g]}" fill="${colOf(v)}" stroke="#fff" stroke-width="${zsel.value === "de" ? 0.08 : 0.25}" data-g="${g}"><title>${esc(nm(g))}: ${fv(v)}</title></path>`; });
+    $("regMap").innerHTML = s + "</svg>";
+    $("regMap").querySelectorAll("path").forEach((p) => p.addEventListener("mousemove", () => { const g = p.dataset.g; $("regHover").textContent = `${nm(g)} (${g}): ${fv(C.get(g))}`; }));
+    $("regLegend").innerHTML = `<div class="hint">${C.cols.map((c, i) => `<div><span style="display:inline-block;width:14px;height:12px;background:${c};border:1px solid #d9d9d9;vertical-align:middle"></span> ${i === 0 ? L("unter ", "below ") + fmt(C.bins[1] * sc, C.dec) : i === C.cols.length - 1 ? fmt(C.bins[i] * sc, C.dec) + L(" und mehr", " and more") : fmt(C.bins[i] * sc, C.dec) + " – " + fmt(C.bins[i + 1] * sc, C.dec)}</div>`).join("")}<div><span style="display:inline-block;width:14px;height:12px;background:#bfbfbf;vertical-align:middle"></span> ${L("keine Daten", "no data")}</div></div>`;
+    $("regTitle").textContent = C.t; $("regAsk").textContent = C.ask;
+    const all = Object.keys(paths).map((g) => [g, C.get(g)]).filter((r) => r[1] !== null && r[1] !== undefined && !isNaN(r[1]));
+    const de = all.filter((r) => r[0].startsWith("DE")).sort((a, b) => a[1] - b[1]);
+    const srt = [...all].sort((a, b) => a[1] - b[1]);
+    const S = H.summary, yix = (y) => S.year.indexOf(y);
+    const ans = {
+      us: L(`Am stärksten treffen die US-Zölle Regionen mit viel Industrie für den US-Markt: in Deutschland ${nm(de[0][0])} (${fv(de[0][1])}), ${nm(de[1][0])} und ${nm(de[2][0])}. Irische Regionen gewinnen im Modell, weil Produktion dorthin ausweicht.`, `US tariffs hit regions with much industry for the US market hardest: in Germany ${nm(de[0][0])} (${fv(de[0][1])}), ${nm(de[1][0])} and ${nm(de[2][0])}. Irish regions gain in the model as production shifts there.`),
+      cn: L(`Fallen Chinas abhängige Waren weg, steigt die Produktion fast überall leicht, weil heimische Hersteller teurer einspringen; das Realeinkommen sinkt trotzdem. Am meisten produzieren ${nm(srt[srt.length - 1][0])} und ${nm(srt[srt.length - 2][0])} zusätzlich.`, `If China's dependent goods stop, output rises slightly almost everywhere because domestic producers step in at higher cost; real income still falls. ${nm(srt[srt.length - 1][0])} and ${nm(srt[srt.length - 2][0])} add most output.`),
+      rs: L(`Längere Seewege verteuern Importe aus Asien; heimische Produktion ersetzt einen Teil davon. Die Effekte bleiben klein, am größten in ${nm(srt[srt.length - 1][0])}.`, `Longer sea routes make Asian imports dearer; domestic output replaces part of them. Effects stay small, largest in ${nm(srt[srt.length - 1][0])}.`),
+      en: L(`In ${nm(srt[srt.length - 1][0])} arbeiten ${fv(srt[srt.length - 1][1])} der Beschäftigten in energieintensiven Industrien; in Deutschland ist der Anteil in ${nm(de[de.length - 1][0])} am höchsten (${fv(de[de.length - 1][1])}).`, `In ${nm(srt[srt.length - 1][0])} ${fv(srt[srt.length - 1][1])} of employees work in energy-intensive industries; in Germany the share is highest in ${nm(de[de.length - 1][0])} (${fv(de[de.length - 1][1])}).`),
+      gdp: L(`Die Unterschiede zwischen Europas Kreisen und Regionen sind seit 2000 deutlich kleiner geworden: Die Streuung des logarithmierten BIP je Einwohner sank von ${fmt(S.sigma_nuts3[yix(2000)], 2)} auf ${fmt(S.sigma_nuts3[yix(2024)], 2)}. Ostdeutsche Kreise erreichten 1991 ${fmt(S.east_in_pct_of_west[yix(1991)], 0)} % des westdeutschen Niveaus, 2024 ${fmt(S.east_in_pct_of_west[yix(2024)], 0)} %.`, `Disparities between Europe's regions have narrowed markedly since 2000: the dispersion of log GDP per head fell from ${fmt(S.sigma_nuts3[yix(2000)], 2)} to ${fmt(S.sigma_nuts3[yix(2024)], 2)}. East German districts reached ${fmt(S.east_in_pct_of_west[yix(1991)], 0)} % of the West German level in 1991, ${fmt(S.east_in_pct_of_west[yix(2024)], 0)} % in 2024.`),
+      coh: L(`Die meisten Mittel je Einwohner flossen nach Süd- und Osteuropa; in Deutschland nach ${nm(de[de.length - 1][0])} (${fv(de[de.length - 1][1])}) und in die übrigen ostdeutschen Länder. Ein Wachstumssprung an der 75-%-Schwelle ist mit diesen offenen Daten nicht sicher messbar.`, `Most funds per head went to Southern and Eastern Europe; in Germany to ${nm(de[de.length - 1][0])} (${fv(de[de.length - 1][1])}) and the other eastern Länder. A growth jump at the 75 % threshold cannot be measured reliably with these open data.`),
+      port: L(`Der Seehandel konzentriert sich auf wenige Regionen: Rotterdam, Antwerpen, Algeciras und Hamburg. Deutschlands größter Hafen liegt in ${nm(de[de.length - 1][0])} (${fv(de[de.length - 1][1])}).`, `Sea trade concentrates in a few regions: Rotterdam, Antwerp, Algeciras and Hamburg. Germany's largest port is in ${nm(de[de.length - 1][0])} (${fv(de[de.length - 1][1])}).`) }[k];
+    $("regAnswer").textContent = ans;
+    $("regExplain").textContent = ["us", "cn", "rs"].includes(k)
+      ? L("Verschiebe-Anteils-Ansatz nach Autor, Dorn und Hanson (2013) sowie Dauth, Findeisen und Südekum (2014): Die Modelländerung jeder Branche im jeweiligen Land wird mit ihrem Beschäftigungsanteil in der Region gewichtet (Eurostat, Strukturstatistik nach NUTS 2). Nur gewerbliche Wirtschaft; Landwirtschaft und öffentlicher Dienst fehlen. Annahme: Innerhalb eines Landes trifft ein Branchenschock alle Regionen gleich. Kreisdaten nach Branchen veröffentlichen weder Eurostat noch die Bundesagentur für Arbeit als Datei.", "Shift-share approach after Autor, Dorn and Hanson (2013) and Dauth, Findeisen and Suedekum (2014): each industry's model change in its country is weighted by its employment share in the region (Eurostat structural business statistics by NUTS 2). Business economy only; agriculture and the public sector are missing. Assumption: within a country an industry shock hits all regions alike. District data by industry are not published as files by Eurostat or the German employment agency.")
+      : k === "gdp" ? L("ARDECO (JRC und EU-Kommission): BIP je Einwohner in Euro zu laufenden Preisen, relativ zum ungewichteten Mittel aller Regionen. Wechselkurse verzerren die Vergleiche über die Zeit, besonders um 1990 in Mittel- und Osteuropa. Ostdeutsche Regionen ab 1991.", "ARDECO (JRC and European Commission): GDP per head in euro at current prices, relative to the unweighted mean of all regions. Exchange rates distort comparisons over time, especially around 1990 in Central and Eastern Europe. East German regions from 1991.")
+      : k === "coh" ? L("Historische EU-Zahlungen aus EFRE, ESF, Kohäsionsfonds und ELER, von der Kommission den Regionen zugeordnet, nominal, geteilt durch die letzte verfügbare Bevölkerung. Prüfung der 75-%-Schwelle als Regressionsdiskontinuität (wie Becker, Egger und von Ehrlich 2010) für 2007 bis 2013 und 2014 bis 2020: Weder bei den Zahlungen noch beim Wachstum ist der Sprung signifikant; Grenzänderungen der NUTS-Regionen und Übergangsregionen verwischen die Schwelle.", "Historic EU payments from ERDF, ESF, Cohesion Fund and EAFRD, allocated to regions by the Commission, nominal, divided by the latest available population. Test of the 75 % threshold as a regression discontinuity (as Becker, Egger and von Ehrlich 2010) for 2007 to 2013 and 2014 to 2020: neither payments nor growth jump significantly; NUTS boundary changes and transition regions blur the threshold.")
+      : k === "en" ? L("Beschäftigte in Papier (C17), Mineralölverarbeitung (C19), Chemie (C20), Glas, Keramik und Steine (C23) sowie Metallerzeugung (C24) in % aller Beschäftigten der gewerblichen Wirtschaft. Ein grobes Maß für die Betroffenheit durch den Gaspreisschock 2022.", "Employment in paper (C17), refined petroleum (C19), chemicals (C20), glass, ceramics and stone (C23) and basic metals (C24) in % of business-economy employment. A rough measure of exposure to the 2022 gas price shock.")
+      : L("Eurostat, Seeverkehr nach NUTS-2-Region: gelöschte und geladene Güter, Tausend Tonnen, letztes verfügbares Jahr.", "Eurostat, maritime transport by NUTS 2 region: goods loaded and unloaded, thousand tonnes, latest year.");
+    $("regNote").textContent = L("NUTS-2021-Regionen; EU-Ausschnitt ohne Gebiete in Übersee.", "NUTS 2021 regions; EU view without overseas territories.");
+    $("regSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von Eurostat, ARDECO (JRC), Kohäsionsdaten der EU-Kommission und dem Caliendo-Parro-Modell; Kartengrundlage: © EuroGeographics für die Verwaltungsgrenzen (GISCO). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on Eurostat, ARDECO (JRC), European Commission cohesion data and the Caliendo-Parro model; base map: © EuroGeographics for the administrative boundaries (GISCO). Licence of the figure: CC BY 4.0.");
+    const top = k === "us" ? srt.slice(0, 10) : [...srt].reverse().slice(0, 10);
+    $("regTabTitle").textContent = k === "us" ? L("Die zehn am stärksten betroffenen Regionen", "The ten most affected regions") : L("Die zehn Regionen mit den höchsten Werten", "The ten regions with the highest values");
+    $("regTable").innerHTML = `<thead><tr><th>NUTS</th><th>${L("Region", "Region")}</th><th class="num">${L("Wert", "Value")}</th></tr></thead><tbody>` + top.map((r) => `<tr><td>${r[0]}</td><td>${esc(nm(r[0]))}</td><td class="num">${fv(r[1])}</td></tr>`).join("") + "</tbody>";
+    FIGDATA.reg = { header: ["NUTS", L("Region", "Region"), C.t], rows: all.map((r) => [r[0], nm(r[0]), +(r[1] * sc).toFixed(C.dec + 1)]) };
   }
 
   function renderForecast() {
