@@ -26,6 +26,7 @@
       <a href="#abhaengigkeiten">Dependencies</a>
       <a href="#wettbewerb">China competition</a>
       <a href="#nullhandel">Zero trade</a>
+      <a href="#regime">Government type</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -265,6 +266,55 @@
         <aside class="cside"><p class="capnote" id="ztCmpNote"></p></aside>
       </div>
       <p class="src" id="ztCmpSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+  </section>
+
+  <section id="view-regime" class="view" hidden>
+    <h2>With which governments do Germany and the EU trade?</h2>
+    <div class="toolbar">
+      <label for="rgWho">Level</label>
+      <select id="rgWho"><option value="DEU">Germany</option><option value="EU27">EU, trade with non-members</option></select>
+      <label for="rgFlow">Direction</label>
+      <select id="rgFlow"><option value="M">Imports</option><option value="X">Exports</option></select>
+      <label for="rgDim">Classification</label>
+      <select id="rgDim"><option value="regime">Regime type (V-Dem)</option><option value="bloc">UN voting alignment</option></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="rgAnswer"></p>
+      <p class="explain">Regime type after V-Dem (Regimes of the World): liberal democracy, electoral democracy, electoral autocracy (elections without fair conditions), closed autocracy; classification of each year. In 2024 V-Dem also counts India, Turkey, Mexico and Ukraine as electoral autocracies and downgrades the UK and Korea to electoral democracy. UN alignment: a country's position between China and the US by its voting in the UN General Assembly (Bailey, Strezhnev and Voeten 2017), split in the middle.</p>
+    </div>
+    <div class="kpis" id="rgFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="rg">
+      <p class="cask">How has trade shifted by the partners' form of government?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="rgTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote" id="rgNote"></p></aside>
+      </div>
+      <p class="src">Source: own calculations based on IMF IMTS, V-Dem v16 (CC BY-SA 4.0) and UN ideal points after Bailey, Strezhnev and Voeten (2017, CC0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="rgdep">
+      <p class="cask">Who supplies the dependent goods?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Dependent goods 2024: import value by main supplier, in %</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgDepChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Dependent goods after the European Commission criteria (see Dependencies), BACI 2024. Classification of the main supplier in 2024.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on IMF IMTS, V-Dem v16 (CC BY-SA 4.0) and UN ideal points after Bailey, Strezhnev and Voeten (2017, CC0). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="rgbr">
+      <p class="cask">How broadly does Germany trade with democracies and autocracies?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Germany: share of partner x product pairs (HS6) with two-way trade, in %</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgBrChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">From the zero-trade matrices (BACI HS92): share of all combinations of partner and HS6 good in which Germany both exports and imports that good with the partner. Partners by regime type of each year.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab licence 2.0) and V-Dem v16. Licence of the figure: CC BY 4.0.</p>
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
     </figure>
     </div>

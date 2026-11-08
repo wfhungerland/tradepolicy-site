@@ -26,6 +26,7 @@
       <a href="#abhaengigkeiten">Abhängigkeiten</a>
       <a href="#wettbewerb">China-Wettbewerb</a>
       <a href="#nullhandel">Null-Handel</a>
+      <a href="#regime">Regierungsform</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -265,6 +266,55 @@
         <aside class="cside"><p class="capnote" id="ztCmpNote"></p></aside>
       </div>
       <p class="src" id="ztCmpSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+  </section>
+
+  <section id="view-regime" class="view" hidden>
+    <h2>Mit welchen Regierungen handeln Deutschland und die EU?</h2>
+    <div class="toolbar">
+      <label for="rgWho">Ebene</label>
+      <select id="rgWho"><option value="DEU">Deutschland</option><option value="EU27">EU, Handel mit Drittstaaten</option></select>
+      <label for="rgFlow">Richtung</label>
+      <select id="rgFlow"><option value="M">Importe</option><option value="X">Exporte</option></select>
+      <label for="rgDim">Einstufung</label>
+      <select id="rgDim"><option value="regime">Regimetyp (V-Dem)</option><option value="bloc">Nähe in UN-Abstimmungen</option></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="rgAnswer"></p>
+      <p class="explain">Regimetyp nach V-Dem (Regimes of the World): liberale Demokratie, Wahldemokratie, Wahlautokratie (Wahlen ohne faire Bedingungen), geschlossene Autokratie; Einstufung des jeweiligen Jahres. V-Dem zählt 2024 auch Indien, die Türkei, Mexiko und die Ukraine zu den Wahlautokratien und stuft das Vereinigte Königreich und Korea zur Wahldemokratie herab. UN-Nähe: Lage eines Landes zwischen China und den USA nach seinem Abstimmungsverhalten in der UN-Generalversammlung (Bailey, Strezhnev und Voeten 2017), geteilt in der Mitte.</p>
+    </div>
+    <div class="kpis" id="rgFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="rg">
+      <p class="cask">Wie hat sich der Handel nach Regierungsform der Partner verschoben?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="rgTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote" id="rgNote"></p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von IMF IMTS, V-Dem v16 (CC BY-SA 4.0) und UN-Idealpunkten nach Bailey, Strezhnev und Voeten (2017, CC0). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="rgdep">
+      <p class="cask">Von wem kommen die abhängigen Waren?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Abhängige Waren 2024: Importwert nach Hauptlieferant, in %</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgDepChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Abhängige Waren nach den Kriterien der EU-Kommission (siehe Abhängigkeiten), BACI 2024. Einstufung des Hauptlieferanten 2024.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von IMF IMTS, V-Dem v16 (CC BY-SA 4.0) und UN-Idealpunkten nach Bailey, Strezhnev und Voeten (2017, CC0). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="rgbr">
+      <p class="cask">Wie breit handelt Deutschland mit Demokratien und Autokratien?</p>
+      <h3><span class="fignum"></span><span class="ftitle">Deutschland: Anteil der Partner-Waren-Paare (HS6) mit Handel in beide Richtungen, in %</span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="rgBrChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Aus den Null-Handel-Matrizen (BACI HS92): Anteil aller Kombinationen aus Partnerland und HS6-Ware, in denen Deutschland dieselbe Ware mit dem Partner exportiert und importiert. Partner nach Regimetyp des jeweiligen Jahres.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von CEPII BACI HS92 V202601 (Etalab-Lizenz 2.0) und V-Dem v16. Lizenz der Abbildung: CC BY 4.0.</p>
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
     </figure>
     </div>

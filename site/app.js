@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -196,6 +196,7 @@
     if (view === "abhaengigkeiten") await renderDependencies();
     if (view === "wettbewerb") await renderCompetition();
     if (view === "nullhandel") await renderZeroTrade();
+    if (view === "regime") await renderRegime();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -679,6 +680,65 @@
       "EU27 and euro area (21 members, as of 2026): mean of member states' shares, unweighted or weighted by 2024 exports." + (lv === "country" ? " At country level nine members without IMF data since 1990 are missing." : " Luxembourg is missing because BACI reports it separately only from 1999."));
     $("ztCmpSrc").textContent = $("ztSrc").textContent;
     FIGDATA.ztcmp = { header: [L("Land/Gruppe", "Country/group"), ...cats.map((c) => c[1] + " (%)")], rows: ents.map((e) => [agg[e] || cname(e) || e, ...cats.map((c, q) => +((CE[e][q][yi] || 0) / 10).toFixed(1))]) };
+  }
+
+  async function renderRegime() {
+    const R = await getJSON("data/regime.json");
+    if (!$("rgWho").dataset.ready) { $("rgWho").dataset.ready = "1"; ["rgWho", "rgFlow", "rgDim"].forEach((i) => $(i).addEventListener("change", () => renderRegime())); }
+    const who = $("rgWho").value, flow = $("rgFlow").value, dim = $("rgDim").value;
+    const catsDe = R.categories[dim];
+    const en = { "liberale Demokratie": "liberal democracy", "Wahldemokratie": "electoral democracy", "Wahlautokratie": "electoral autocracy", "geschlossene Autokratie": "closed autocracy", "keine Einstufung": "not classified", "näher an den USA": "closer to the US", "näher an China": "closer to China" };
+    const cn = (c) => EN ? en[c] || c : c;
+    const col = { "liberale Demokratie": "#002060", "Wahldemokratie": "#5b9bd5", "Wahlautokratie": "#f4b183", "geschlossene Autokratie": "#c00000", "keine Einstufung": "#d9d9d9", "näher an den USA": "#002060", "näher an China": "#c00000" };
+    const S = R.series[`${who}_${flow}_${dim}`], ys = S.years, n = ys.length, last = n - 1;
+    const auto = (i) => dim === "regime" ? S.values[2][i] + S.values[3][i] : S.values[1][i];
+    const fixed = R.series[`${who}_${flow}_fixed`], lib = R.series[`${who}_${flow}_libdem`];
+    const whoN = who === "DEU" ? L("Deutschlands", "Germany's") : L("der EU im Handel mit Drittstaaten", "the EU's trade with non-members:");
+    const flowN = flow === "X" ? L("Exporten", "exports") : L("Importen", "imports");
+    const groupN = dim === "regime" ? L("Autokratien", "autocracies") : L("Ländern, die in der UN näher an China stehen,", "countries closer to China in UN votes");
+    $("rgAnswer").textContent = L(`Der Anteil von ${groupN} an den ${flowN} ${whoN} stieg von ${fmt(auto(0) * 100, 0)} % (${ys[0]}) auf ${fmt(auto(last) * 100, 0)} % (${ys[last]}).` + (dim === "regime" ? ` Bei fester Einstufung von 2024 sind es ${fmt(fixed[0] * 100, 0)} % und ${fmt(fixed[last] * 100, 0)} %; die Verschiebung kommt also aus dem Handel, nicht aus neu eingestuften Ländern.` : ""),
+      `The share of ${groupN} in ${whoN} ${flowN} rose from ${fmt(auto(0) * 100, 0)} % (${ys[0]}) to ${fmt(auto(last) * 100, 0)} % (${ys[last]}).` + (dim === "regime" ? ` With the 2024 classification held fixed it is ${fmt(fixed[0] * 100, 0)} % and ${fmt(fixed[last] * 100, 0)} %, so the shift comes from trade, not from reclassified countries.` : ""));
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("rgFacts").innerHTML = [
+      tile(`${fmt(auto(last) * 100, 0)} %`, dim === "regime" ? L("Autokratien", "Autocracies") : L("näher an China", "closer to China"), `${ys[last]}, ${L(`${ys[0]}: ${fmt(auto(0) * 100, 0)} %`, `${ys[0]}: ${fmt(auto(0) * 100, 0)} %`)}`),
+      tile(`${fmt(S.values[0][last] * 100, 0)} %`, cn(catsDe[0]), String(ys[last])),
+      tile(fmt(lib[last], 2), L("Demokratie-Index der Partner", "Partners' democracy index"), L(`handelsgewichtet, V-Dem LDI; ${ys[0]}: ${fmt(lib[0], 2)}`, `trade-weighted, V-Dem LDI; ${ys[0]}: ${fmt(lib[0], 2)}`)),
+    ].join("");
+    // stacked bars per year
+    const W = 860, H = 320, m = { l: 16, r: 46, t: 40, b: 28 }, bw = (W - m.l - m.r) / n, Y = (v) => H - m.b - v / 100 * (H - m.t - m.b);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(L("Handel nach Regierungsform", "Trade by government type"))}">`;
+    catsDe.forEach((c, q) => { s += `<rect x="${m.l + q * 165}" y="6" width="12" height="12" fill="${col[c]}"/><text x="${m.l + q * 165 + 18}" y="16">${esc(cn(c))}</text>`; });
+    if (dim === "regime") s += `<line x1="${m.l}" x2="${m.l + 20}" y1="30" y2="30" stroke="#000" stroke-dasharray="4 3"/><text x="${m.l + 26}" y="34">${L("Grenze zu den Autokratien bei fester Einstufung 2024", "boundary to autocracies with 2024 classification fixed")}</text>`;
+    [0, 25, 50, 75, 100].forEach((v) => { s += `<text x="${W - m.r + 6}" y="${Y(v) + 4}">${v}</text>`; });
+    ys.forEach((y, i) => {
+      let acc = 0; const x = m.l + i * bw + 1;
+      catsDe.forEach((c, q) => { const v = S.values[q][i] * 100; s += `<rect x="${x}" y="${Y(acc + v)}" width="${bw - 2}" height="${Y(acc) - Y(acc + v)}" fill="${col[c]}"><title>${y}, ${esc(cn(c))}: ${fmt(v, 1)} %</title></rect>`; acc += v; });
+      if (y % 5 === 0) s += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${y}</text>`;
+    });
+    if (dim === "regime") s += `<path d="${fixed.map((v, i) => `${i ? "L" : "M"}${m.l + i * bw + bw / 2},${Y(100 - v * 100)}`).join("")}" fill="none" stroke="#000" stroke-width="1.4" stroke-dasharray="4 3"/>`;
+    $("rgChart").innerHTML = s + "</svg>";
+    $("rgTitle").textContent = L(`${who === "DEU" ? "Deutschland" : "EU, Handel mit Drittstaaten"}: ${flow === "X" ? "Exporte" : "Importe"} nach ${dim === "regime" ? "Regimetyp" : "UN-Nähe"} der Partner, Anteile in %`, `${who === "DEU" ? "Germany" : "EU, trade with non-members"}: ${flow === "X" ? "exports" : "imports"} by partners' ${dim === "regime" ? "regime type" : "UN alignment"}, shares in %`);
+    $("rgNote").textContent = who === "DEU" ? L("Deutschland: Handel mit allen Partnern, auch innerhalb der EU (Ungarn gilt seit 2018 als Wahlautokratie). Werte: IMF IMTS, Exporte fob, Importe cif.", "Germany: trade with all partners, including within the EU (Hungary counts as an electoral autocracy since 2018). Values: IMF IMTS, exports fob, imports cif.")
+      : L("EU: Summe der Mitgliedstaaten im Handel mit Ländern außerhalb der EU (Zusammensetzung 2026). Werte: IMF IMTS.", "EU: sum of member states' trade with countries outside the EU (2026 composition). Values: IMF IMTS.");
+    FIGDATA.rg = { header: [L("Jahr", "Year"), ...catsDe.map((c) => cn(c) + " (%)")], rows: ys.map((y, i) => [y, ...catsDe.map((c, q) => +(S.values[q][i] * 100).toFixed(2))]) };
+    // dependencies
+    const rows = ["EU27", "DEU"], rowH = 46, dm = { l: 130, r: 20, t: 34, b: 10 }, DH = dm.t + dm.b + rowH * rows.length, XS = (v) => dm.l + v / 100 * (W - dm.l - dm.r);
+    let d = `<svg viewBox="0 0 ${W} ${DH}" role="img" aria-label="${esc(L("Abhängige Waren nach Hauptlieferant", "Dependent goods by main supplier"))}">`;
+    catsDe.forEach((c, q) => { d += `<rect x="${16 + q * 165}" y="6" width="12" height="12" fill="${col[c]}"/><text x="${16 + q * 165 + 18}" y="16">${esc(cn(c))}</text>`; });
+    rows.forEach((lv, r) => {
+      const y = dm.t + r * rowH, D = R.dependencies[lv][dim]; let acc = 0;
+      d += `<text x="${dm.l - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">${lv === "DEU" ? L("Deutschland", "Germany") : "EU27"}</text>`;
+      catsDe.forEach((c) => { const e = D[c]; if (!e) return; const v = e[2] * 100; d += `<rect x="${XS(acc)}" y="${y + 6}" width="${XS(acc + v) - XS(acc)}" height="${rowH - 12}" fill="${col[c]}"><title>${esc(cn(c))}: ${e[0]} ${L("Waren", "goods")}, ${fmt(e[1], 1)} ${L("Mrd. USD", "USD bn")}, ${fmt(v, 0)} %</title></rect>`;
+        if (v > 6) d += `<text x="${XS(acc + v / 2)}" y="${y + rowH / 2 + 4}" text-anchor="middle" fill="${["#002060", "#c00000"].includes(col[c]) ? "#fff" : "#000"}" style="fill:${["#002060", "#c00000"].includes(col[c]) ? "#fff" : "#000"}">${fmt(v, 0)} %</text>`; acc += v; });
+    });
+    $("rgDepChart").innerHTML = d + "</svg>";
+    FIGDATA.rgdep = { header: [L("Ebene", "Level"), L("Einstufung", "Class"), L("Waren", "Goods"), L("Importe, Mrd. USD", "Imports, USD bn"), L("Anteil am Wert (%)", "Share of value (%)")],
+      rows: rows.flatMap((lv) => catsDe.filter((c) => R.dependencies[lv][dim][c]).map((c) => { const e = R.dependencies[lv][dim][c]; return [lv, cn(c), e[0], e[1], +(e[2] * 100).toFixed(1)]; })) };
+    // breadth
+    const B = R.breadth, rmap = { 3: "liberale Demokratie", 2: "Wahldemokratie", 1: "Wahlautokratie", 0: "geschlossene Autokratie" };
+    const ser = [3, 2, 1, 0].map((r, k) => ({ label: cn(rmap[r]), color: col[rmap[r]], values: B.regimes[r].two_way.map((v) => +(v * 100).toFixed(2)), bold: k === 0 }));
+    lineChart($("rgBrChart"), B.years, ser, { min: 0, label: L("Breite des Handels", "Breadth of trade"), unit: "%" });
+    FIGDATA.rgbr = { header: [L("Jahr", "Year"), ...ser.map((x) => x.label + " (%)")], rows: B.years.map((y, i) => [y, ...ser.map((x) => x.values[i])]) };
   }
 
   function renderForecast() {
