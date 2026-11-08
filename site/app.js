@@ -580,7 +580,7 @@
     const ids = ["ztLevel", "ztView", "ztStat", "ztPeriod"];
     if (!$("ztLevel").dataset.ready) { $("ztLevel").dataset.ready = "1"; ids.forEach((i) => $(i).addEventListener("change", () => renderZeroTrade())); }
     const lv = $("ztLevel").value, vw = $("ztView").value, stat = $("ztStat").value;
-    const [Z, G] = await Promise.all([getJSON(`data/zerotrade_${lv}.json`), getJSON("data/zerotrade_germany.json")]);
+    const [Z, CMP] = await Promise.all([getJSON(`data/zerotrade_${lv}.json`), getJSON("data/zerotrade_compare.json")]);
     const plab = { 2001: L("China in der WTO", "China joins the WTO"), 2004: L("EU-Osterweiterung", "EU eastern enlargement"), 2008: L("Finanzkrise", "financial crisis"), 2020: L("Pandemie", "pandemic") };
     const ps = $("ztPeriod"), prev = ps.value;
     ps.innerHTML = Z.starts.map((s, k) => `<option value="${s}">${L("seit", "since")} ${s} (${k === 0 ? (s === 1990 ? L("Wiedervereinigung", "German reunification") : L("alle Jahre", "all years")) : plab[s]})</option>`).join("");
@@ -638,9 +638,12 @@
     };
     FIGDATA.zt = { header: [L("Land", "Country"), ...Z.countries], rows: Z.countries.map((c, i) => [c, ...Z.countries.map((_, j) => i === j ? "" : +(val(i, j) / 255).toFixed(3))]) };
     // Germany: stacked bars per year
-    const g = G[lv], cats = [["two_way", L("beidseitig", "two-way"), "#002060"], ["export_only", L("nur Export", "export only"), "#5b9bd5"], ["import_only", L("nur Import", "import only"), "#a6a6a6"], ["none", L("kein Handel", "no trade"), "#f2f2f2"]];
-    $("ztGerAsk").textContent = L("Mit wie vielen Partnern und Waren handelt Deutschland?", "With how many partners and goods does Germany trade?");
-    $("ztGerTitle").textContent = L(`Deutschland: Handel nach Partnern${lv === "country" ? "" : " und Codes"}, ${lvName}, in %`, `Germany: trade by partner${lv === "country" ? "" : " and code"}, ${lvName}, in %`);
+    const CE = CMP[lv].entities, gi = CE[iso] ? iso : "DEU";
+    const g = { years: CMP[lv].years }; ["two_way", "export_only", "import_only", "none"].forEach((c, q) => { g[c] = CE[gi][q].map((v) => v === null ? 0 : v / 1000); });
+    const gname = cname(gi) || gi;
+    const cats = [["two_way", L("beidseitig", "two-way"), "#002060"], ["export_only", L("nur Export", "export only"), "#5b9bd5"], ["import_only", L("nur Import", "import only"), "#a6a6a6"], ["none", L("kein Handel", "no trade"), "#f2f2f2"]];
+    $("ztGerAsk").textContent = L(`Mit wie vielen Partnern und Waren handelt ${gname}?`, `With how many partners and goods does ${gname} trade?`);
+    $("ztGerTitle").textContent = L(`${gname}: Handel nach Partnern${lv === "country" ? "" : " und Codes"}, ${lvName}, in %`, `${gname}: trade by partner${lv === "country" ? "" : " and code"}, ${lvName}, in %`);
     $("ztGerSrc").textContent = $("ztSrc").textContent;
     const W = 860, H = 300, m = { l: 16, r: 46, t: 34, b: 28 }, n = g.years.length, bw = (W - m.l - m.r) / n;
     const Y = (v) => H - m.b - v / 100 * (H - m.t - m.b);
@@ -654,6 +657,28 @@
     });
     $("ztGerChart").innerHTML = s + "</svg>";
     FIGDATA.ztger = { header: [L("Jahr", "Year"), ...cats.map((c) => c[1] + " (%)")], rows: g.years.map((y, i) => [y, ...cats.map((c) => +(g[c[0]][i] * 100).toFixed(2))]) };
+    // comparison: last year, horizontal stacked bars
+    const agg = { EU27: L("EU27, Ø Mitglieder", "EU27, member mean"), EU27w: L("EU27, exportgewichtet", "EU27, export-weighted"), EA21: L("Euroraum, Ø Mitglieder", "Euro area, member mean"), EA21w: L("Euroraum, exportgewichtet", "Euro area, export-weighted") };
+    let ents = ["DEU", "EU27", "EU27w", "EA21", "EA21w", "USA", "JPN", "FRA", "ITA", "GBR", "CAN", "CHN", "KOR", "ESP", "NLD", "POL", "AUT"];
+    if (!ents.includes(gi)) ents = [gi, ...ents];
+    ents = ents.filter((e) => CE[e]);
+    const yi = CMP[lv].years.length - 1, yl = CMP[lv].years[yi];
+    const rowH = 22, cm = { l: 200, r: 20, t: 34, b: 26 }, CW = 860, CH = cm.t + cm.b + rowH * ents.length;
+    const XS = (v) => cm.l + v / 100 * (CW - cm.l - cm.r);
+    let c2 = `<svg viewBox="0 0 ${CW} ${CH}" role="img" aria-label="${L("Vergleich", "Comparison")}">`;
+    cats.forEach((c, q) => { c2 += `<rect x="${cm.l + q * 140}" y="6" width="12" height="12" fill="${c[2]}" stroke="#bfbfbf" stroke-width="0.5"/><text x="${cm.l + q * 140 + 18}" y="16">${c[1]}</text>`; });
+    [0, 25, 50, 75, 100].forEach((v) => { c2 += `<text x="${XS(v)}" y="${CH - 8}" text-anchor="middle">${v}</text>`; });
+    ents.forEach((e, r) => {
+      const y = cm.t + r * rowH, lab = agg[e] || cname(e) || e; let acc = 0;
+      c2 += `<text x="${cm.l - 8}" y="${y + rowH / 2 + 4}" text-anchor="end"${e === gi ? ' font-weight="600"' : ""}>${esc(lab)}</text>`;
+      cats.forEach((c, q) => { const v = (CE[e][q][yi] || 0) / 10; c2 += `<rect x="${XS(acc)}" y="${y + 3}" width="${XS(acc + v) - XS(acc)}" height="${rowH - 6}" fill="${c[2]}"><title>${esc(lab)}, ${c[1]}: ${fmt(v, 1)} %</title></rect>`; acc += v; });
+    });
+    $("ztCmpChart").innerHTML = c2 + "</svg>";
+    $("ztCmpTitle").textContent = L(`Handel nach Partnern${lv === "country" ? "" : " und Codes"} im Vergleich, ${lvName}, ${yl}, in %`, `Trade by partner${lv === "country" ? "" : " and code"} compared, ${lvName}, ${yl}, in %`);
+    $("ztCmpNote").textContent = L("EU27 und Euroraum (21 Mitglieder, Stand 2026): Mittel der Anteile der Mitgliedstaaten, ungewichtet oder nach Exporten 2024 gewichtet." + (lv === "country" ? " Auf Länderebene fehlen neun Mitglieder ohne IMF-Daten seit 1990." : " Luxemburg fehlt, weil BACI es erst ab 1999 getrennt ausweist."),
+      "EU27 and euro area (21 members, as of 2026): mean of member states' shares, unweighted or weighted by 2024 exports." + (lv === "country" ? " At country level nine members without IMF data since 1990 are missing." : " Luxembourg is missing because BACI reports it separately only from 1999."));
+    $("ztCmpSrc").textContent = $("ztSrc").textContent;
+    FIGDATA.ztcmp = { header: [L("Land/Gruppe", "Country/group"), ...cats.map((c) => c[1] + " (%)")], rows: ents.map((e) => [agg[e] || cname(e) || e, ...cats.map((c, q) => +((CE[e][q][yi] || 0) / 10).toFixed(1))]) };
   }
 
   function renderForecast() {
