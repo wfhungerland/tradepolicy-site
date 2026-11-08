@@ -27,6 +27,7 @@
       <a href="#wettbewerb">China-Wettbewerb</a>
       <a href="#nullhandel">Null-Handel</a>
       <a href="#regime">Regierungsform</a>
+      <a href="#mittelstand">Mittelstand</a>
       <a href="#szenarien">Szenarien</a>
       <a href="#prognose">Prognosetest</a>
       <a href="#methodik">Methodik</a>
@@ -317,6 +318,56 @@
       <p class="src">Quelle: eigene Berechnungen auf Basis von CEPII BACI HS92 V202601 (Etalab-Lizenz 2.0) und V-Dem v16. Lizenz der Abbildung: CC BY 4.0.</p>
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
     </figure>
+    </div>
+  </section>
+
+  <section id="view-mittelstand" class="view" hidden>
+    <h2>Wie stark hängt der Mittelstand am Außenhandel?</h2>
+    <div class="toolbar">
+      <label for="msFlow">Richtung</label>
+      <select id="msFlow"><option value="EXP">Exporte</option><option value="IMP">Importe</option></select>
+      <label for="msPartner">Partner</label>
+      <select id="msPartner"></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="msAnswer"></p>
+      <p class="explain">Kleine und mittlere Unternehmen (KMU): weniger als 250 Beschäftigte. Eurostat verknüpft Zolldaten mit dem Unternehmensregister. Unternehmen zählen nach ihrer Haupttätigkeit; exportiert ein Hersteller über einen Großhändler, zählt der Großhändler. Der Mittelstand im deutschen Sinn umfasst auch größere Familienunternehmen und ist damit breiter als die KMU. Betroffenheit: Der Modellrückgang der Exporte in die USA (Zollstand August 2026) und die Exporte unter Preisdruck aus China werden je Branche nach dem KMU-Anteil aufgeteilt.</p>
+    </div>
+    <div class="kpis" id="msFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="ms">
+      <p class="cask">Wie groß ist der KMU-Anteil je Partnerland?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Anteil der KMU am Handelswert, einschließlich Unternehmen unbekannter Größe im Nenner. EU27: alle Mitgliedstaaten zusammen.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von Eurostat, Handel nach Unternehmensmerkmalen (ext_tec10, ext_tec01). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+
+    <figure class="card fig" data-fig="msts">
+      <p class="cask">Wie hat sich der KMU-Anteil entwickelt?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msTsTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msTsChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Anteil der KMU am Handelswert mit dem gewählten Partner, Deutschland und EU27. Sprünge können aus Änderungen im Unternehmensregister stammen (etwa 2018); die EU-Summe liegt nur für einzelne Jahre vor.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von Eurostat, Handel nach Unternehmensmerkmalen (ext_tec10, ext_tec01). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+
+    <figure class="card fig" data-fig="msact">
+      <p class="cask">In welchen Branchen exportieren KMU viel?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msActTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msActChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Exporte deutscher Unternehmen in Länder außerhalb der EU nach Haupttätigkeit; Balkenlänge: KMU-Anteil, Zahl dahinter: Exportwert insgesamt.</p></aside>
+      </div>
+      <p class="src">Quelle: eigene Berechnungen auf Basis von Eurostat, Handel nach Unternehmensmerkmalen (ext_tec10, ext_tec01). Lizenz der Abbildung: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+
     </div>
   </section>
 

@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -197,6 +197,7 @@
     if (view === "wettbewerb") await renderCompetition();
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
+    if (view === "mittelstand") await renderMittelstand();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -739,6 +740,63 @@
     const ser = [3, 2, 1, 0].map((r, k) => ({ label: cn(rmap[r]), color: col[rmap[r]], values: B.regimes[r].two_way.map((v) => +(v * 100).toFixed(2)), bold: k === 0 }));
     lineChart($("rgBrChart"), B.years, ser, { min: 0, label: L("Breite des Handels", "Breadth of trade"), unit: "%" });
     FIGDATA.rgbr = { header: [L("Jahr", "Year"), ...ser.map((x) => x.label + " (%)")], rows: B.years.map((y, i) => [y, ...ser.map((x) => x.values[i])]) };
+  }
+
+  async function renderMittelstand() {
+    const M = await getJSON("data/mittelstand.json");
+    const pn = (p) => ({ WORLD: L("Welt", "World"), INT_EU: L("EU-Binnenmarkt", "EU single market"), EXT_EU: L("außerhalb der EU", "outside the EU") })[p] || cname(M.iso[p]) || p;
+    const ps = $("msPartner");
+    if (!ps.dataset.ready) {
+      ps.dataset.ready = "1"; ps.innerHTML = M.partners.map((p) => `<option value="${p}"${p === "US" ? " selected" : ""}>${esc(pn(p))}</option>`).join("");
+      ["msFlow", "msPartner"].forEach((i) => $(i).addEventListener("change", () => renderMittelstand()));
+    }
+    const flow = $("msFlow").value, partner = ps.value, ys = M.years, li = ys.length - 1, yl = ys[li];
+    const de = M.by_partner[`DE_${flow}_THS_EUR`], eu = M.by_partner[`EU_${flow}_THS_EUR`], nr = M.by_partner["DE_EXP_NR_ENT"];
+    const sh = (o, p) => o[p] ? o[p].share[li] : null, S = M.summary, pc = (v, d = 0) => v === null ? "–" : `${fmt(v * 100, d)} %`;
+    $("msAnswer").textContent = L(`Kleine und mittlere Unternehmen tragen ${pc(S[0])} der deutschen Exporte (EU: ${pc(sh(M.by_partner.EU_EXP_THS_EUR, "WORLD"))}), in die USA nur ${pc(S[1])} und nach China ${pc(S[2])}. Vom Exportrückgang in die USA durch die Zölle tragen sie rund ${pc(S[3])}, von den Exporten unter Preisdruck aus China ${pc(S[4])}. Stärker hängen sie bei den Importen an China: ${pc(S[5])} der Importe aus China gehen an KMU, gegenüber ${pc(S[6])} aller Importe.`,
+      `Small and medium-sized enterprises account for ${pc(S[0])} of German exports (EU: ${pc(sh(M.by_partner.EU_EXP_THS_EUR, "WORLD"))}), only ${pc(S[1])} of exports to the US and ${pc(S[2])} of exports to China. They carry about ${pc(S[3])} of the tariff-driven fall in exports to the US and ${pc(S[4])} of exports under Chinese price pressure. They depend more on China for imports: ${pc(S[5])} of imports from China go to SMEs, against ${pc(S[6])} of all imports.`);
+    const tile = (big, label, sub) => `<div class="kpi"><span class="kn">${esc(label)}</span><span class="kv">${big}</span><span class="ks">${esc(sub)}</span></div>`;
+    $("msFacts").innerHTML = [
+      tile(pc(S[0]), L("KMU-Anteil an den Exporten", "SME share of exports"), `${yl}, ${L("Welt", "world")}`),
+      tile(nr.WORLD ? Math.round(nr.WORLD.total[li]).toLocaleString(LOC) : "–", L("exportierende Unternehmen", "exporting enterprises"), L(`davon ${pc(nr.WORLD.share[li])} KMU`, `of which ${pc(nr.WORLD.share[li])} SMEs`)),
+      tile(pc(S[3]), L("KMU-Anteil am US-Zollverlust", "SME share of US tariff loss"), L(`von ${fmt(M.us_loss_bn, 0)} Mrd. USD (Industrie)`, `of USD ${fmt(M.us_loss_bn, 0)} bn (manufacturing)`)),
+      tile(pc(S[5]), L("KMU-Anteil an Importen aus China", "SME share of imports from China"), L(`alle Importe: ${pc(S[6])}`, `all imports: ${pc(S[6])}`)),
+    ].join("");
+    // partner bars
+    const P = M.partners.filter((p) => de[p] || eu[p]), W = 860, rowH = 24, m = { l: 200, r: 50, t: 34, b: 26 }, H = m.t + m.b + rowH * P.length;
+    const mx = Math.ceil(Math.max(...P.flatMap((p) => [sh(de, p) || 0, sh(eu, p) || 0])) * 10) / 10, XS = (v) => m.l + v / mx * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(L("KMU-Anteil nach Partner", "SME share by partner"))}">`;
+    s += `<rect x="${m.l}" y="6" width="12" height="12" fill="#002060"/><text x="${m.l + 18}" y="16">${L("Deutschland", "Germany")}</text><rect x="${m.l + 140}" y="6" width="12" height="12" fill="#a6a6a6"/><text x="${m.l + 158}" y="16">EU27</text>`;
+    niceTicks(0, mx * 100, 5).forEach((tk) => { s += `<line class="grid" x1="${XS(tk / 100)}" x2="${XS(tk / 100)}" y1="${m.t - 4}" y2="${H - m.b}"/><text x="${XS(tk / 100)}" y="${H - 8}" text-anchor="middle">${tk}</text>`; });
+    P.forEach((p, r) => {
+      const y = m.t + r * rowH, a = sh(de, p), b = sh(eu, p);
+      s += `<text x="${m.l - 8}" y="${y + rowH / 2 + 4}" text-anchor="end"${p === partner ? ' font-weight="600"' : ""}>${esc(pn(p))}</text>`;
+      if (a !== null) s += `<rect x="${m.l}" y="${y + 3}" width="${XS(a) - m.l}" height="${(rowH - 6) / 2}" fill="#002060"><title>${esc(pn(p))}, ${L("Deutschland", "Germany")}: ${pc(a, 1)}</title></rect>`;
+      if (b !== null) s += `<rect x="${m.l}" y="${y + 3 + (rowH - 6) / 2}" width="${XS(b) - m.l}" height="${(rowH - 6) / 2}" fill="#a6a6a6"><title>${esc(pn(p))}, EU27: ${pc(b, 1)}</title></rect>`;
+      if (a !== null) s += `<text x="${XS(Math.max(a, b || 0)) + 6}" y="${y + rowH / 2 + 4}">${fmt(a * 100, 0)}</text>`;
+    });
+    $("msChart").innerHTML = s + "</svg>";
+    $("msTitle").textContent = L(`KMU-Anteil an den ${flow === "EXP" ? "Exporten" : "Importen"} nach Partner, ${yl}, in %`, `SME share of ${flow === "EXP" ? "exports" : "imports"} by partner, ${yl}, in %`);
+    FIGDATA.ms = { header: [L("Partner", "Partner"), L("Deutschland (%)", "Germany (%)"), "EU27 (%)"], rows: P.map((p) => [pn(p), sh(de, p) === null ? "" : +(sh(de, p) * 100).toFixed(1), sh(eu, p) === null ? "" : +(sh(eu, p) * 100).toFixed(1)]) };
+    // time series
+    const ser = [{ label: L("Deutschland", "Germany"), color: "#002060", values: (de[partner] ? de[partner].share : ys.map(() => null)).map((v) => v === null ? null : +(v * 100).toFixed(2)), bold: true },
+      { label: "EU27", color: "#a6a6a6", values: (eu[partner] ? eu[partner].share : ys.map(() => null)).map((v) => v === null ? null : +(v * 100).toFixed(2)) }];
+    lineChart($("msTsChart"), ys, ser, { min: 0, label: L("KMU-Anteil", "SME share"), unit: "%" });
+    $("msTsTitle").textContent = L(`KMU-Anteil an den ${flow === "EXP" ? "Exporten" : "Importen"}, Partner: ${pn(partner)}, in %`, `SME share of ${flow === "EXP" ? "exports" : "imports"}, partner: ${pn(partner)}, in %`);
+    FIGDATA.msts = { header: [L("Jahr", "Year"), ...ser.map((x) => x.label + " (%)")], rows: ys.map((y, i) => [y, ...ser.map((x) => x.values[i] === null ? "" : x.values[i])]) };
+    // activities
+    const A = (M.by_activity.EXT_EU || []).filter((r) => r[0] !== "TOTAL"), AH = 34 + 26 + 22 * A.length, am = { l: 230, r: 120 };
+    const AX = (v) => am.l + v * (W - am.l - am.r);
+    let c = `<svg viewBox="0 0 ${W} ${AH}" role="img" aria-label="${esc(L("KMU-Anteil nach Branche", "SME share by industry"))}">`;
+    [0, 0.25, 0.5, 0.75, 1].forEach((tk) => { c += `<line class="grid" x1="${AX(tk)}" x2="${AX(tk)}" y1="28" y2="${AH - 26}"/><text x="${AX(tk)}" y="${AH - 8}" text-anchor="middle">${tk * 100}</text>`; });
+    A.forEach((r, k) => {
+      const y = 30 + k * 22, nm = M.nace[r[0]] ? M.nace[r[0]][EN ? 1 : 0] : r[0];
+      c += `<text x="${am.l - 8}" y="${y + 15}" text-anchor="end">${esc(nm)}</text><rect x="${am.l}" y="${y + 3}" width="${AX(r[1]) - am.l}" height="16" fill="${r[0].startsWith("G") ? "#5b9bd5" : "#002060"}"><title>${esc(nm)}: ${pc(r[1], 1)}</title></rect>`;
+      c += `<text x="${AX(r[1]) + 6}" y="${y + 15}">${fmt(r[1] * 100, 0)} % · ${L(`${fmt(r[2], 1)} Mrd. EUR`, `EUR ${fmt(r[2], 1)} bn`)}</text>`;
+    });
+    $("msActChart").innerHTML = c + "</svg>";
+    $("msActTitle").textContent = L(`KMU-Anteil an den Exporten außerhalb der EU nach Branche, ${M.activity_year}, in %`, `SME share of exports outside the EU by industry, ${M.activity_year}, in %`);
+    FIGDATA.msact = { header: [L("Branche", "Industry"), L("KMU-Anteil (%)", "SME share (%)"), L("Exporte, Mrd. EUR", "Exports, EUR bn")], rows: A.map((r) => [M.nace[r[0]] ? M.nace[r[0]][EN ? 1 : 0] : r[0], +(r[1] * 100).toFixed(1), r[2]]) };
   }
 
   function renderForecast() {

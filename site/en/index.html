@@ -27,6 +27,7 @@
       <a href="#wettbewerb">China competition</a>
       <a href="#nullhandel">Zero trade</a>
       <a href="#regime">Government type</a>
+      <a href="#mittelstand">Mittelstand</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -317,6 +318,56 @@
       <p class="src">Source: own calculations based on CEPII BACI HS92 V202601 (Etalab licence 2.0) and V-Dem v16. Licence of the figure: CC BY 4.0.</p>
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
     </figure>
+    </div>
+  </section>
+
+  <section id="view-mittelstand" class="view" hidden>
+    <h2>How much does the Mittelstand depend on foreign trade?</h2>
+    <div class="toolbar">
+      <label for="msFlow">Direction</label>
+      <select id="msFlow"><option value="EXP">Exports</option><option value="IMP">Imports</option></select>
+      <label for="msPartner">Partner</label>
+      <select id="msPartner"></select>
+    </div>
+    <div class="intro">
+      <p class="answer" id="msAnswer"></p>
+      <p class="explain">Small and medium-sized enterprises (SMEs): fewer than 250 employees. Eurostat links customs data with the business register. Enterprises count by main activity; if a manufacturer exports through a wholesaler, the wholesaler counts. The German Mittelstand also includes larger family firms and is broader than SMEs. Exposure: the model decline in exports to the US (tariffs as of August 2026) and exports under Chinese price pressure are split by sector according to the SME share.</p>
+    </div>
+    <div class="kpis" id="msFacts"></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="ms">
+      <p class="cask">How large is the SME share by partner country?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">SME share of trade value; enterprises of unknown size are included in the denominator. EU27: all member states together.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on Eurostat, trade by enterprise characteristics (ext_tec10, ext_tec01). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+
+    <figure class="card fig" data-fig="msts">
+      <p class="cask">How has the SME share developed?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msTsTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msTsChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">SME share of trade value with the selected partner, Germany and EU27. Jumps can stem from changes in the business register (e.g. 2018); the EU total is available only for some years.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on Eurostat, trade by enterprise characteristics (ext_tec10, ext_tec01). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+
+    <figure class="card fig" data-fig="msact">
+      <p class="cask">In which industries do SMEs export a lot?</p>
+      <h3><span class="fignum"></span><span class="ftitle" id="msActTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="msActChart" class="svgwrap"></div></div>
+        <aside class="cside"><p class="capnote">Exports of German enterprises to countries outside the EU by main activity; bar: SME share, number after it: total export value.</p></aside>
+      </div>
+      <p class="src">Source: own calculations based on Eurostat, trade by enterprise characteristics (ext_tec10, ext_tec01). Licence of the figure: CC BY 4.0.</p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+
     </div>
   </section>
 
