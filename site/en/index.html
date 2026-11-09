@@ -420,6 +420,16 @@
     </div>
     <h3 id="regTabTitle"></h3>
     <div class="tablewrap"><table id="regTable"></table></div>
+    <h3 id="netHead"></h3>
+    <figure class="card" id="netCard" style="padding:12px 14px">
+      <p class="cask" id="netAsk"></p>
+      <h3 id="netTitle"></h3>
+      <div class="toolbar" id="netLayers"></div>
+      <div id="netWrap" style="position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--r);touch-action:none"><canvas id="netCanvas" style="display:block;width:100%;height:auto;cursor:grab"></canvas>
+        <div style="position:absolute;top:8px;right:8px;display:flex;flex-direction:column;gap:4px"><button type="button" id="netIn" class="pill" style="padding:2px 9px">+</button><button type="button" id="netOut" class="pill" style="padding:2px 9px">&minus;</button><button type="button" id="netReset" class="pill" style="padding:2px 6px;font-size:12px">&#8634;</button></div></div>
+      <p class="hint" id="netHint"></p>
+      <p class="src" id="netSrc"></p>
+    </figure>
   </section>
 
   <section id="view-szenarien" class="view" hidden>

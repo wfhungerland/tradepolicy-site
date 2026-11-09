@@ -198,7 +198,7 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
-    if (view === "regionen") await renderRegions();
+    if (view === "regionen") { await renderRegions(); renderNetMap(); }
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -915,6 +915,55 @@
     $("regTabTitle").textContent = low && k !== "us" ? L("Die zehn Kreise mit dem niedrigsten Anteil", "The ten districts with the lowest share") : k === "us" ? L("Die zehn am stärksten betroffenen Regionen", "The ten most affected regions") : L("Die zehn Regionen mit den höchsten Werten", "The ten regions with the highest values");
     $("regTable").innerHTML = `<thead><tr><th>NUTS</th><th>${L("Region", "Region")}</th><th class="num">${L("Wert", "Value")}</th></tr></thead><tbody>` + top.map((r) => `<tr><td>${r[0]}</td><td>${esc(nm(r[0]))}</td><td class="num">${fv(r[1])}</td></tr>`).join("") + "</tbody>";
     FIGDATA.reg = { header: ["NUTS", L("Region", "Region"), C.t], rows: all.map((r) => [r[0], nm(r[0]), +(r[1] * sc).toFixed(C.dec + 1)]) };
+  }
+
+  // network map: OSM lines drawn on a canvas, zoom with wheel or buttons, pan by dragging
+  const NET = { data: {}, on: null, s: 1, ox: 0, oy: 0, ready: false };
+  async function renderNetMap() {
+    const NL = [["ehv380", "#C00000", 1.6, L("380 kV", "380 kV"), true], ["ehv220", "#ED7D31", 1.3, L("220 kV", "220 kV"), true],
+      ["hv110", "#7030A0", 0.6, L("110 kV", "110 kV"), false], ["sub", "#000000", 0, L("Umspannwerke ab 110 kV", "Substations from 110 kV"), false],
+      ["rail_el", "#0070C0", 0.8, L("Bahn elektrifiziert", "Rail, electrified"), false], ["rail_nel", "#00B0F0", 0.8, L("Bahn ohne Oberleitung", "Rail, not electrified"), false],
+      ["bab", "#595959", 1.1, L("Autobahnen", "Motorways"), false]];
+    const cv = $("netCanvas"), wrap = $("netWrap");
+    if (!NET.ready) {
+      NET.ready = true; NET.on = Object.fromEntries(NL.map((l) => [l[0], l[4]]));
+      $("netHead").textContent = L("Wo verlaufen die Netze?", "Where do the networks run?");
+      $("netAsk").textContent = L("Wo verlaufen Stromleitungen, Bahnstrecken und Autobahnen?", "Where do power lines, railways and motorways run?");
+      $("netTitle").textContent = L("Strom-, Bahn- und Autobahnnetz in Deutschland, OpenStreetMap, Stand November 2026", "Power, rail and motorway networks in Germany, OpenStreetMap, November 2026");
+      $("netHint").textContent = L("Ebenen an- und abwählen; Mausrad oder + und − zum Zoomen, ziehen zum Verschieben. Linien leicht vereinfacht (60 m).", "Toggle layers; mouse wheel or + and − to zoom, drag to pan. Lines slightly simplified (60 m).");
+      $("netSrc").textContent = L("Quelle: OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL 1.0); Kreisgrenzen: © EuroGeographics (GISCO). Vollständigkeit wie in OpenStreetMap erfasst.", "Source: OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0); district boundaries: © EuroGeographics (GISCO). Completeness as mapped in OpenStreetMap.");
+      $("netLayers").innerHTML = NL.map((l) => `<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:15px"><input type="checkbox" data-l="${l[0]}"${l[4] ? " checked" : ""}><span style="display:inline-block;width:18px;height:${l[0] === "sub" ? 8 : 4}px;background:${l[1]}"></span>${esc(l[3])}</label>`).join("");
+      $("netLayers").querySelectorAll("input").forEach((c) => c.addEventListener("change", () => { NET.on[c.dataset.l] = c.checked; renderNetMap(); }));
+      const zoom = (f, cx, cy) => { const r = cv.getBoundingClientRect(); cx = cx === undefined ? r.width / 2 : cx; cy = cy === undefined ? r.height / 2 : cy;
+        const ns = Math.min(60, Math.max(1, NET.s * f)); NET.ox = cx - (cx - NET.ox) * ns / NET.s; NET.oy = cy - (cy - NET.oy) * ns / NET.s; NET.s = ns; draw(); };
+      cv.addEventListener("wheel", (e) => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.3 : 1 / 1.3, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+      let drag = null;
+      cv.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY, NET.ox, NET.oy]; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
+      cv.addEventListener("pointermove", (e) => { if (!drag) return; NET.ox = drag[2] + e.clientX - drag[0]; NET.oy = drag[3] + e.clientY - drag[1]; draw(); });
+      cv.addEventListener("pointerup", () => { drag = null; cv.style.cursor = "grab"; });
+      $("netIn").addEventListener("click", () => zoom(1.5)); $("netOut").addEventListener("click", () => zoom(1 / 1.5));
+      $("netReset").addEventListener("click", () => { NET.s = 1; NET.ox = 0; NET.oy = 0; draw(); });
+      window.addEventListener("resize", () => draw());
+    }
+    const need = ["kreise", ...NL.map((l) => l[0]).filter((k) => NET.on[k])];
+    await Promise.all(need.filter((k) => !NET.data[k]).map(async (k) => {
+      const j = await getJSON(`data/netz_${k}.json`); NET.meta = NET.meta || j;
+      if (k === "sub") { NET.data[k] = j.d; return; }
+      const p = new Path2D(); j.d.forEach((a) => { p.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) p.lineTo(a[i], a[i + 1]); if (k === "kreise") p.closePath(); }); NET.data[k] = p;
+    }));
+    function draw() {
+      const m = NET.meta, W = wrap.clientWidth, H = Math.min(Math.round(W * m.h / m.w), 900), dpr = window.devicePixelRatio || 1;
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px";
+      const ctx = cv.getContext("2d"), base = Math.min(W / m.w, H / m.h), k = base * NET.s, bx = (W - m.w * base) / 2;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (NET.ox + bx * NET.s), dpr * NET.oy);
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.strokeStyle = "#d9d9d9"; ctx.lineWidth = 0.6 / k; ctx.stroke(NET.data.kreise);
+      ["hv110", "rail_nel", "rail_el", "bab", "ehv220", "ehv380"].forEach((id) => { if (!NET.on[id] || !NET.data[id]) return; const l = NL.find((x) => x[0] === id);
+        ctx.strokeStyle = l[1]; ctx.lineWidth = l[2] * Math.min(2.5, Math.sqrt(NET.s)) / k; ctx.stroke(NET.data[id]); });
+      if (NET.on.sub && NET.data.sub) { const d = NET.data.sub; ctx.fillStyle = "#000"; for (let i = 0; i < d.length; i += 3) { const r = (d[i + 2] >= 380 ? 1.8 : d[i + 2] >= 220 ? 1.4 : 1) * Math.min(1.6, Math.sqrt(NET.s)) / k; ctx.fillRect(d[i] - r, d[i + 1] - r, 2 * r, 2 * r); } }
+    }
+    draw();
   }
 
   function renderForecast() {
