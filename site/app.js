@@ -198,7 +198,7 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
-    if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
+    if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); renderKreisProfile(); }
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -1113,6 +1113,21 @@
     $("subCTitle").textContent = L("Gezielte chinesische Subventionen in Kraft je Ware (HS 6), Durchschnitt", "Targeted Chinese subsidies in force per good (HS 6), average");
     $("subCSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von Global Trade Alert und CEPII BACI. Gezielt: nicht horizontal, höchstens 50 Warencodes; auch Maßnahmen von Provinzen und Kommunen. Preisdruck: Waren der Abbildung oben (Chinas Weltmarktanteil +5 Punkte seit 2012, Stückwert mindestens halb so hoch wie der deutsche, kurze Qualitätsleiter). Gleiche Größe: deutsche Exporte ab 100 Mio. USD wie bei den Druckwaren. Poisson-Regression mit HS-Kapitel-Effekten: kein signifikanter Unterschied. Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on Global Trade Alert and CEPII BACI. Targeted: not horizontal, at most 50 product codes; including provincial and local measures. Price pressure: goods of the figure above (China's world market share +5 points since 2012, unit value at least half the German one, short quality ladder). Similar size: German exports of USD 100 million or more, as for the pressure goods. Poisson regression with HS chapter effects: no significant difference. Licence of the figure: CC BY 4.0.");
     FIGDATA.subcn = { header: [L("Waren", "Goods"), L("Subventionen je Ware", "Subsidies per good"), L("Anteil betroffen (%)", "Share affected (%)"), L("Zahl der Waren", "Number of goods")], rows: rows.map(([lab, r]) => [lab, +r.mean_cn_subsidies.toFixed(1), +(100 * r.share_with_cn_subsidy).toFixed(1), r.n]) };
+  }
+
+  // profile of districts by US tariff exposure (INKAR)
+  async function renderKreisProfile() {
+    const P = await getJSON("data/kreise_profile.json"), Q = P.quintiles, q1 = Q[0], q5 = Q[Q.length - 1];
+    $("kpHead").textContent = L("Wer lebt in den Kreisen, die die US-Zölle am stärksten treffen?", "Who lives in the districts hit hardest by US tariffs?");
+    $("kpAnswer").textContent = L(`Die am stärksten betroffenen Kreise (Verlust ${fmt(q5.loss_pc_min, 0)} EUR je Einwohner und mehr) sind wohlhabende Industriestandorte: BIP je Einwohner ${fmt(q5["Bruttoinlandsprodukt je Einwohner"], 0)} Tsd. EUR gegenüber ${fmt(q1["Bruttoinlandsprodukt je Einwohner"], 0)} im am wenigsten betroffenen Fünftel, Medianeinkommen ${fmt(q5.Medianeinkommen, 0)} gegenüber ${fmt(q1.Medianeinkommen, 0)} EUR, Industriequote ${fmt(q5.Industriequote, 0)} gegenüber ${fmt(q1.Industriequote, 0)} %. Arbeitslosigkeit, Alter und AfD-Anteil unterscheiden sich kaum. Der Zollschock trifft also eher wirtschaftlich starke Regionen.`,
+      `The districts hit hardest (loss of EUR ${fmt(q5.loss_pc_min, 0)} per inhabitant and more) are prosperous industrial sites: GDP per head EUR ${fmt(q5["Bruttoinlandsprodukt je Einwohner"], 0)} thousand against ${fmt(q1["Bruttoinlandsprodukt je Einwohner"], 0)} in the least affected fifth, median earnings EUR ${fmt(q5.Medianeinkommen, 0)} against ${fmt(q1.Medianeinkommen, 0)}, industry share ${fmt(q5.Industriequote, 0)} against ${fmt(q1.Industriequote, 0)} %. Unemployment, age and the AfD vote barely differ. The tariff shock thus hits economically strong regions above all.`);
+    const keys = Object.keys(P.labels), dec = (k) => k === "Medianeinkommen" ? 0 : 1;
+    let t = `<thead><tr><th></th>${Q.map((r) => `<th class="num">${L(`${r.quintile}. Fünftel`, `${r.quintile}th fifth`).replace("1th", "1st").replace("2th", "2nd").replace("3th", "3rd")}</th>`).join("")}<th class="num">${L("Rangkorrelation", "Rank correlation")}</th></tr></thead><tbody>`;
+    t += `<tr><td>${L("Verlust je Einwohner, EUR (Spanne)", "Loss per inhabitant, EUR (range)")}</td>${Q.map((r) => `<td class="num">${fmt(r.loss_pc_min, 0)}–${fmt(r.loss_pc_max, 0)}</td>`).join("")}<td></td></tr>`;
+    keys.forEach((k) => { t += `<tr><td>${esc(EN ? P.labels[k][1] : P.labels[k][0])}</td>${Q.map((r) => `<td class="num">${r[k] === null ? "–" : fmt(r[k], dec(k))}</td>`).join("")}<td class="num">${fmt(P.spearman[k], 2)}</td></tr>`; });
+    $("kpTable").innerHTML = t + "</tbody>";
+    $("kpSrc").textContent = L(`Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR) und der Kreiswerte zu den US-Zöllen oben. ${P.n} Kreise in fünf gleich große Gruppen nach dem Produktionsverlust je Einwohner; Mittelwerte mit der Bevölkerung gewichtet. Rangkorrelation (Spearman) des Merkmals mit dem Verlust je Einwohner über alle Kreise.`,
+      `Source: own calculations based on INKAR 2025 (BBSR) and the district US tariff values above. ${P.n} districts in five equal groups by output loss per inhabitant; means weighted by population. Rank correlation (Spearman) of each indicator with the loss per inhabitant across districts.`);
   }
 
   function renderForecast() {
