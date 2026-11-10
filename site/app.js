@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "kreise", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -198,7 +198,8 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
-    if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); renderKreisProfile(); }
+    if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
+    if (view === "kreise") { await renderKreisProfile(); await renderKreise(); }
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -1126,8 +1127,61 @@
     t += `<tr><td>${L("Verlust je Einwohner, EUR (Spanne)", "Loss per inhabitant, EUR (range)")}</td>${Q.map((r) => `<td class="num">${fmt(r.loss_pc_min, 0)}–${fmt(r.loss_pc_max, 0)}</td>`).join("")}<td></td></tr>`;
     keys.forEach((k) => { t += `<tr><td>${esc(EN ? P.labels[k][1] : P.labels[k][0])}</td>${Q.map((r) => `<td class="num">${r[k] === null ? "–" : fmt(r[k], dec(k))}</td>`).join("")}<td class="num">${fmt(P.spearman[k], 2)}</td></tr>`; });
     $("kpTable").innerHTML = t + "</tbody>";
-    $("kpSrc").textContent = L(`Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR) und der Kreiswerte zu den US-Zöllen oben. ${P.n} Kreise in fünf gleich große Gruppen nach dem Produktionsverlust je Einwohner; Mittelwerte mit der Bevölkerung gewichtet. Rangkorrelation (Spearman) des Merkmals mit dem Verlust je Einwohner über alle Kreise.`,
-      `Source: own calculations based on INKAR 2025 (BBSR) and the district US tariff values above. ${P.n} districts in five equal groups by output loss per inhabitant; means weighted by population. Rank correlation (Spearman) of each indicator with the loss per inhabitant across districts.`);
+    $("kpSrc").textContent = L(`Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR) und der Kreiswerte zu den US-Zöllen (Seite Regionen). ${P.n} Kreise in fünf gleich große Gruppen nach dem Produktionsverlust je Einwohner; Mittelwerte mit der Bevölkerung gewichtet. Rangkorrelation (Spearman) des Merkmals mit dem Verlust je Einwohner über alle Kreise.`,
+      `Source: own calculations based on INKAR 2025 (BBSR) and the district US tariff values (Regions page). ${P.n} districts in five equal groups by output loss per inhabitant; means weighted by population. Rank correlation (Spearman) of each indicator with the loss per inhabitant across districts.`);
+  }
+
+  // tab "Kreise": eight INKAR analyses (79_inkar_analyses.py)
+  async function renderKreise() {
+    const R = await getJSON("data/kreise_inkar.json"), it = Object.fromEntries(R.items.map((x) => [x.id, x]));
+    const f1 = (v) => v === null || v === undefined ? "–" : fmt(v, 1), pp = (b) => `${b > 0 ? "+" : ""}${fmt(b, 2)}`;
+    const star = (p) => p < 0.01 ? "***" : p < 0.05 ? "**" : p < 0.1 ? "*" : "";
+    const qh = L("Fünftel nach US-Zoll-Verlust je Einwohner (1 = gering, 5 = hoch)", "Fifth by US tariff loss per inhabitant (1 = low, 5 = high)");
+    const qtable = (x, labels, byLab) => `<thead><tr><th>${esc(byLab)}</th>${labels.map((l) => `<th class="num">${esc(l)}</th>`).join("")}</tr></thead><tbody>` +
+      x.table.map((r) => `<tr><td>${r.q || r.fq}</td>${x.cols.map((c) => `<td class="num">${f1(r[c])}</td>`).join("")}</tr>`).join("") + "</tbody>";
+    const ctable = (rows) => `<thead><tr><th>${L("Merkmal (je Standardabweichung)", "Variable (per standard deviation)")}</th><th class="num">${L("Effekt", "Effect")}</th><th class="num">${L("Std.-Fehler", "Std. error")}</th><th class="num">p</th></tr></thead><tbody>` +
+      rows.map(([lab, c]) => `<tr><td>${esc(lab)}</td><td class="num">${pp(c.b)}${star(c.p)}</td><td class="num">${fmt(c.se, 2)}</td><td class="num">${fmt(c.p, 3)}</td></tr>`).join("") + "</tbody>";
+    const list = (b, unit) => b.slice(0, 8).map((r) => `${r[0]} (${fmt(r[1], 0)} EUR, ${fmt(r[2], 1)}${unit})`).join("; ");
+    const F = it.fachkraefte, D = it.demografie, W = it.wahlen, B = it.breitband, I = it.industrie, E = it.erreichbarkeit, M = it.migration, A = it.armut;
+    const q = (x, k, i) => x.table[i][k];
+    const blocks = [
+      [L("1. Finden entlassene Fachkräfte neue Stellen?", "1. Would laid-off skilled workers find new jobs?"),
+       L(`Der Arbeitsmarkt der stark betroffenen Kreise ist eher fester: Arbeitslosenquote ${f1(q(F, "alq", 4))} % gegenüber ${f1(q(F, "alq", 0))} % im am wenigsten betroffenen Fünftel, Beschäftigtenquote ${f1(q(F, "bq", 4))} gegenüber ${f1(q(F, "bq", 0))} %. Der Anteil der Fachkräfte unter den Arbeitslosen und unter den offenen Stellen ist überall ähnlich (rund 28 und 57 %). INKAR enthält keine Gesamtzahl offener Stellen; eine echte Quote Stellen je Arbeitslosem fehlt daher.`,
+         `The labour market of strongly affected districts is rather tighter: unemployment ${f1(q(F, "alq", 4))} % against ${f1(q(F, "alq", 0))} % in the least affected fifth, employment rate ${f1(q(F, "bq", 4))} against ${f1(q(F, "bq", 0))} %. The share of skilled workers among the unemployed and among vacancies is similar everywhere (about 28 and 57 %). INKAR has no total of vacancies, so a true ratio of vacancies per unemployed is missing.`),
+       qtable(F, [L("Arbeitslosenquote, %", "Unemployment rate, %"), L("Fachkräfte unter Arbeitslosen, %", "Skilled among unemployed, %"), L("Fachkraft-Stellen unter offenen Stellen, %", "Skilled-level vacancies, %"), L("Beschäftigtenquote, %", "Employment rate, %")], qh)],
+      [L("2. Treffen Zölle und Schrumpfung zusammen?", "2. Do tariffs and shrinking coincide?"),
+       L(`Im Mittel nicht: Das am stärksten betroffene Fünftel wächst laut BBSR-Prognose bis 2045 um ${f1(q(D, "prog", 4))} %. ${D.both.length} Kreise tragen aber beide Risiken (hoher Verlust und Bevölkerung bis 2045 um mehr als 5 % kleiner), oft alte Industriestandorte: ${list(D.both, " %")}.`,
+         `Not on average: the most affected fifth grows by ${f1(q(D, "prog", 4))} % to 2045 in the BBSR projection. But ${D.both.length} districts carry both risks (high loss and population more than 5 % smaller by 2045), often old industrial sites: ${list(D.both, " %")}.`),
+       qtable(D, [L("Bevölkerung 2022 bis 2045, %", "Population 2022 to 2045, %")], qh)],
+      [L("3. Wählen exportstarke Industriekreise anders?", "3. Do export-heavy industrial districts vote differently?"),
+       L(`Die AfD hat von 2017 bis 2025 im Mittel ${f1(W.mean_d)} Punkte gewonnen, in Kreisen mit hoher Zollbetroffenheit mehr: je Standardabweichung des Verlusts ${pp(W.coef[0].b)} Punkte (innerhalb der Länder, bei gleicher Arbeitslosigkeit, Einkommen, Alter und Dichte; ${W.n} Kreise). Der Rückgang des Industrieanteils 2013 bis 2023 hängt nicht damit zusammen. Die Zölle von 2026 können die Wahlen davor nicht verursacht haben; das Maß steht hier für exportabhängige Industriestandorte, etwa der Autoindustrie.`,
+         `The AfD gained ${f1(W.mean_d)} points on average from 2017 to 2025, more in districts with high tariff exposure: ${pp(W.coef[0].b)} points per standard deviation of the loss (within Länder, at equal unemployment, income, age and density; ${W.n} districts). The fall in the industry share 2013 to 2023 is unrelated. The 2026 tariffs cannot have caused earlier elections; the measure stands for export-dependent industrial sites, such as the car industry.`),
+       ctable([[L("US-Zoll-Verlust je Einwohner", "US tariff loss per inhabitant"), W.coef[0]], [L("Veränderung Industriequote 2013 bis 2023", "Change in industry share 2013 to 2023"), W.coef[1]]])],
+      [L("4. Holt gutes Breitband IT-Jobs in den Kreis?", "4. Does good broadband attract IT jobs?"),
+       L(`Nein, nicht messbar: Kreise mit hoher Gigabit-Versorgung 2020 haben ihren Anteil an IT- und Kreativbeschäftigten bis 2023 nicht stärker gesteigert als andere (bei gleichem Ausgangsniveau und gleicher Dichte, innerhalb der Länder). Der IT-Anteil stieg im Mittel um ${fmt(B.mean_it, 2)} Punkte.`,
+         `No, not measurably: districts with high gigabit coverage in 2020 did not raise their share of IT and creative employment by 2023 more than others (at equal starting level and density, within Länder). The IT share rose by ${fmt(B.mean_it, 2)} points on average.`),
+       ctable([[L("Gigabit 2020 → IT-Beschäftigte, Punkte", "Gigabit 2020 → IT employment, points"), B.coef[0]], [L("Gigabit 2020 → Kreativbranchen, Punkte", "Gigabit 2020 → creative industries, points"), B.coef[1]]])],
+      [L("5. Hängt der Industrieabbau seit 2019 an Exporten oder Energie?", "5. Is industrial decline since 2019 linked to exports or energy?"),
+       L(`Kaum: Der Industrieanteil an der Beschäftigung sank 2019 bis 2023 in ${fmt(100 * I.share_down, 0)} % der Kreise, im Mittel blieb er fast gleich (${pp(I.mean_d)} Punkte). Weder die Veränderung der Exportquote noch der Anteil energieintensiver Industrie der Region erklären die Unterschiede signifikant. Für den Energiepreisschock ist der Zeitraum bis 2023 vermutlich zu kurz, und die Branchenstruktur der Kreise ist nur auf Regionsebene bekannt.`,
+         `Hardly: the industry share of employment fell from 2019 to 2023 in ${fmt(100 * I.share_down, 0)} % of districts, on average it stayed almost flat (${pp(I.mean_d)} points). Neither the change in the export ratio nor the region's share of energy-intensive industry explains the differences significantly. The period to 2023 is probably too short for the energy price shock, and the industry mix is known only at regional level.`),
+       ctable([[L("Veränderung Exportquote 2019 bis 2024", "Change in export ratio 2019 to 2024"), I.coef[0]], [L("Energieintensive Beschäftigung der Region", "Energy-intensive employment of the region"), I.coef[1]]])],
+      [L("6. Exportieren gut angebundene Kreise mehr?", "6. Do well-connected districts export more?"),
+       L(`Vor allem die Nähe zum Flughafen zählt: Je Standardabweichung längerer Fahrzeit zum nächsten Flughafen (im Mittel ${fmt(E.means.t_air, 0)} Minuten) ist der Auslandsumsatz je Einwohner um rund ${fmt(100 * (1 - Math.exp(E.coef_ln[1].b)), 0)} % niedriger, bei gleichem Industrieanteil und gleicher Dichte. Autobahn und Fernbahnhof machen keinen messbaren Unterschied; fast jeder Kreis hat eine Autobahn in wenigen Minuten Entfernung.`,
+         `Above all, proximity to an airport matters: per standard deviation of longer travel time to the nearest airport (${fmt(E.means.t_air, 0)} minutes on average), foreign sales per inhabitant are about ${fmt(100 * (1 - Math.exp(E.coef_ln[1].b)), 0)} % lower, at equal industry share and density. Motorway and intercity station make no measurable difference; almost every district has a motorway within minutes.`),
+       ctable([[L("Fahrzeit Autobahn → log Auslandsumsatz je Einwohner", "Time to motorway → log foreign sales per head"), E.coef_ln[0]], [L("Fahrzeit Flughafen → log Auslandsumsatz je Einwohner", "Time to airport → log foreign sales per head"), E.coef_ln[1]], [L("Fahrzeit Fernbahnhof → log Auslandsumsatz je Einwohner", "Time to intercity station → log foreign sales per head"), E.coef_ln[2]], [L("Fahrzeit Flughafen → Exportquote, Punkte", "Time to airport → export ratio, points"), E.coef[1]]])],
+      [L("7. Wie arbeiten Zugewanderte in Industriekreisen?", "7. How do immigrants work in industrial districts?"),
+       L(`Je industrieller der Kreis, desto kleiner der Ausländeranteil (${f1(q(M, "ausl", 4))} gegenüber ${f1(q(M, "ausl", 0))} %), aber desto höher ihre Beschäftigungsquote (${f1(q(M, "bq_ausl", 4))} gegenüber ${f1(q(M, "bq_ausl", 0))} %). Mit der Exportquote steigt der Ausländeranteil dagegen (Rangkorrelation ${fmt(M.rho_exq, 2)}): exportstarke Standorte liegen oft in Ballungsräumen.`,
+         `The more industrial the district, the smaller the foreigners' share (${f1(q(M, "ausl", 4))} against ${f1(q(M, "ausl", 0))} %), but the higher their employment rate (${f1(q(M, "bq_ausl", 4))} against ${f1(q(M, "bq_ausl", 0))} %). With the export ratio, in contrast, the foreigners' share rises (rank correlation ${fmt(M.rho_exq, 2)}): export-heavy sites are often in metropolitan areas.`),
+       qtable(M, [L("Industriequote, %", "Industry share, %"), L("Ausländeranteil, %", "Foreigners' share, %"), L("Beschäftigungsquote der Ausländer, %", "Employment rate of foreigners, %")], L("Fünftel nach Industriequote (1 = gering, 5 = hoch)", "Fifth by industry share (1 = low, 5 = high)"))],
+      [L("8. Wo trifft ein Industrieschock auf Armut?", "8. Where does an industrial shock meet poverty?"),
+       L(`Im Mittel unterscheiden sich SGB-II-Quote und Kinderarmut kaum zwischen den Fünfteln. ${A.both.length} Kreise verbinden aber hohen Zollverlust mit hoher SGB-II-Quote (oberstes Fünftel, ab ${f1(A.thr)} %): ${list(A.both, " %")}. Das sind vor allem Industriestädte wie Ludwigshafen, Schweinfurt und Salzgitter.`,
+         `On average SGB II rate and child poverty barely differ between the fifths. But ${A.both.length} districts combine a high tariff loss with a high SGB II rate (top fifth, from ${f1(A.thr)} %): ${list(A.both, " %")}. These are mainly industrial cities such as Ludwigshafen, Schweinfurt and Salzgitter.`),
+       qtable(A, [L("SGB-II-Quote, %", "SGB II rate, %"), L("Kinderarmut, %", "Child poverty, %")], qh)],
+    ];
+    $("krIntro").textContent = L(`Acht Auswertungen mit den Kreisdaten des BBSR (INKAR 2025) und der US-Zoll-Betroffenheit je Kreis. Alles sind Zusammenhänge zwischen Kreisen, keine Ursachen. Regressionen mit Länder-Effekten und robusten Standardfehlern; Sterne: *** p < 0,01, ** p < 0,05, * p < 0,1.`,
+      `Eight analyses with BBSR district data (INKAR 2025) and the US tariff exposure by district. All are associations across districts, not causes. Regressions with Land effects and robust standard errors; stars: *** p < 0.01, ** p < 0.05, * p < 0.1.`);
+    $("krItems").innerHTML = blocks.map(([h, t, tab]) => `<h3 style="margin-top:32px">${esc(h)}</h3><p class="answer">${esc(t)}</p><div class="tablewrap"><table>${tab}</table></div>`).join("") +
+      `<p class="src">${L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR, Gebietsstand 31.12.2023), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell. Bundestagswahl: Zweitstimmen.", "Source: own calculations based on INKAR 2025 (BBSR, boundaries of 31.12.2023), the Regional Database Germany and the Caliendo-Parro model. Federal elections: party-list votes.")}</p>`;
   }
 
   function renderForecast() {
