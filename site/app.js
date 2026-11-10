@@ -194,7 +194,7 @@
     if (view === "branchen") await renderSectors();
     if (view === "szenarien") await renderScenarios();
     if (view === "abhaengigkeiten") await renderDependencies();
-    if (view === "wettbewerb") await renderCompetition();
+    if (view === "wettbewerb") { await renderCompetition(); renderSubsidies(); }
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
@@ -1071,6 +1071,34 @@
     $("nabZTitle").textContent = L("Übertragungsnetz: geplante Inbetriebnahme der Vorhaben, kumuliert in km", "Transmission grid: planned commissioning of projects, cumulative km");
     $("nabZSrc").textContent = src + L(` (Monitoring des Stromnetzausbaus, Q2/2026). Geplante Gesamtinbetriebnahme je Vorhaben; ohne ${N.undated_n} Vorhaben ohne Termin (${km(N.undated_km)}). Lizenz der Abbildung: CC BY 4.0.`, ` (grid expansion monitoring, Q2/2026). Planned completion per project; excluding ${N.undated_n} projects without date (${km(N.undated_km)}). Licence of the figure: CC BY 4.0.`);
     FIGDATA.nabzeit = { header: [L("Jahr", "Year"), "km"], rows: N.years.map((y, i) => [y, N.cum[i]]) };
+  }
+
+  // subsidies (Global Trade Alert): new harmful subsidies per year; Chinese targeted subsidies on goods under Chinese price pressure
+  async function renderSubsidies() {
+    const S = await getJSON("data/subsidies.json");
+    const GN = { "China": L("China", "China"), "USA": L("USA", "USA"), "Deutschland": L("Deutschland", "Germany"), "übrige EU": L("übrige EU", "rest of EU"), "übrige Welt": L("übrige Welt", "rest of world") };
+    const ex = S.china_exposed[0], ot = S.china_exposed[1], pc = (v) => `${fmt(100 * v, 0)} %`;
+    $("subHead").textContent = L("Subventionen: Wo greift China gezielt ein?", "Subsidies: where does China intervene in a targeted way?");
+    $("subAnswer").textContent = L(`Der Global Trade Alert zählt ${fmt(S.n_total, 0)} schädliche Subventionen seit 2009, ${fmt(S.n_force, 0)} davon sind in Kraft. Bei den ${ex.n} Waren, bei denen Deutschland unter chinesischem Preisdruck steht, wirken im Schnitt ${fmt(ex.mean_cn_subsidies, 0)} gezielte chinesische Subventionen, bei den übrigen Waren ${fmt(ot.mean_cn_subsidies, 0)}. Vorn liegen Autos und Autoteile, Batterien, Aluminium und Reifen.`,
+      `The Global Trade Alert counts ${fmt(S.n_total, 0)} harmful subsidies since 2009, ${fmt(S.n_force, 0)} of them in force. For the ${ex.n} goods where Germany faces Chinese price pressure, ${fmt(ex.mean_cn_subsidies, 0)} targeted Chinese subsidies apply on average, against ${fmt(ot.mean_cn_subsidies, 0)} for other goods. Cars and car parts, batteries, aluminium and tyres lead.`);
+    const order = ["China", "USA", "Deutschland", "übrige EU", "übrige Welt"], col = { "China": "#C00000", "USA": "#002060", "Deutschland": "#000000", "übrige EU": "#0070C0", "übrige Welt": "#a6a6a6" };
+    lineChart($("subZChart"), S.years, order.map((g) => ({ label: GN[g], color: col[g], bold: g === "China" || g === "USA", values: S.by_year[g] })), { min: 0, label: "subsidies" });
+    $("subZAsk").textContent = L("Wer subventioniert am meisten?", "Who subsidises most?");
+    $("subZTitle").textContent = L("Neu angekündigte schädliche Subventionen je Jahr, Anzahl der Maßnahmen", "Newly announced harmful subsidies per year, number of interventions");
+    $("subZSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von Global Trade Alert (Kapitel L und P der MAST-Klassifikation, rot oder gelb bewertet), Stand November 2026. Neuere Jahre werden mit Verzögerung nachgetragen. Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on Global Trade Alert (MAST chapters L and P, rated red or amber), November 2026. Recent years are filled in with a lag. Licence of the figure: CC BY 4.0.");
+    FIGDATA.subzeit = { header: [L("Jahr", "Year"), ...order.map((g) => GN[g])], rows: S.years.map((y, i) => [y, ...order.map((g) => S.by_year[g][i])]) };
+    const W = 860, H = 200, m = { l: 260, r: 160 }, rows = [[L("unter chinesischem Preisdruck", "under Chinese price pressure"), ex, "#C00000"], [L("übrige Waren", "other goods"), ot, "#a6a6a6"]];
+    const mx = Math.max(ex.mean_cn_subsidies, ot.mean_cn_subsidies) * 1.1, XS = (v) => m.l + v / mx * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+    niceTicks(0, mx, 5).forEach((t) => { s += `<line class="grid" x1="${XS(t)}" x2="${XS(t)}" y1="20" y2="${H - 30}"/><text x="${XS(t)}" y="${H - 10}" text-anchor="middle">${fmt(t, 0)}</text>`; });
+    rows.forEach(([lab, r, c], i) => { const y = 36 + i * 64;
+      s += `<text x="${m.l - 10}" y="${y + 22}" text-anchor="end">${esc(lab)}</text><rect x="${m.l}" y="${y}" width="${XS(r.mean_cn_subsidies) - m.l}" height="36" fill="${c}"><title>${esc(lab)}: ${fmt(r.mean_cn_subsidies, 1)}</title></rect>`;
+      s += `<text x="${XS(r.mean_cn_subsidies) + 8}" y="${y + 15}">${fmt(r.mean_cn_subsidies, 1)}</text><text x="${XS(r.mean_cn_subsidies) + 8}" y="${y + 32}" fill="#595959">${L(`${pc(r.share_with_cn_subsidy)} der Waren betroffen`, `${pc(r.share_with_cn_subsidy)} of goods affected`)}</text>`; });
+    $("subCChart").innerHTML = s + "</svg>";
+    $("subCAsk").textContent = L("Subventioniert China gerade dort, wo es Deutschland unter Druck setzt?", "Does China subsidise exactly where it puts Germany under pressure?");
+    $("subCTitle").textContent = L("Gezielte chinesische Subventionen in Kraft je Ware (HS 6), Durchschnitt", "Targeted Chinese subsidies in force per good (HS 6), average");
+    $("subCSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von Global Trade Alert und CEPII BACI. Gezielt: nicht horizontal, höchstens 50 Warencodes; auch Maßnahmen von Provinzen und Kommunen. Preisdruck: Waren der Abbildung oben (Chinas Weltmarktanteil +5 Punkte seit 2012, Stückwert mindestens halb so hoch wie der deutsche, kurze Qualitätsleiter). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on Global Trade Alert and CEPII BACI. Targeted: not horizontal, at most 50 product codes; including provincial and local measures. Price pressure: goods of the figure above (China's world market share +5 points since 2012, unit value at least half the German one, short quality ladder). Licence of the figure: CC BY 4.0.");
+    FIGDATA.subcn = { header: [L("Waren", "Goods"), L("Subventionen je Ware", "Subsidies per good"), L("Anteil betroffen (%)", "Share affected (%)"), L("Zahl der Waren", "Number of goods")], rows: rows.map(([lab, r]) => [lab, +r.mean_cn_subsidies.toFixed(1), +(100 * r.share_with_cn_subsidy).toFixed(1), r.n]) };
   }
 
   function renderForecast() {
