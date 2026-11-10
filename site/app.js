@@ -199,7 +199,7 @@
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
-    if (view === "kreise") { await renderKreisProfile(); await renderKreise(); }
+    if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -1182,6 +1182,46 @@
       `Eight analyses with BBSR district data (INKAR 2025) and the US tariff exposure by district. All are associations across districts, not causes. Regressions with Land effects and robust standard errors; stars: *** p < 0.01, ** p < 0.05, * p < 0.1.`);
     $("krItems").innerHTML = blocks.map(([h, t, tab]) => `<h3 style="margin-top:32px">${esc(h)}</h3><p class="answer">${esc(t)}</p><div class="tablewrap"><table>${tab}</table></div>`).join("") +
       `<p class="src">${L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR, Gebietsstand 31.12.2023), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell. Bundestagswahl: Zweitstimmen.", "Source: own calculations based on INKAR 2025 (BBSR, boundaries of 31.12.2023), the Regional Database Germany and the Caliendo-Parro model. Federal elections: party-list votes.")}</p>`;
+  }
+
+  // tab "Kreise": district map of the INKAR analyses
+  async function renderKreiseMap() {
+    const [K, V] = await Promise.all([getJSON("data/kreise_energy.json"), getJSON("data/kreise_inkar_map.json")]);
+    const sel = $("krLayer");
+    if (!sel.dataset.ready) { sel.dataset.ready = "1"; sel.addEventListener("change", () => renderKreiseMap()); }
+    const k = sel.value, seq = ["#deebf7", "#9dc3e6", "#5b9bd5", "#2e75b6", "#1f4e79", "#002060"], div = ["#c00000", "#f4b183", "#f2f2f2", "#deebf7", "#5b9bd5", "#002060"];
+    const red = ["#f2f2f2", "#fce4d6", "#f4b183", "#e06666", "#c00000", "#7f0000"];
+    const risk = (a, b) => ({ cat: true, cols: ["#e7e6e6", "#9dc3e6", "#f4b183", "#c00000"], labels: [L("weder noch", "neither"), a, L("hoher Zollverlust", "high tariff loss"), L("beides", "both")] });
+    const C = {
+      risk_demo: { ...risk(L("starke Schrumpfung (unter −5 %)", "strong shrinking (below −5 %)")), t: L("Doppelrisiko: hoher US-Zoll-Verlust (oberstes Fünftel) und Bevölkerung bis 2045 um mehr als 5 % kleiner", "Double risk: high US tariff loss (top fifth) and population more than 5 % smaller by 2045"), ask: L("Wo treffen Zölle und Schrumpfung zusammen?", "Where do tariffs and shrinking coincide?") },
+      risk_pov: { ...risk(L("hohe SGB-II-Quote (oberstes Fünftel)", "high SGB II rate (top fifth)")), t: L("Doppelrisiko: hoher US-Zoll-Verlust und hohe SGB-II-Quote (jeweils oberstes Fünftel)", "Double risk: high US tariff loss and high SGB II rate (top fifth each)"), ask: L("Wo trifft ein Industrieschock auf Armut?", "Where does an industrial shock meet poverty?") },
+      prog: { bins: [-99, -10, -5, 0, 5, 10, 99], cols: div, unit: " %", t: L("Prognostizierte Bevölkerungsentwicklung 2022 bis 2045 (BBSR), %", "Projected population change 2022 to 2045 (BBSR), %"), ask: L("Wo schrumpft die Bevölkerung?", "Where does the population shrink?") },
+      d_afd: { bins: [0, 4, 6, 8, 10, 12, 99], cols: red, unit: L(" Pp.", " pp"), t: L("Zuwachs der AfD-Zweitstimmen 2017 bis 2025, Prozentpunkte", "Gain in AfD party-list vote 2017 to 2025, percentage points"), ask: L("Wo hat die AfD am stärksten zugelegt?", "Where did the AfD gain most?") },
+      alq: { bins: [0, 3, 4, 5, 6, 8, 99], cols: red, unit: " %", t: L("Arbeitslosenquote 2023, %", "Unemployment rate 2023, %"), ask: L("Wo ist die Arbeitslosigkeit hoch?", "Where is unemployment high?") },
+      fk_os: { bins: [0, 50, 55, 60, 65, 70, 101], cols: seq, unit: " %", t: L("Anteil der Stellen für Fachkräfte an allen offenen Stellen 2023, %", "Share of skilled-level vacancies in all vacancies 2023, %"), ask: L("Wo werden vor allem Fachkräfte gesucht?", "Where are skilled workers in demand?") },
+      giga20: { bins: [0, 25, 50, 75, 90, 95, 101], cols: seq, unit: " %", t: L("Haushalte mit mindestens 1.000 Mbit/s 2020, %", "Households with at least 1,000 Mbit/s 2020, %"), ask: L("Wo gab es 2020 schon Gigabit?", "Where was gigabit available in 2020?") },
+      d_it: { bins: [-99, 0, 0.25, 0.5, 0.75, 1, 99], cols: div, unit: L(" Pp.", " pp"), t: L("Veränderung des Anteils der IT- und naturwissenschaftlichen Dienstleistungsberufe 2017 bis 2023, Prozentpunkte", "Change in share of IT and science service occupations 2017 to 2023, percentage points"), ask: L("Wo sind IT-Jobs entstanden?", "Where were IT jobs created?") },
+      d_iq19: { bins: [-99, -2, -1, 0, 1, 2, 99], cols: div, unit: L(" Pp.", " pp"), t: L("Veränderung der Industriequote 2019 bis 2023, Prozentpunkte", "Change in industry share 2019 to 2023, percentage points"), ask: L("Wo hat die Industrie Beschäftigung verloren?", "Where has industry lost employment?") },
+      t_air: { bins: [0, 30, 45, 60, 75, 90, 999], cols: red, unit: " min", t: L("Pkw-Fahrzeit zum nächsten internationalen Flughafen 2024, Minuten", "Car travel time to the nearest international airport 2024, minutes"), ask: L("Wie weit ist der nächste Flughafen?", "How far is the nearest airport?") },
+      ausl: { bins: [0, 5, 10, 15, 20, 25, 99], cols: seq, unit: " %", t: L("Ausländeranteil 2023, %", "Foreigners' share 2023, %"), ask: L("Wo leben viele Ausländer?", "Where do many foreigners live?") },
+      bq_ausl: { bins: [0, 45, 50, 55, 60, 65, 101], cols: seq, unit: " %", t: L("Beschäftigungsquote der Ausländer 2023, %", "Employment rate of foreigners 2023, %"), ask: L("Wo arbeiten Zugewanderte häufig?", "Where do immigrants often work?") },
+      sgb2: { bins: [0, 4, 6, 8, 10, 14, 99], cols: red, unit: " %", t: L("SGB-II-Quote 2023, %", "SGB II rate 2023, %"), ask: L("Wo leben viele Menschen von Grundsicherung?", "Where do many people live on basic income support?") },
+      kinder: { bins: [0, 6, 9, 12, 15, 20, 99], cols: red, unit: " %", t: L("Kinderarmut 2023 (Kinder unter 15 in Bedarfsgemeinschaften), %", "Child poverty 2023 (children under 15 in benefit households), %"), ask: L("Wo ist Kinderarmut verbreitet?", "Where is child poverty widespread?") } }[k];
+    const get = (g) => V[g] ? V[g][k] : null;
+    const colOf = (v) => { if (v === null || v === undefined || isNaN(v)) return "#bfbfbf"; if (C.cat) return C.cols[v]; for (let i = 0; i < C.cols.length; i++) if (v < C.bins[i + 1]) return C.cols[i]; return C.cols[C.cols.length - 1]; };
+    const nm = (g) => (K.kreise[g] && K.kreise[g].n) || g;
+    const fv = (v) => v === null || v === undefined ? "–" : C.cat ? C.labels[v] : `${fmt(v, 1)}${C.unit}`;
+    let s = `<svg viewBox="0 0 ${K.width} ${K.height.toFixed(1)}" role="img" aria-label="${esc(C.t)}" style="background:#fff;max-height:760px">`;
+    Object.keys(K.paths).forEach((g) => { s += `<path d="${K.paths[g]}" fill="${colOf(get(g))}" stroke="#fff" stroke-width="0.4" data-g="${g}"><title>${esc(nm(g))}: ${esc(fv(get(g)))}</title></path>`; });
+    $("krMap").innerHTML = s + "</svg>";
+    $("krMap").querySelectorAll("path").forEach((p) => p.addEventListener("mousemove", () => { $("krHover").textContent = `${nm(p.dataset.g)}: ${fv(get(p.dataset.g))}`; }));
+    $("krHover").textContent = L("Zeiger auf einen Kreis: Name und Wert.", "Point at a district: name and value.");
+    const sw = (c) => `<span style="display:inline-block;width:14px;height:12px;background:${c};border:1px solid #d9d9d9;vertical-align:middle"></span>`;
+    $("krLegend").innerHTML = `<div class="hint">${C.cat ? C.labels.map((l, i) => `<div>${sw(C.cols[i])} ${esc(l)}</div>`).join("") :
+      C.cols.map((c, i) => `<div>${sw(c)} ${i === 0 ? L("unter ", "below ") + fmt(C.bins[1], 1) : i === C.cols.length - 1 ? fmt(C.bins[i], 1) + L(" und mehr", " and more") : fmt(C.bins[i], 1) + " – " + fmt(C.bins[i + 1], 1)}</div>`).join("")}<div>${sw("#bfbfbf")} ${L("keine Daten", "no data")}</div></div>`;
+    $("krTitle").textContent = C.t; $("krAsk").textContent = C.ask;
+    $("krSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell; Kartengrundlage: © EuroGeographics (GISCO). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on INKAR 2025 (BBSR), the Regional Database Germany and the Caliendo-Parro model; base map: © EuroGeographics (GISCO). Licence of the figure: CC BY 4.0.");
+    FIGDATA.krmap = { header: ["NUTS", L("Kreis", "District"), C.t], rows: Object.keys(K.paths).map((g) => [g, nm(g), C.cat ? fv(get(g)) : get(g)]) };
   }
 
   function renderForecast() {

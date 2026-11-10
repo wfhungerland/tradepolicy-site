@@ -492,6 +492,19 @@
   <section id="view-kreise" class="view" hidden>
     <h2>What do the district data show?</h2>
     <div class="intro"><p class="answer" id="krIntro"></p></div>
+    <div class="toolbar"><label for="krLayer">Map</label><select id="krLayer"><option value="risk_demo">Double risk tariffs and shrinking</option><option value="risk_pov">Double risk tariffs and poverty</option><option value="prog">Population 2022 to 2045</option><option value="d_afd">AfD gain 2017 to 2025</option><option value="alq">Unemployment rate</option><option value="fk_os">Skilled-level vacancies</option><option value="giga20">Gigabit coverage 2020</option><option value="d_it">Change in IT employment 2017 to 2023</option><option value="d_iq19">Change in industry share 2019 to 2023</option><option value="t_air">Travel time to airport</option><option value="ausl">Foreigners' share</option><option value="bq_ausl">Employment rate of foreigners</option><option value="sgb2">SGB II rate</option><option value="kinder">Child poverty</option></select></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="krmap">
+      <p class="cask" id="krAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="krTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="krMap" class="svgwrap"></div><p class="hint" id="krHover"></p></div>
+        <aside class="cside"><div id="krLegend"></div></aside>
+      </div>
+      <p class="src" id="krSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
     <h3 id="kpHead"></h3>
     <p class="answer" id="kpAnswer"></p>
     <div class="tablewrap"><table id="kpTable"></table></div>

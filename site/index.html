@@ -492,6 +492,19 @@
   <section id="view-kreise" class="view" hidden>
     <h2>Was zeigen die Kreisdaten?</h2>
     <div class="intro"><p class="answer" id="krIntro"></p></div>
+    <div class="toolbar"><label for="krLayer">Karte</label><select id="krLayer"><option value="risk_demo">Doppelrisiko Zölle und Schrumpfung</option><option value="risk_pov">Doppelrisiko Zölle und Armut</option><option value="prog">Bevölkerung 2022 bis 2045</option><option value="d_afd">AfD-Zuwachs 2017 bis 2025</option><option value="alq">Arbeitslosenquote</option><option value="fk_os">Fachkraft-Stellen unter offenen Stellen</option><option value="giga20">Gigabit-Versorgung 2020</option><option value="d_it">Veränderung IT-Beschäftigte 2017 bis 2023</option><option value="d_iq19">Veränderung Industriequote 2019 bis 2023</option><option value="t_air">Fahrzeit zum Flughafen</option><option value="ausl">Ausländeranteil</option><option value="bq_ausl">Beschäftigungsquote der Ausländer</option><option value="sgb2">SGB-II-Quote</option><option value="kinder">Kinderarmut</option></select></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="krmap">
+      <p class="cask" id="krAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="krTitle"></span></h3>
+      <div class="cbody">
+        <div class="cmain"><div id="krMap" class="svgwrap"></div><p class="hint" id="krHover"></p></div>
+        <aside class="cside"><div id="krLegend"></div></aside>
+      </div>
+      <p class="src" id="krSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
     <h3 id="kpHead"></h3>
     <p class="answer" id="kpAnswer"></p>
     <div class="tablewrap"><table id="kpTable"></table></div>
