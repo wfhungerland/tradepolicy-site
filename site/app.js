@@ -198,7 +198,7 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
-    if (view === "regionen") { await renderRegions(); renderNetMap(); }
+    if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -917,53 +917,138 @@
     FIGDATA.reg = { header: ["NUTS", L("Region", "Region"), C.t], rows: all.map((r) => [r[0], nm(r[0]), +(r[1] * sc).toFixed(C.dec + 1)]) };
   }
 
-  // network map: OSM lines drawn on a canvas, zoom with wheel or buttons, pan by dragging
-  const NET = { data: {}, on: null, s: 1, ox: 0, oy: 0, ready: false };
+  // network map: OSM lines drawn on a canvas, zoom with wheel or buttons, pan by dragging.
+  // Speed: coarse merged lines (_lo) in the overview, detailed lines from zoom 3; during
+  // interaction the last full drawing is moved as a bitmap and redrawn sharply when it stops.
+  const NET = { data: {}, on: null, s: 1, ox: 0, oy: 0, ready: false, buf: null, timer: null };
+  const NETL = () => [["ehv380", "#C00000", 1.6, L("380 kV", "380 kV"), true], ["ehv220", "#ED7D31", 1.3, L("220 kV", "220 kV"), true],
+    ["hv110", "#7030A0", 0.6, L("110 kV", "110 kV"), false], ["sub", "#000000", 0, L("Umspannwerke ab 110 kV", "Substations from 110 kV"), false],
+    ["rail_el", "#0070C0", 0.8, L("Bahn elektrifiziert", "Rail, electrified"), false], ["rail_nel", "#00B0F0", 0.8, L("Bahn ohne Oberleitung", "Rail, not electrified"), false],
+    ["bab", "#595959", 1.1, L("Autobahnen", "Motorways"), false]];
+  async function netLoad(k) {
+    if (NET.data[k]) return NET.data[k];
+    NET.data[k] = getJSON(`data/netz_${k}.json`).then((j) => {
+      NET.meta = NET.meta || j;
+      if (k === "sub") return j.d;
+      const p = new Path2D(); j.d.forEach((a) => { p.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) p.lineTo(a[i], a[i + 1]); if (k === "kreise") p.closePath(); }); return p;
+    });
+    return NET.data[k];
+  }
+  function netGeom() {
+    const cv = $("netCanvas"), m = NET.meta, W = $("netWrap").clientWidth, H = Math.min(Math.round(W * m.h / m.w), 900), base = Math.min(W / m.w, H / m.h);
+    return { cv, m, W, H, base, bx: (W - m.w * base) / 2, dpr: window.devicePixelRatio || 1 };
+  }
+  async function netDrawFull() {
+    const NL = NETL(), fine = NET.s >= 3, ids = ["hv110", "rail_nel", "rail_el", "bab", "ehv220", "ehv380"].filter((id) => NET.on[id]);
+    const want = { s: NET.s, ox: NET.ox, oy: NET.oy };
+    const geo = await Promise.all([netLoad("kreise"), ...ids.map((id) => netLoad(fine ? id : id + "_lo")), NET.on.sub ? netLoad("sub") : null]);
+    if (want.s !== NET.s || want.ox !== NET.ox || want.oy !== NET.oy) return;          // view changed while loading
+    const g = netGeom(), k = g.base * NET.s, c = NET.buf || (NET.buf = document.createElement("canvas"));
+    c.width = g.W * g.dpr; c.height = g.H * g.dpr;
+    const ctx = c.getContext("2d");
+    ctx.setTransform(g.dpr, 0, 0, g.dpr, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.W, g.H);
+    ctx.setTransform(g.dpr * k, 0, 0, g.dpr * k, g.dpr * (NET.ox + g.bx * NET.s), g.dpr * NET.oy);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = "#d9d9d9"; ctx.lineWidth = 0.6 / k; ctx.stroke(geo[0]);
+    ids.forEach((id, i) => { const l = NL.find((x) => x[0] === id); ctx.strokeStyle = l[1]; ctx.lineWidth = l[2] * Math.min(2.5, Math.sqrt(NET.s)) / k; ctx.stroke(geo[i + 1]); });
+    const d = geo[geo.length - 1];
+    if (NET.on.sub && d) { ctx.fillStyle = "#000"; const f = Math.min(1.6, Math.sqrt(NET.s)) / k;
+      for (let i = 0; i < d.length; i += 3) { const r = (d[i + 2] >= 380 ? 1.8 : d[i + 2] >= 220 ? 1.4 : 1) * f; ctx.fillRect(d[i] - r, d[i + 1] - r, 2 * r, 2 * r); } }
+    NET.bs = NET.s; NET.box = NET.ox; NET.boy = NET.oy; NET.bW = g.W;
+    netBlit();
+  }
+  function netBlit() {
+    // show the buffer, moved and scaled from the view it was drawn for to the current view
+    if (!NET.buf || !NET.meta) return;
+    const g = netGeom(), f = NET.s / NET.bs, ax = NET.ox + g.bx * NET.s, abx = NET.box + g.bx * NET.bs;
+    g.cv.width = g.W * g.dpr; g.cv.height = g.H * g.dpr; g.cv.style.height = g.H + "px";
+    const ctx = g.cv.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, g.cv.width, g.cv.height);
+    if (NET.bW !== g.W) return;
+    ctx.setTransform(f, 0, 0, f, g.dpr * (ax - f * abx), g.dpr * (NET.oy - f * NET.boy));
+    ctx.drawImage(NET.buf, 0, 0);
+  }
+  function netRedraw() { netBlit(); clearTimeout(NET.timer); NET.timer = setTimeout(netDrawFull, 160); }
   async function renderNetMap() {
-    const NL = [["ehv380", "#C00000", 1.6, L("380 kV", "380 kV"), true], ["ehv220", "#ED7D31", 1.3, L("220 kV", "220 kV"), true],
-      ["hv110", "#7030A0", 0.6, L("110 kV", "110 kV"), false], ["sub", "#000000", 0, L("Umspannwerke ab 110 kV", "Substations from 110 kV"), false],
-      ["rail_el", "#0070C0", 0.8, L("Bahn elektrifiziert", "Rail, electrified"), false], ["rail_nel", "#00B0F0", 0.8, L("Bahn ohne Oberleitung", "Rail, not electrified"), false],
-      ["bab", "#595959", 1.1, L("Autobahnen", "Motorways"), false]];
-    const cv = $("netCanvas"), wrap = $("netWrap");
+    const NL = NETL(), cv = $("netCanvas");
     if (!NET.ready) {
       NET.ready = true; NET.on = Object.fromEntries(NL.map((l) => [l[0], l[4]]));
       $("netHead").textContent = L("Wo verlaufen die Netze?", "Where do the networks run?");
       $("netAsk").textContent = L("Wo verlaufen Stromleitungen, Bahnstrecken und Autobahnen?", "Where do power lines, railways and motorways run?");
       $("netTitle").textContent = L("Strom-, Bahn- und Autobahnnetz in Deutschland, OpenStreetMap, Stand November 2026", "Power, rail and motorway networks in Germany, OpenStreetMap, November 2026");
-      $("netHint").textContent = L("Ebenen an- und abwählen; Mausrad oder + und − zum Zoomen, ziehen zum Verschieben. Linien leicht vereinfacht (60 m).", "Toggle layers; mouse wheel or + and − to zoom, drag to pan. Lines slightly simplified (60 m).");
+      $("netHint").textContent = L("Ebenen an- und abwählen; Mausrad oder + und − zum Zoomen, ziehen zum Verschieben. In der Gesamtansicht vereinfachte Linien, ab dreifachem Zoom genaue Verläufe.", "Toggle layers; mouse wheel or + and − to zoom, drag to pan. Simplified lines in the overview, exact routes from threefold zoom.");
       $("netSrc").textContent = L("Quelle: OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL 1.0); Kreisgrenzen: © EuroGeographics (GISCO). Vollständigkeit wie in OpenStreetMap erfasst.", "Source: OpenStreetMap (© OpenStreetMap contributors, ODbL 1.0); district boundaries: © EuroGeographics (GISCO). Completeness as mapped in OpenStreetMap.");
       $("netLayers").innerHTML = NL.map((l) => `<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:15px"><input type="checkbox" data-l="${l[0]}"${l[4] ? " checked" : ""}><span style="display:inline-block;width:18px;height:${l[0] === "sub" ? 8 : 4}px;background:${l[1]}"></span>${esc(l[3])}</label>`).join("");
-      $("netLayers").querySelectorAll("input").forEach((c) => c.addEventListener("change", () => { NET.on[c.dataset.l] = c.checked; renderNetMap(); }));
+      $("netLayers").querySelectorAll("input").forEach((c) => c.addEventListener("change", () => { NET.on[c.dataset.l] = c.checked; netDrawFull(); }));
       const zoom = (f, cx, cy) => { const r = cv.getBoundingClientRect(); cx = cx === undefined ? r.width / 2 : cx; cy = cy === undefined ? r.height / 2 : cy;
-        const ns = Math.min(60, Math.max(1, NET.s * f)); NET.ox = cx - (cx - NET.ox) * ns / NET.s; NET.oy = cy - (cy - NET.oy) * ns / NET.s; NET.s = ns; draw(); };
+        const ns = Math.min(60, Math.max(1, NET.s * f)); NET.ox = cx - (cx - NET.ox) * ns / NET.s; NET.oy = cy - (cy - NET.oy) * ns / NET.s; NET.s = ns; netRedraw(); };
       cv.addEventListener("wheel", (e) => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.3 : 1 / 1.3, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
       let drag = null;
       cv.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY, NET.ox, NET.oy]; cv.setPointerCapture(e.pointerId); cv.style.cursor = "grabbing"; });
-      cv.addEventListener("pointermove", (e) => { if (!drag) return; NET.ox = drag[2] + e.clientX - drag[0]; NET.oy = drag[3] + e.clientY - drag[1]; draw(); });
+      cv.addEventListener("pointermove", (e) => { if (!drag) return; NET.ox = drag[2] + e.clientX - drag[0]; NET.oy = drag[3] + e.clientY - drag[1]; netRedraw(); });
       cv.addEventListener("pointerup", () => { drag = null; cv.style.cursor = "grab"; });
       $("netIn").addEventListener("click", () => zoom(1.5)); $("netOut").addEventListener("click", () => zoom(1 / 1.5));
-      $("netReset").addEventListener("click", () => { NET.s = 1; NET.ox = 0; NET.oy = 0; draw(); });
-      window.addEventListener("resize", () => draw());
+      $("netReset").addEventListener("click", () => { NET.s = 1; NET.ox = 0; NET.oy = 0; netDrawFull(); });
+      window.addEventListener("resize", () => { if (!$("view-regionen").hidden) netDrawFull(); });
     }
-    const need = ["kreise", ...NL.map((l) => l[0]).filter((k) => NET.on[k])];
-    await Promise.all(need.filter((k) => !NET.data[k]).map(async (k) => {
-      const j = await getJSON(`data/netz_${k}.json`); NET.meta = NET.meta || j;
-      if (k === "sub") { NET.data[k] = j.d; return; }
-      const p = new Path2D(); j.d.forEach((a) => { p.moveTo(a[0], a[1]); for (let i = 2; i < a.length; i += 2) p.lineTo(a[i], a[i + 1]); if (k === "kreise") p.closePath(); }); NET.data[k] = p;
-    }));
-    function draw() {
-      const m = NET.meta, W = wrap.clientWidth, H = Math.min(Math.round(W * m.h / m.w), 900), dpr = window.devicePixelRatio || 1;
-      cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px";
-      const ctx = cv.getContext("2d"), base = Math.min(W / m.w, H / m.h), k = base * NET.s, bx = (W - m.w * base) / 2;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
-      ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (NET.ox + bx * NET.s), dpr * NET.oy);
-      ctx.lineJoin = "round"; ctx.lineCap = "round";
-      ctx.strokeStyle = "#d9d9d9"; ctx.lineWidth = 0.6 / k; ctx.stroke(NET.data.kreise);
-      ["hv110", "rail_nel", "rail_el", "bab", "ehv220", "ehv380"].forEach((id) => { if (!NET.on[id] || !NET.data[id]) return; const l = NL.find((x) => x[0] === id);
-        ctx.strokeStyle = l[1]; ctx.lineWidth = l[2] * Math.min(2.5, Math.sqrt(NET.s)) / k; ctx.stroke(NET.data[id]); });
-      if (NET.on.sub && NET.data.sub) { const d = NET.data.sub; ctx.fillStyle = "#000"; for (let i = 0; i < d.length; i += 3) { const r = (d[i + 2] >= 380 ? 1.8 : d[i + 2] >= 220 ? 1.4 : 1) * Math.min(1.6, Math.sqrt(NET.s)) / k; ctx.fillRect(d[i] - r, d[i + 1] - r, 2 * r, 2 * r); } }
-    }
-    draw();
+    await netDrawFull();
+  }
+
+  // hydrogen core network and transmission grid expansion (Bundesnetzagentur)
+  async function renderEnergyNets() {
+    const G = await getJSON("data/energienetze.json"), H2 = G.h2, N = G.nab;
+    const LN = { BW: "Baden-Württemberg", BY: L("Bayern", "Bavaria"), BE: "Berlin", BB: "Brandenburg", HB: "Bremen", HH: "Hamburg", HE: L("Hessen", "Hesse"),
+      MV: "Mecklenburg-Vorpommern", NI: L("Niedersachsen", "Lower Saxony"), NW: L("Nordrhein-Westfalen", "North Rhine-Westphalia"), RP: L("Rheinland-Pfalz", "Rhineland-Palatinate"),
+      SL: "Saarland", SN: L("Sachsen", "Saxony"), ST: L("Sachsen-Anhalt", "Saxony-Anhalt"), SH: "Schleswig-Holstein", TH: L("Thüringen", "Thuringia"), AWZ: L("See (AWZ)", "Offshore (EEZ)") };
+    const SN = { "noch nicht im Verfahren": L("noch nicht im Verfahren", "not yet in procedure"), "Bundesfachplanung/Raumordnung": L("Bundesfachplanung/Raumordnung", "federal sectoral or spatial planning"),
+      "vor/im Planfeststellungsverfahren": L("vor/im Planfeststellungsverfahren", "before/in planning approval"), "genehmigt, vor/im Bau": L("genehmigt, vor/im Bau", "approved, before/under construction"),
+      "fertig, noch nicht in Betrieb": L("fertig, noch nicht in Betrieb", "completed, not yet in operation"), "in Betrieb": L("in Betrieb", "in operation") };
+    const km = (v) => `${fmt(v, 0)} km`, sum = (a) => a.reduce((t, v) => t + v, 0);
+    const tot = H2.km_total, inv = H2.inv_total, ntot = sum(N.km), op = N.km[N.km.length - 1], fin = N.km[N.km.length - 2];
+    $("enHead").textContent = L("Wasserstoff-Kernnetz und Ausbau des Stromnetzes", "Hydrogen core network and power grid expansion");
+    $("enAnswer").textContent = L(`Das genehmigte Wasserstoff-Kernnetz umfasst ${km(tot)}, gut die Hälfte davon umgestellte Erdgasleitungen; bis 2032 soll alles in Betrieb sein, Kosten rund ${fmt(inv / 1000, 0)} Mrd. EUR. Beim Übertragungsnetz sind von ${km(ntot)} geplanter Leitungen ${km(op)} in Betrieb und weitere ${km(fin)} fertig; der größte Teil steckt noch in der Planfeststellung.`,
+      `The approved hydrogen core network spans ${km(tot)}, just over half of it converted gas pipelines; all of it is to be in operation by 2032, at a cost of about EUR ${fmt(inv / 1000, 0)} bn. Of ${km(ntot)} of planned transmission lines, ${km(op)} are in operation and another ${km(fin)} are completed; most are still in planning approval.`);
+    const bars = (el, rows, keys, cols, labels, unit) => {
+      const W = 860, rowH = 26, m = { l: 250, r: 70, t: 34, b: 26 }, H = m.t + m.b + rowH * rows.length;
+      const mx = Math.max(...rows.map((r) => sum(keys.map((k) => r[k])))), ticks = niceTicks(0, mx * 1.12, 5), top = Math.max(ticks[ticks.length - 1], mx * 1.1), XS = (v) => m.l + v / top * (W - m.l - m.r);
+      let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+      if (keys.length > 1) keys.forEach((k, i) => { s += `<rect x="${m.l + i * 240}" y="6" width="12" height="12" fill="${cols[i]}"/><text x="${m.l + i * 240 + 18}" y="16">${esc(labels[i])}</text>`; });
+      ticks.forEach((t) => { s += `<line class="grid" x1="${XS(t)}" x2="${XS(t)}" y1="${m.t - 4}" y2="${H - m.b}"/><text x="${XS(t)}" y="${H - 8}" text-anchor="middle">${fmt(t, 0)}</text>`; });
+      s += `<text x="${W - m.r}" y="${m.t - 12}" text-anchor="end">${esc(unit)}</text>`;
+      rows.forEach((r, i) => { const y = m.t + i * rowH; let x = m.l;
+        s += `<text x="${m.l - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">${esc(r.name)}</text>`;
+        keys.forEach((k, j) => { const w = XS(r[k]) - m.l; s += `<rect x="${x}" y="${y + 4}" width="${Math.max(0, w)}" height="${rowH - 8}" fill="${r.col || cols[j]}"><title>${esc(r.name)}${keys.length > 1 ? ", " + esc(labels[j]) : ""}: ${km(r[k])}</title></rect>`; x += w; });
+        s += `<text x="${x + 6}" y="${y + rowH / 2 + 4}">${fmt(sum(keys.map((k) => r[k])), 0)}</text>`; });
+      el.innerHTML = s + "</svg>";
+    };
+    const src = L("Quelle: eigene Berechnungen auf Basis der Bundesnetzagentur", "Source: own calculations based on the Federal Network Agency");
+    // 1 hydrogen by Land
+    const hr = H2.land.map((l, i) => ({ name: LN[l] || l, neu: H2.neu[i], um: H2.um[i], inv: H2.inv[i] }));
+    bars($("h2LChart"), hr, ["um", "neu"], ["#9dc3e6", "#002060"], [L("Umstellung von Erdgasleitungen", "Conversion of gas pipelines"), L("Neubau", "New build")], "km");
+    $("h2LAsk").textContent = L("Durch welche Länder läuft das Wasserstoff-Kernnetz?", "Which Länder does the hydrogen core network cross?");
+    $("h2LTitle").textContent = L("Wasserstoff-Kernnetz nach Ländern, genehmigte Leitungen in km", "Hydrogen core network by Land, approved pipelines in km");
+    $("h2LSrc").textContent = src + L(" (Genehmigung vom 22.10.2024, Anlagen 3 und 4). Länderübergreifende Abschnitte zu gleichen Teilen aufgeteilt. Lizenz der Abbildung: CC BY 4.0.", " (approval of 22.10.2024, annexes 3 and 4). Segments crossing Länder split equally. Licence of the figure: CC BY 4.0.");
+    FIGDATA.h2land = { header: [L("Land", "Land"), L("Umstellung (km)", "Conversion (km)"), L("Neubau (km)", "New build (km)"), L("Investitionen (Mio. EUR)", "Investment (EUR m)")], rows: hr.map((r) => [r.name, r.um, r.neu, r.inv]) };
+    // 2 hydrogen over time
+    lineChart($("h2ZChart"), H2.years, [{ label: L("insgesamt", "total"), color: "#002060", bold: true, values: H2.years.map((_, i) => H2.cum_neu[i] + H2.cum_um[i]) },
+      { label: L("Umstellung", "Conversion"), color: "#9dc3e6", values: H2.cum_um }, { label: L("Neubau", "New build"), color: "#0070C0", values: H2.cum_neu }], { min: 0, unit: "km", label: "H2" });
+    $("h2ZAsk").textContent = L("Wann geht das Wasserstoff-Kernnetz in Betrieb?", "When does the hydrogen core network go into operation?");
+    $("h2ZTitle").textContent = L("Wasserstoff-Kernnetz: geplante Inbetriebnahme, kumuliert in km", "Hydrogen core network: planned commissioning, cumulative km");
+    $("h2ZSrc").textContent = src + L(" (Genehmigung vom 22.10.2024). Planerische Inbetriebnahme je Abschnitt. Lizenz der Abbildung: CC BY 4.0.", " (approval of 22.10.2024). Planned commissioning per segment. Licence of the figure: CC BY 4.0.");
+    FIGDATA.h2zeit = { header: [L("Jahr", "Year"), L("Umstellung (km)", "Conversion (km)"), L("Neubau (km)", "New build (km)")], rows: H2.years.map((y, i) => [y, H2.cum_um[i], H2.cum_neu[i]]) };
+    // 3 grid status
+    const sc = ["#d9d9d9", "#bfbfbf", "#9dc3e6", "#5b9bd5", "#2e75b6", "#002060"];
+    bars($("nabSChart"), N.status.map((st, i) => ({ name: SN[st] || st, km: N.km[i], col: sc[i] })), ["km"], ["#002060"], [""], "km");
+    $("nabSAsk").textContent = L("Wie weit ist der Ausbau des Übertragungsnetzes?", "How far has transmission grid expansion progressed?");
+    $("nabSTitle").textContent = L(`Ausbau des Übertragungsnetzes (EnLAG und BBPlG) nach Stand, ${N.stand}, km`, `Transmission grid expansion (EnLAG and BBPlG) by status, ${N.stand}, km`);
+    $("nabSSrc").textContent = src + L(" (Monitoring des Stromnetzausbaus, zweites Quartal 2026). Lizenz der Abbildung: CC BY 4.0.", " (grid expansion monitoring, second quarter 2026). Licence of the figure: CC BY 4.0.");
+    FIGDATA.nabstand = { header: [L("Stand", "Status"), "km"], rows: N.status.map((st, i) => [SN[st] || st, N.km[i]]) };
+    // 4 grid plan over time
+    lineChart($("nabZChart"), N.years, [{ label: L("geplante Inbetriebnahme, kumuliert", "planned commissioning, cumulative"), color: "#002060", bold: true, values: N.cum }], { min: 0, unit: "km", label: "grid" });
+    $("nabZAsk").textContent = L("Bis wann sollen die neuen Stromleitungen laufen?", "By when are the new power lines to run?");
+    $("nabZTitle").textContent = L("Übertragungsnetz: geplante Inbetriebnahme der Vorhaben, kumuliert in km", "Transmission grid: planned commissioning of projects, cumulative km");
+    $("nabZSrc").textContent = src + L(` (Monitoring des Stromnetzausbaus, Q2/2026). Geplante Gesamtinbetriebnahme je Vorhaben; ohne ${N.undated_n} Vorhaben ohne Termin (${km(N.undated_km)}). Lizenz der Abbildung: CC BY 4.0.`, ` (grid expansion monitoring, Q2/2026). Planned completion per project; excluding ${N.undated_n} projects without date (${km(N.undated_km)}). Licence of the figure: CC BY 4.0.`);
+    FIGDATA.nabzeit = { header: [L("Jahr", "Year"), "km"], rows: N.years.map((y, i) => [y, N.cum[i]]) };
   }
 
   function renderForecast() {
