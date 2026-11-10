@@ -492,15 +492,107 @@
   <section id="view-kreise" class="view" hidden>
     <h2>Was zeigen die Kreisdaten?</h2>
     <div class="intro"><p class="answer" id="krIntro"></p></div>
-    <div class="toolbar"><label for="krLayer">Karte</label><select id="krLayer"><option value="risk_demo">Doppelrisiko Zölle und Schrumpfung</option><option value="risk_pov">Doppelrisiko Zölle und Armut</option><option value="prog">Bevölkerung 2022 bis 2045</option><option value="d_afd">AfD-Zuwachs 2017 bis 2025</option><option value="alq">Arbeitslosenquote</option><option value="fk_os">Fachkraft-Stellen unter offenen Stellen</option><option value="giga20">Gigabit-Versorgung 2020</option><option value="d_it">Veränderung IT-Beschäftigte 2017 bis 2023</option><option value="d_iq19">Veränderung Industriequote 2019 bis 2023</option><option value="t_air">Fahrzeit zum Flughafen</option><option value="ausl">Ausländeranteil</option><option value="bq_ausl">Beschäftigungsquote der Ausländer</option><option value="sgb2">SGB-II-Quote</option><option value="kinder">Kinderarmut</option></select></div>
-    <div class="charts">
-    <figure class="card fig" data-fig="krmap">
-      <p class="cask" id="krAsk"></p>
-      <h3><span class="fignum"></span><span class="ftitle" id="krTitle"></span></h3>
-      <div class="cbody">
-        <div class="cmain"><div id="krMap" class="svgwrap"></div><p class="hint" id="krHover"></p></div>
-        <aside class="cside"><div id="krLegend"></div></aside>
-      </div>
+    <p class="hint" id="krHover"></p>
+    <div class="charts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:40px 32px">
+    <figure class="card fig" data-fig="km_risk_demo">
+      <p class="cask" id="km_risk_demo_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_demo_title"></span></h3>
+      <div class="cmain"><div id="km_risk_demo_map" class="svgwrap"></div><div id="km_risk_demo_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_risk_demo_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_risk_pov">
+      <p class="cask" id="km_risk_pov_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_pov_title"></span></h3>
+      <div class="cmain"><div id="km_risk_pov_map" class="svgwrap"></div><div id="km_risk_pov_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_risk_pov_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_prog">
+      <p class="cask" id="km_prog_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_prog_title"></span></h3>
+      <div class="cmain"><div id="km_prog_map" class="svgwrap"></div><div id="km_prog_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_prog_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_d_afd">
+      <p class="cask" id="km_d_afd_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_d_afd_title"></span></h3>
+      <div class="cmain"><div id="km_d_afd_map" class="svgwrap"></div><div id="km_d_afd_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_d_afd_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_alq">
+      <p class="cask" id="km_alq_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_alq_title"></span></h3>
+      <div class="cmain"><div id="km_alq_map" class="svgwrap"></div><div id="km_alq_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_alq_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_fk_os">
+      <p class="cask" id="km_fk_os_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_fk_os_title"></span></h3>
+      <div class="cmain"><div id="km_fk_os_map" class="svgwrap"></div><div id="km_fk_os_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_fk_os_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_d_iq19">
+      <p class="cask" id="km_d_iq19_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_d_iq19_title"></span></h3>
+      <div class="cmain"><div id="km_d_iq19_map" class="svgwrap"></div><div id="km_d_iq19_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_d_iq19_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_giga20">
+      <p class="cask" id="km_giga20_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_giga20_title"></span></h3>
+      <div class="cmain"><div id="km_giga20_map" class="svgwrap"></div><div id="km_giga20_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_giga20_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_d_it">
+      <p class="cask" id="km_d_it_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_d_it_title"></span></h3>
+      <div class="cmain"><div id="km_d_it_map" class="svgwrap"></div><div id="km_d_it_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_d_it_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_t_air">
+      <p class="cask" id="km_t_air_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_t_air_title"></span></h3>
+      <div class="cmain"><div id="km_t_air_map" class="svgwrap"></div><div id="km_t_air_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_t_air_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_ausl">
+      <p class="cask" id="km_ausl_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_ausl_title"></span></h3>
+      <div class="cmain"><div id="km_ausl_map" class="svgwrap"></div><div id="km_ausl_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_ausl_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_bq_ausl">
+      <p class="cask" id="km_bq_ausl_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_bq_ausl_title"></span></h3>
+      <div class="cmain"><div id="km_bq_ausl_map" class="svgwrap"></div><div id="km_bq_ausl_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_bq_ausl_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_sgb2">
+      <p class="cask" id="km_sgb2_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_sgb2_title"></span></h3>
+      <div class="cmain"><div id="km_sgb2_map" class="svgwrap"></div><div id="km_sgb2_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_sgb2_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="km_kinder">
+      <p class="cask" id="km_kinder_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_kinder_title"></span></h3>
+      <div class="cmain"><div id="km_kinder_map" class="svgwrap"></div><div id="km_kinder_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_kinder_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
       <p class="src" id="krSrc"></p>
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
     </figure>
@@ -586,6 +678,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
   <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
-<script src="app.js"></script>
+<script src="app.js?v=20261110c"></script>
 </body>
 </html>
