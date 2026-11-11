@@ -30,6 +30,7 @@
       <a href="#mittelstand">Mittelstand</a>
       <a href="#regionen">Regions</a>
       <a href="#kreise">Districts</a>
+      <a href="#steckbrief">District profile</a>
       <a href="#szenarien">Scenarios</a>
       <a href="#prognose">Forecast test</a>
       <a href="#methodik">Methodology</a>
@@ -646,6 +647,17 @@
     <div id="krItems"></div>
   </section>
 
+  <section id="view-steckbrief" class="view" hidden>
+    <h2>How does a district compare?</h2>
+    <div class="toolbar"><label for="sbInput">District</label><input id="sbInput" list="sbList" placeholder="Type a district name" autocomplete="off" style="font:inherit;font-size:15px;padding:3px 8px;border:1px solid var(--line);border-radius:var(--r);min-width:280px"><datalist id="sbList"></datalist><button type="button" id="sbPrint" class="copy" style="margin-left:12px">Print</button></div>
+    <div class="intro" style="display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start">
+      <div><h3 id="sbName" style="margin-top:0"></h3><p class="answer" id="sbAnswer"></p></div>
+      <div id="sbMap" class="svgwrap"></div>
+    </div>
+    <div id="sbTables"></div>
+    <p class="src" id="sbSrc"></p>
+  </section>
+
   <section id="view-szenarien" class="view" hidden>
     <h2>What do tariffs cost, and what are the single market and open sea routes worth?</h2>
     <div class="toolbar">
@@ -720,6 +732,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Also: <a href="https://wfhungerland.github.io/konjunkturmonitor/en/">Konjunkturmonitor</a> · <a href="../impressum.html" hreflang="de">Legal notice</a> · <a href="../datenschutz.html" hreflang="de">Privacy</a> · Text and figures: <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a></span>
   <span>Own calculations based on CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII tariff data and searoute.</span>
 </footer>
-<script src="../app.js?v=20261111a"></script>
+<script src="../app.js?v=20261111b"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "kreise", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -46,13 +46,14 @@
     let fig = null;
     const m = h.match(/^(profil|laender|produktraum|branchen)\/([A-Z]{3})$/);
     if (m && D.eci.countries[m[2]]) { state.iso = m[2]; $("country").value = m[2]; h = m[1]; }
+    if (h.startsWith("steckbrief/")) { state.kreis = h.split("/")[1]; h = "steckbrief"; }
     if (h.startsWith("abb-")) { fig = document.getElementById(h); const sec = fig && fig.closest("section.view"); h = sec ? sec.id.replace("view-", "") : ""; }
     const view = VIEWS.includes(h) ? h : "ueberblick";
     VIEWS.forEach((v) => { $("view-" + v).hidden = v !== view; });
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = view === "prognose" || view === "methodik";
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -200,6 +201,7 @@
     if (view === "mittelstand") await renderMittelstand();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
+    if (view === "steckbrief") await renderSteckbrief();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
   }
@@ -1235,14 +1237,49 @@
       let s = `<svg viewBox="0 0 ${K.width} ${K.height.toFixed(1)}" role="img" aria-label="${esc(C.t)}" style="background:#fff;max-height:620px">`;
       Object.keys(K.paths).forEach((g) => { s += `<path d="${K.paths[g]}" fill="${colOf(get(g))}" stroke="#fff" stroke-width="0.4" data-g="${g}"><title>${esc(nm(g))}: ${esc(fv(get(g)))}</title></path>`; });
       el.innerHTML = s + "</svg>";
-      el.querySelectorAll("path").forEach((p) => p.addEventListener("mousemove", () => { $("krHover").textContent = `${nm(p.dataset.g)}: ${fv(get(p.dataset.g))}`; }));
+      el.querySelectorAll("path").forEach((p) => { p.style.cursor = "pointer"; p.addEventListener("mousemove", () => { $("krHover").textContent = `${nm(p.dataset.g)}: ${fv(get(p.dataset.g))}`; }); p.addEventListener("click", () => { location.hash = "steckbrief/" + p.dataset.g; }); });
       $(`km_${k}_leg`).innerHTML = (C.cat ? C.labels.map((l, i) => `<span>${sw(C.cols[i])} ${esc(l)}</span>`) :
         C.cols.map((c, i) => `<span>${sw(c)} ${i === 0 ? L("unter ", "below ") + fmt(C.bins[1], k === "flaeche" ? 2 : 1) : i === C.cols.length - 1 ? fmt(C.bins[i], k === "flaeche" ? 2 : 1) + L(" und mehr", " and more") : fmt(C.bins[i], k === "flaeche" ? 2 : 1) + " – " + fmt(C.bins[i + 1], k === "flaeche" ? 2 : 1)}</span>`)).join("") + `<span>${sw("#bfbfbf")} ${L("keine Daten", "no data")}</span>`;
       $(`km_${k}_title`).textContent = C.t; $(`km_${k}_ask`).textContent = C.ask;
       $(`km_${k}_src`).textContent = L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell; Kartengrundlage: © EuroGeographics (GISCO). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on INKAR 2025 (BBSR), the Regional Database Germany and the Caliendo-Parro model; base map: © EuroGeographics (GISCO). Licence of the figure: CC BY 4.0.");
       FIGDATA[`km_${k}`] = { header: ["NUTS", L("Kreis", "District"), C.t], rows: Object.keys(K.paths).map((g) => [g, nm(g), C.cat ? fv(get(g)) : get(g)]) };
     });
-    $("krHover").textContent = L("Zeiger auf einen Kreis: Name und Wert.", "Point at a district: name and value.");
+    $("krHover").textContent = L("Zeiger auf einen Kreis: Name und Wert; Klick öffnet den Kreis-Steckbrief.", "Point at a district: name and value; click opens the district profile.");
+  }
+
+  // district profile: every district indicator with German median and rank
+  async function renderSteckbrief() {
+    const [S, K] = await Promise.all([getJSON("data/kreise_steckbrief.json"), getJSON("data/kreise_energy.json")]);
+    const inp = $("sbInput"), keys = Object.keys(S.kreise).sort((a, b) => S.kreise[a].n.localeCompare(S.kreise[b].n, "de"));
+    const label = (g) => `${S.kreise[g].n} (${S.kreise[g].land})`;
+    if (!inp.dataset.ready) {
+      inp.dataset.ready = "1";
+      $("sbList").innerHTML = keys.map((g) => `<option value="${esc(label(g))}"></option>`).join("");
+      inp.addEventListener("change", () => { const g = keys.find((x) => label(x) === inp.value || S.kreise[x].n === inp.value); if (g) { location.hash = "steckbrief/" + g; } });
+      $("sbPrint").addEventListener("click", () => window.print());
+    }
+    const g = S.kreise[state.kreis] ? state.kreis : (keys.find((x) => S.kreise[x].n.startsWith("Regensburg, Stadt")) || keys[0]);
+    const k = S.kreise[g], I = S.indicators;
+    inp.value = label(g);
+    const fv = (key, v) => v === null || v === undefined ? "–" : `${fmt(v, I[key].d)}${I[key].u}`;
+    $("sbName").textContent = `${k.n}, ${k.land}`;
+    // notable: top or bottom 10 % among districts with data
+    const notable = Object.keys(I).filter((key) => !["pop", "loss_mio", "lignite", "grw_c"].includes(key) && k.r[key] !== null).map((key) => ({ key, p: k.r[key] / I[key].n }))
+      .filter((x) => x.p <= 0.1 || x.p > 0.9).sort((a, b) => Math.min(a.p, 1 - a.p) - Math.min(b.p, 1 - b.p)).slice(0, 4);
+    const nt = notable.map((x) => `${(EN ? I[x.key].en : I[x.key].de)} ${fv(x.key, k.v[x.key])} (${L("Rang", "rank")} ${k.r[x.key]} ${L("von", "of")} ${I[x.key].n})`);
+    $("sbAnswer").textContent = L(`${fmt(k.v.pop, 0)} Einwohner. ${k.v.loss_pc !== null ? `Die US-Zölle kosten die Industrie hier im Modell ${fv("dm", k.v.dm)} Produktion, ${fv("loss_pc", k.v.loss_pc)} je Einwohner (Median ${fv("loss_pc", I.loss_pc.med)}). ` : "Für die US-Zölle liegen keine Kreiswerte vor (Geheimhaltung). "}${nt.length ? "Auffällig im Vergleich der Kreise: " + nt.join("; ") + "." : ""}`,
+      `${fmt(k.v.pop, 0)} inhabitants. ${k.v.loss_pc !== null ? `In the model US tariffs cost manufacturing here ${fv("dm", k.v.dm)} of output, ${fv("loss_pc", k.v.loss_pc)} per head (median ${fv("loss_pc", I.loss_pc.med)}). ` : "No district values for US tariffs (confidentiality). "}${nt.length ? "Notable among districts: " + nt.join("; ") + "." : ""}`);
+    // locator map
+    let m = `<svg viewBox="0 0 ${K.width} ${K.height.toFixed(1)}" role="img" aria-label="${esc(k.n)}" style="background:#fff;max-height:340px">`;
+    Object.keys(K.paths).forEach((x) => { m += `<path d="${K.paths[x]}" fill="${x === g ? "#002060" : "#e7e6e6"}" stroke="#fff" stroke-width="0.4" data-g="${x}" style="cursor:pointer"><title>${esc(S.kreise[x] ? S.kreise[x].n : x)}</title></path>`; });
+    $("sbMap").innerHTML = m + "</svg>";
+    $("sbMap").querySelectorAll("path").forEach((p) => p.addEventListener("click", () => { if (S.kreise[p.dataset.g]) location.hash = "steckbrief/" + p.dataset.g; }));
+    const groups = [["struktur", L("Wirtschaft und Bevölkerung", "Economy and population")], ["industrie", L("Industrie und Export", "Industry and exports")], ["zoelle", L("US-Zölle (Stand August 2026)", "US tariffs (August 2026)")],
+      ["finanzen", L("Gemeindefinanzen, Soziales und Förderung", "Municipal finances, welfare and aid")], ["energie", L("Stromerzeugung", "Power generation")], ["netze", L("Netze und Erreichbarkeit", "Networks and access")], ["gesellschaft", L("Gesellschaft", "Society")]];
+    $("sbTables").innerHTML = groups.map(([gid, gl]) => `<h3 style="margin-top:28px">${esc(gl)}</h3><div class="tablewrap"><table><thead><tr><th>${L("Merkmal", "Indicator")}</th><th class="num">${esc(k.n)}</th><th class="num">${L("Median der Kreise", "Median of districts")}</th><th class="num">${L("Rang (1 = höchster Wert)", "Rank (1 = highest)")}</th></tr></thead><tbody>` +
+      Object.keys(I).filter((key) => I[key].g === gid).map((key) => `<tr><td>${esc(EN ? I[key].en : I[key].de)}</td><td class="num">${fv(key, k.v[key])}</td><td class="num">${fv(key, I[key].med)}</td><td class="num">${k.r[key] === null ? "–" : `${k.r[key]} / ${I[key].n}`}</td></tr>`).join("") + "</tbody></table></div>").join("");
+    $("sbSrc").textContent = L("Quellen: INKAR 2025 (BBSR), Regionaldatenbank Deutschland, Marktstammdatenregister und Breitbandatlas (Bundesnetzagentur), OpenStreetMap (ODbL), BBSR-Referenz der GRW-Fördergebiete, Caliendo-Parro-Modell; eigene Berechnungen. Kreisgrenzen: © EuroGeographics (GISCO). Lizenz: CC BY 4.0.",
+      "Sources: INKAR 2025 (BBSR), Regional Database Germany, market master data register and broadband atlas (Federal Network Agency), OpenStreetMap (ODbL), BBSR reference of GRW aid areas, Caliendo-Parro model; own calculations. District boundaries: © EuroGeographics (GISCO). Licence: CC BY 4.0.");
   }
 
   function renderForecast() {
