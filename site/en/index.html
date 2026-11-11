@@ -30,6 +30,7 @@
       <a href="#mittelstand">Mittelstand</a>
       <a href="#dienste">Services</a>
       <a href="#fdi">Investment</a>
+      <a href="#beschaffung">Procurement</a>
       <a href="#regionen">Regions</a>
       <a href="#kreise">Districts</a>
       <a href="#steckbrief">District profile</a>
@@ -459,6 +460,45 @@
     <div class="tablewrap"><table id="fdTable"></table></div>
   </section>
 
+  <section id="view-beschaffung" class="view" hidden>
+    <h2>How does the state buy?</h2>
+    <div class="intro"><p class="answer" id="pcAnswer"></p><p class="explain" id="pcExplain"></p></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="pcq">
+      <p class="cask" id="pcQAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="pcQTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="pcQChart" class="svgwrap"></div></div></div>
+      <p class="src" id="pcQSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="pcc">
+      <p class="cask" id="pcCAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="pcCTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="pcCChart" class="svgwrap"></div></div></div>
+      <p class="src" id="pcCSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="pcb">
+      <p class="cask" id="pcBAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="pcBTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="pcBChart" class="svgwrap"></div></div></div>
+      <p class="src" id="pcBSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="pcp">
+      <p class="cask" id="pcPAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="pcPTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="pcPChart" class="svgwrap"></div></div></div>
+      <p class="src" id="pcPSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+    <h3 id="pcSTitle"></h3>
+    <div class="tablewrap"><table id="pcSTable"></table></div>
+    <h3 id="pcCovTitle"></h3>
+    <div class="tablewrap"><table id="pcCovTable"></table></div>
+  </section>
+
   <section id="view-regionen" class="view" hidden>
     <h2>Which European regions are hit by what?</h2>
     <div class="toolbar">
@@ -799,6 +839,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Also: <a href="https://wfhungerland.github.io/konjunkturmonitor/en/">Konjunkturmonitor</a> · <a href="../impressum.html" hreflang="de">Legal notice</a> · <a href="../datenschutz.html" hreflang="de">Privacy</a> · Text and figures: <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a></span>
   <span>Own calculations based on CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII tariff data and searoute.</span>
 </footer>
-<script src="../app.js?v=20261112b"></script>
+<script src="../app.js?v=20261113a"></script>
 </body>
 </html>

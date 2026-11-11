@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -53,7 +53,7 @@
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -201,6 +201,7 @@
     if (view === "mittelstand") await renderMittelstand();
     if (view === "dienste") await renderServices();
     if (view === "fdi") await renderFDI();
+    if (view === "beschaffung") await renderProcurement();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
@@ -1366,6 +1367,47 @@
     $("fdTabTitle").textContent = L(`Direktinvestitionen in Deutschland ${F.inward_year}: unmittelbares Partnerland und letzter Investor, Mrd. EUR`, `Direct investment in Germany ${F.inward_year}: immediate partner and ultimate investor, EUR bn`);
     $("fdTable").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Unmittelbarer Partner", "Immediate partner")}</th><th class="num">${L("Letzter Investor", "Ultimate investor")}</th></tr></thead><tbody>` +
       Object.keys(I).sort((a, b) => (I[b].ult || 0) - (I[a].ult || 0)).map((c) => `<tr><td>${esc(CN(c))}</td><td class="num">${I[c].imc === null ? "–" : fmt(I[c].imc, 1)}</td><td class="num">${I[c].ult === null ? "–" : fmt(I[c].ult, 1)}</td></tr>`).join("") + "</tbody>";
+  }
+
+  async function renderProcurement() {
+    const B = await getJSON("data/bigg_ted.json"), pc = (v, d = 0) => `${fmt(100 * v, d)} %`;
+    const LV = { central: L("Bund", "Federal"), regional_local: L("Länder und Kommunen", "Länder and municipalities"), public_body: L("Öffentliche Einrichtungen", "Public bodies"), utilities_other: L("Sektorenauftraggeber, sonstige", "Utilities, other") };
+    const lv = B.f1_levels, c2 = B.f2_concentration, c3 = B.f3_competition, c4 = B.f4_persistence, cov = B.coverage;
+    const last = (a) => a[a.length - 1], avg = (a, k) => a.reduce((t, r) => t + r[k], 0) / a.length, f3l = last(c3), f4l = last(c4), f2l = { y0: c2[0].year, y1: last(c2).year, top100: avg(c2, "top100"), top1pct_awards: avg(c2, "top1pct_awards") };
+    const yrs = (a) => a.map((r) => r.year);
+    $("pcAnswer").textContent = L(
+      `Der Bund vergibt ${pc(lv.central.share)} des in TED veröffentlichten Auftragsvolumens, trägt aber ${pc(lv.central.var_share)} zu dessen Schwankung bei. Die Nachfrage ist granular: Im Mittel der Jahre ${f2l.y0} bis ${f2l.y1} gingen ${pc(f2l.top100)} des Volumens an die 100 größten Auftragnehmer, und das größte 1 % der Aufträge machte ${pc(f2l.top1pct_awards)} aus. ${f3l.year} erhielten ${pc(f3l.single_bid)} der Vergaben nur ein Angebot. ${pc(f4l.value_incumbent_firm)} des Volumens ${f4l.year} gingen an Firmen, die schon in den drei Vorjahren einen Auftrag erhielten.`,
+      `The federal government awards ${pc(lv.central.share)} of the contract volume published in TED but accounts for ${pc(lv.central.var_share)} of its fluctuation. Demand is granular: on average over ${f2l.y0} to ${f2l.y1} the 100 largest contractors received ${pc(f2l.top100)} of the volume, and the largest 1 % of contracts accounted for ${pc(f2l.top1pct_awards)}. In ${f3l.year} ${pc(f3l.single_bid)} of awards received a single bid. ${pc(f4l.value_incumbent_firm)} of the ${f4l.year} volume went to firms that already won a contract in the three preceding years.`);
+    $("pcExplain").textContent = L(
+      "Nachbau der Fakten aus Cox, Müller, Pasten, Schoenle und Weber (2024, „Big G“) für Deutschland. Daten: Zuschlagsbekanntmachungen in TED (Amtsblatt der EU) mit Auftraggeber in Deutschland, 2016 bis 2025, also nur Aufträge über den EU-Schwellenwerten. Werte wie veröffentlicht, meist ohne Umsatzsteuer; Aufträge über 5 Mrd. EUR gelten als Eingabefehler. Bei mehreren Auftragnehmern wird der Wert gleich verteilt. Tragen mindestens drei Zuschläge einer Meldung exakt denselben Wert, gilt er als Gesamtwert der Meldung und wird aufgeteilt (etwa bei der Maskenbeschaffung des Bundes 2020). Firmennamen sind nur grob vereinheitlicht (ohne Rechtsform). Viele Bekanntmachungen nennen keinen Wert. Viele Rüstungsaufträge fehlen, weil sie nicht EU-weit ausgeschrieben werden müssen. Zuschlagswerte sind keine Ausgaben: Rahmenverträge werden oft nicht voll abgerufen.",
+      "Replication of the facts in Cox, Müller, Pasten, Schoenle and Weber (2024, “Big G”) for Germany. Data: contract award notices in TED (Official Journal of the EU) with a buyer in Germany, 2016 to 2025, hence only contracts above the EU thresholds. Values as published, mostly net of VAT; awards above EUR 5 bn are treated as input errors. With several contractors the value is split equally. If at least three awards of one notice carry exactly the same value, it is read as the notice total and split (e.g. the federal mask procurement in 2020). Firm names are harmonised only roughly (legal form removed). Many notices give no value. Many defence contracts are missing because they need not be tendered EU-wide. Award values are not spending: framework agreements are often not fully used.");
+    const Q = B.f1_quarterly, ks = Object.keys(LV).filter((k) => Q[k]), cols = ["#002060", "#C00000", "#7F7F7F", "#B4C7E7"];
+    lineChart($("pcQChart"), Q.q, ks.map((k, i) => ({ label: LV[k], color: cols[i], bold: i < 2, values: Q[k] })), { min: 0, unit: L("Mrd. EUR", "EUR bn"), label: "TED" });
+    $("pcQAsk").textContent = L("Wie stark schwankt die öffentliche Nachfrage, und wer treibt die Schwankung?", "How much does public demand fluctuate, and who drives it?");
+    $("pcQTitle").textContent = L("Vergebenes Auftragsvolumen je Quartal nach Auftraggeber, Mrd. EUR", "Contract volume awarded per quarter by buyer, EUR bn");
+    $("pcQSrc").textContent = L("Quelle: TED (Amt für Veröffentlichungen der EU), eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.", "Source: TED (Publications Office of the EU), own calculation. Licence of the figure: CC BY 4.0.");
+    FIGDATA.pcq = { header: [L("Quartal", "Quarter"), ...ks.map((k) => `${LV[k]}, ${L("Mrd. EUR", "EUR bn")}`)], rows: Q.q.map((q, i) => [q, ...ks.map((k) => Q[k][i])]) };
+    lineChart($("pcCChart"), yrs(c2), [{ label: L("100 größte Auftragnehmer", "100 largest contractors"), color: "#002060", bold: true, values: c2.map((r) => 100 * r.top100) }, { label: L("10 größte Auftragnehmer", "10 largest contractors"), color: "#C00000", bold: true, values: c2.map((r) => 100 * r.top10) }, { label: L("Größtes 1 % der Aufträge", "Largest 1 % of contracts"), color: "#7F7F7F", values: c2.map((r) => 100 * r.top1pct_awards) }], { min: 0, unit: "%", label: "share" });
+    $("pcCAsk").textContent = L("Verteilt sich die Nachfrage breit oder auf wenige Firmen?", "Is demand spread widely or concentrated on few firms?");
+    $("pcCTitle").textContent = L("Anteil am Auftragsvolumen, %", "Share of contract volume, %");
+    $("pcCSrc").textContent = $("pcQSrc").textContent;
+    FIGDATA.pcc = { header: [L("Jahr", "Year"), L("Firmen", "Firms"), L("10 größte, %", "Top 10, %"), L("100 größte, %", "Top 100, %"), L("Größtes 1 % der Aufträge, %", "Largest 1 % of contracts, %"), "HHI"], rows: c2.map((r) => [r.year, r.firms, 100 * r.top10, 100 * r.top100, 100 * r.top1pct_awards, r.hhi]) };
+    lineChart($("pcBChart"), yrs(c3), [{ label: L("Vergaben mit nur einem Angebot", "Awards with a single bid"), color: "#002060", bold: true, values: c3.map((r) => 100 * r.single_bid) }, { label: L("Anteil am Volumen", "Share of volume"), color: "#C00000", bold: true, values: c3.map((r) => 100 * r.single_bid_value) }], { min: 0, unit: "%", label: "single bid" });
+    $("pcBAsk").textContent = L("Wie viel Wettbewerb gibt es um öffentliche Aufträge?", "How much competition is there for public contracts?");
+    $("pcBTitle").textContent = L("Vergaben mit nur einem Angebot, %", "Awards with a single bid, %");
+    $("pcBSrc").textContent = $("pcQSrc").textContent;
+    FIGDATA.pcb = { header: [L("Jahr", "Year"), L("Vergaben mit Angabe", "Awards reporting bids"), L("Median Angebote", "Median bids"), L("Nur ein Angebot, %", "Single bid, %"), L("Volumen mit einem Angebot, %", "Volume with a single bid, %")], rows: c3.map((r) => [r.year, r.n, r.median_bids, 100 * r.single_bid, 100 * r.single_bid_value]) };
+    lineChart($("pcPChart"), yrs(c4), [{ label: L("bekannte Firma", "known firm"), color: "#002060", bold: true, values: c4.map((r) => 100 * r.value_incumbent_firm) }, { label: L("bekanntes Paar Auftraggeber–Firma", "known buyer–firm pair"), color: "#C00000", bold: true, values: c4.map((r) => 100 * r.value_repeat_pair) }], { min: 0, max: 100, unit: "%", label: "incumbents" });
+    $("pcPAsk").textContent = L("Bleiben die Lieferfirmen des Staates dieselben?", "Does the state keep the same suppliers?");
+    $("pcPTitle").textContent = L("Anteil am Auftragsvolumen, %, Rückblick bis drei Jahre", "Share of contract volume, %, looking back up to three years");
+    $("pcPSrc").textContent = $("pcQSrc").textContent;
+    FIGDATA.pcp = { header: [L("Jahr", "Year"), L("Rückblick, Jahre", "Look-back, years"), L("an bekannte Firmen, %", "to known firms, %"), L("gleiches Paar, %", "same pair, %")], rows: c4.map((r) => [r.year, r.lookback, 100 * r.value_incumbent_firm, 100 * r.value_repeat_pair]) };
+    const T = B.f5_type;
+    $("pcSTitle").textContent = L(`Was kauft der Staat? Anteil am Volumen 2016 bis 2025: Bauleistungen ${pc(T.works || 0)}, Dienstleistungen ${pc(T.services || 0)}, Lieferungen ${pc(T.supplies || 0)}`, `What does the state buy? Share of volume 2016 to 2025: works ${pc(T.works || 0)}, services ${pc(T.services || 0)}, supplies ${pc(T.supplies || 0)}`);
+    $("pcSTable").innerHTML = `<thead><tr><th>CPV</th><th>${L("Bereich", "Division")}</th><th class="num">${L("Anteil am Volumen", "Share of volume")}</th></tr></thead><tbody>` + B.f5_cpv2.map((r) => `<tr><td>${esc(r.cpv2)}</td><td>${esc(L(r.de, r.en))}</td><td class="num">${pc(r.share, 1)}</td></tr>`).join("") + "</tbody>";
+    $("pcCovTitle").textContent = L("Abdeckung der Daten je Jahr", "Data coverage by year");
+    $("pcCovTable").innerHTML = `<thead><tr><th>${L("Jahr", "Year")}</th><th class="num">${L("Bekanntmachungen", "Notices")}</th><th class="num">${L("Vergaben", "Awards")}</th><th class="num">${L("Volumen, Mrd. EUR", "Volume, EUR bn")}</th><th class="num">${L("mit Wert", "with value")}</th><th class="num">${L("mit Auftragnehmer", "with contractor")}</th><th class="num">${L("mit Angebotszahl", "with bid count")}</th></tr></thead><tbody>` +
+      cov.map((r) => `<tr><td>${r.year}</td><td class="num">${fmt(r.notices, 0)}</td><td class="num">${fmt(r.awards, 0)}</td><td class="num">${fmt(r.value_bn, 1)}</td><td class="num">${pc(r.share_with_value)}</td><td class="num">${pc(r.share_with_winner)}</td><td class="num">${pc(r.share_with_bids)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
