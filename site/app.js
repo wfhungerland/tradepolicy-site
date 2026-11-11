@@ -1536,13 +1536,13 @@
     const keys = Object.keys(levels), W = 860, lw = 210, cw = (W - lw) / keys.length, rh = 28, top = 30, H = top + rows.length * rh + 4;
     const hi = Math.max(...rows.flatMap((r) => keys.map((k) => r.vals[k]))), bw = (v) => (v / hi) * (cw - 52);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
-    keys.forEach((k, j) => { s += `<text x="${lw + j * cw}" y="18" style="font-weight:600;fill:${k === "S1311" ? ACC : "#000"}">${esc(levels[k][0])}</text>`; });
+    keys.forEach((k, j) => { s += `<text x="${lw + j * cw}" y="18" style="font-weight:600">${esc(levels[k][0])}</text>`; });
     s += `<line x1="0" x2="${W}" y1="${top - 6}" y2="${top - 6}" stroke="${G3}"/>`;
     rows.forEach((r, i) => {
       const yy = top + i * rh;
       s += `<text x="0" y="${yy + rh / 2 + 4}" style="font-weight:${r.accent ? 600 : 400};fill:${r.accent ? ACC : "#000"}">${esc(r.label)}</text>`;
       keys.forEach((k, j) => {
-        const v = r.vals[k], x0 = lw + j * cw, col = k === "S1311" ? ACC : G2;
+        const v = r.vals[k], x0 = lw + j * cw, col = k === "S1311" ? "#000" : G2;
         if (v >= 0.5) s += `<rect x="${x0}" y="${yy + 7}" width="${Math.max(1, bw(v))}" height="${rh - 14}" fill="${col}"><title>${esc(`${r.label}, ${levels[k][0]}: ${fmt(v, 0)} ${opt.unit}`)}</title></rect><text x="${x0 + Math.max(1, bw(v)) + 4}" y="${yy + rh / 2 + 4}" style="font-size:12px">${fmt(v, 0)}</text>`;
         else s += `<text x="${x0}" y="${yy + rh / 2 + 4}" style="font-size:12px;fill:${G2}">–</text>`;
       });
@@ -1619,11 +1619,11 @@
     barMatrix($("stLChart"), order.map((c) => ({ label: dn(c), accent: c === "GF10", vals: Object.fromEntries(Object.keys(LV).map((sec) => [sec, C.sectors[sec][c][li] / 1000])) })), LV, { label: "levels", unit: L("Mrd. EUR", "EUR bn") });
     $("stLAsk").textContent = L("Welche Ebene gibt wofür aus?", "Which level spends on what?");
     $("stLTitle").textContent = L(`Ausgaben ${Y[li]} je Ebene, Mrd. EUR; alle Balken auf einer Skala`, `Expenditure ${Y[li]} by level, EUR bn; all bars on one scale`);
-    $("stLSrc").textContent = L("Werte je Ebene einschließlich Zahlungen an andere Ebenen, etwa des Bundeszuschusses an die Rentenversicherung; nicht addierbar. Strich: unter 0,5 Mrd. EUR. ", "Values by level include payments to other levels, such as the federal grant to pension insurance; not additive. Dash: below EUR 0.5 bn. ") + src;
+    $("stLSrc").textContent = L("Bund schwarz hervorgehoben. Werte je Ebene einschließlich Zahlungen an andere Ebenen, etwa des Bundeszuschusses an die Rentenversicherung; nicht addierbar. Strich: unter 0,5 Mrd. EUR. ", "Federal level highlighted in black. Values by level include payments to other levels, such as the federal grant to pension insurance; not additive. Dash: below EUR 0.5 bn. ") + src;
     FIGDATA.stlev = { header: [L("Aufgabe", "Function"), ...Object.values(LV).map((l) => `${l[0]}, ${L("Mrd. EUR", "EUR bn")}`)], rows: order.map((c) => [dn(c), ...Object.keys(LV).map((s) => +(C.sectors[s][c][li] / 1000).toFixed(1))]) };
     // 5 federal government, direct labels, from 2000
     const fed = ["GF10", "GF01", "GF04", "GF02", "GF09"];
-    lineDirect($("stBChart"), ys, fed.map((c) => ({ label: dn(c), color: c === "GF10" ? ACC : c === "GF02" ? "#000" : G3, bold: c === "GF10" || c === "GF02", values: ys.map((_, k) => real("S1311", c, i00 + k)) })), { unit: L(`EUR je Einwohner, Preise ${C.price_base}`, `EUR per head, ${C.price_base} prices`), label: "federal" });
+    lineDirect($("stBChart"), ys, fed.map((c) => ({ label: dn(c), color: c === "GF10" ? ACC : c === "GF02" ? "#C00000" : G3, bold: c === "GF10" || c === "GF02", values: ys.map((_, k) => real("S1311", c, i00 + k)) })), { unit: L(`EUR je Einwohner, Preise ${C.price_base}`, `EUR per head, ${C.price_base} prices`), label: "federal" });
     $("stBAsk").textContent = L("Wofür gibt der Bund sein Geld aus?", "What does the federal government spend on?");
     $("stBTitle").textContent = L(`Ausgaben des Bundes je Einwohner; Verteidigung ${fmt(real("S1311", "GF02", i19), 0)} EUR (2019) und ${fmt(real("S1311", "GF02", li), 0)} EUR (${Y[li]})`, `Federal expenditure per head; defence EUR ${fmt(real("S1311", "GF02", i19), 0)} (2019) and EUR ${fmt(real("S1311", "GF02", li), 0)} (${Y[li]})`);
     $("stBSrc").textContent = L("Soziale Sicherung des Bundes enthält vor allem die Zuschüsse an die Rentenversicherung und das Bürgergeld. ", "Federal social protection mainly contains grants to pension insurance and basic income support. ") + src;
