@@ -29,6 +29,7 @@
       <a href="#regime">Regierungsform</a>
       <a href="#mittelstand">Mittelstand</a>
       <a href="#dienste">Dienstleistungen</a>
+      <a href="#fdi">Investitionen</a>
       <a href="#regionen">Regionen</a>
       <a href="#kreise">Kreise</a>
       <a href="#steckbrief">Kreis-Steckbrief</a>
@@ -435,6 +436,29 @@
     <div class="tablewrap"><table id="svTable"></table></div>
   </section>
 
+  <section id="view-fdi" class="view" hidden>
+    <h2>Wo investiert die deutsche Wirtschaft?</h2>
+    <div class="intro"><p class="answer" id="fdAnswer"></p><p class="explain" id="fdExplain"></p></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="fdstock">
+      <p class="cask" id="fdSAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="fdSTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="fdSChart" class="svgwrap"></div></div></div>
+      <p class="src" id="fdSSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="fdflow">
+      <p class="cask" id="fdFAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="fdFTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="fdFChart" class="svgwrap"></div></div></div>
+      <p class="src" id="fdFSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3 id="fdTabTitle"></h3>
+    <div class="tablewrap"><table id="fdTable"></table></div>
+  </section>
+
   <section id="view-regionen" class="view" hidden>
     <h2>Welche Regionen Europas trifft was?</h2>
     <div class="toolbar">
@@ -775,6 +799,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
   <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
-<script src="app.js?v=20261112a"></script>
+<script src="app.js?v=20261112b"></script>
 </body>
 </html>

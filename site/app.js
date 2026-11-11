@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -53,7 +53,7 @@
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -200,6 +200,7 @@
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
     if (view === "dienste") await renderServices();
+    if (view === "fdi") await renderFDI();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
@@ -1341,6 +1342,30 @@
     FIGDATA.crit = { header: [L("Rohstoff", "Material"), L("China-Anteil Importe 2024, %", "China share imports 2024, %"), L("China-Anteil Weltexporte, %", "China share world exports, %")], rows: G.map((g) => [nm(g), g.cn_2024, g.cn_world]) };
     $("crTable").innerHTML = `<thead><tr><th>${L("Rohstoff", "Material")}</th><th>${L("Kontrolle seit", "Controlled since")}</th><th class="num">${L("Importe 2024, Mio. USD", "Imports 2024, USD m")}</th><th class="num">${L("China 2022, %", "China 2022, %")}</th><th class="num">${L("China 2024, %", "China 2024, %")}</th><th>${L("Größte Lieferländer 2024", "Largest suppliers 2024")}</th></tr></thead><tbody>` +
       G.map((g) => `<tr><td>${esc(nm(g))}</td><td>${g.control}</td><td class="num">${fmt(g.imp_mio_usd, 0)}</td><td class="num">${fmt(g.cn_2022, 0)}</td><td class="num">${fmt(g.cn_2024, 0)}</td><td>${g.top.map((t) => `${esc(t[0])} ${fmt(t[1], 0)} %`).join(", ")}</td></tr>`).join("") + "</tbody>";
+  }
+
+  // foreign direct investment (OECD FDI statistics, BMD4)
+  async function renderFDI() {
+    const F = await getJSON("data/fdi.json"), li = F.years.length - 1, bn = (v) => L(`${fmt(v, 0)} Mrd. EUR`, `EUR ${fmt(v, 0)} bn`), O = F.out;
+    const i13 = 0, us = O.usa[li], cn = O.chn[li], w = O.world[li], fsum = (a) => a.reduce((t, v) => t + (v || 0), 0);
+    const I = F.inward, X3 = { LUX: L("Luxemburg", "Luxembourg") }, CN = (c) => X3[c] || cname(c) || c;
+    $("fdAnswer").textContent = L(`Deutsche Unternehmen hielten ${F.year} Direktinvestitionen von ${bn(w)} im Ausland, ${bn(us)} davon in den USA (${fmt(100 * us / w, 0)} %) und ${bn(cn)} in China (${fmt(100 * cn / w, 0)} %). Seit ${F.years[i13]} ist der Bestand in den USA um ${fmt(100 * (us / O.usa[i13] - 1), 0)} % gewachsen, in China um ${fmt(100 * (cn / O.chn[i13] - 1), 0)} %. Umgekehrt investieren chinesische Unternehmen wenig in Deutschland: ${bn(I.CHN.ult)} nach dem letzten Investor (${F.inward_year}), US-Unternehmen ${bn(I.USA.ult)}.`,
+      `In ${F.year} German companies held direct investment of ${bn(w)} abroad, ${bn(us)} of it in the US (${fmt(100 * us / w, 0)} %) and ${bn(cn)} in China (${fmt(100 * cn / w, 0)} %). Since ${F.years[i13]} the stock in the US has grown by ${fmt(100 * (us / O.usa[i13] - 1), 0)} %, in China by ${fmt(100 * (cn / O.chn[i13] - 1), 0)} %. Conversely, Chinese companies invest little in Germany: ${bn(I.CHN.ult)} by ultimate investor (${F.inward_year}), US companies ${bn(I.USA.ult)}.`);
+    $("fdExplain").textContent = L("OECD, Direktinvestitionsstatistik nach Partnerländern (BMD4, Richtungsprinzip), Meldeland Deutschland, alle Einheiten, Euro. Ausländische Bestände nach dem unmittelbaren Partnerland; Investitionen in Deutschland zusätzlich nach dem letzten Investor, der über Holdings in den Niederlanden oder Luxemburg geleitete Mittel dem Herkunftsland zuordnet. Die Ströme schwanken stark, weil sie reinvestierte Gewinne und konzerninterne Kredite enthalten.",
+      "OECD, FDI statistics by partner country (BMD4, directional principle), reporter Germany, all units, euro. Outward positions by immediate partner; inward also by ultimate investor, which assigns funds routed via holdings in the Netherlands or Luxembourg to the country of origin. Flows are volatile as they include reinvested earnings and intra-group loans.");
+    lineChart($("fdSChart"), F.years, [{ label: L("USA", "US"), color: "#002060", bold: true, values: O.usa }, { label: "China", color: "#C00000", bold: true, values: O.chn }], { min: 0, unit: L("Mrd. EUR", "EUR bn"), label: "FDI" });
+    $("fdSAsk").textContent = L("Wie groß ist das deutsche Engagement in den USA und in China?", "How large is German investment in the US and China?");
+    $("fdSTitle").textContent = L("Bestand deutscher Direktinvestitionen, Mrd. EUR", "Stock of German direct investment, EUR bn");
+    $("fdSSrc").textContent = L("Quelle: OECD, FDI statistics by partner country; eigene Darstellung. Lizenz der Abbildung: CC BY 4.0.", "Source: OECD, FDI statistics by partner country; own presentation. Licence of the figure: CC BY 4.0.");
+    FIGDATA.fdstock = { header: [L("Jahr", "Year"), L("USA, Mrd. EUR", "US, EUR bn"), L("China, Mrd. EUR", "China, EUR bn"), L("Welt, Mrd. EUR", "World, EUR bn")], rows: F.years.map((y, i) => [y, O.usa[i], O.chn[i], O.world[i]]) };
+    lineChart($("fdFChart"), F.flows.years, [{ label: L("USA", "US"), color: "#002060", bold: true, values: F.flows.usa }, { label: "China", color: "#C00000", bold: true, values: F.flows.chn }], { unit: L("Mrd. EUR", "EUR bn"), label: "FDI flows" });
+    $("fdFAsk").textContent = L("Fließt neues Kapital eher in die USA oder nach China?", "Does new capital flow rather to the US or to China?");
+    $("fdFTitle").textContent = L(`Neue deutsche Direktinvestitionen (netto), Mrd. EUR; Summe ${F.flows.years[0]} bis ${F.flows.years.at(-1)}: USA ${fmt(fsum(F.flows.usa), 0)}, China ${fmt(fsum(F.flows.chn), 0)}`, `New German direct investment (net), EUR bn; sum ${F.flows.years[0]} to ${F.flows.years.at(-1)}: US ${fmt(fsum(F.flows.usa), 0)}, China ${fmt(fsum(F.flows.chn), 0)}`);
+    $("fdFSrc").textContent = L("Quelle: OECD, FDI statistics by partner country (Finanzströme); eigene Darstellung. Lizenz der Abbildung: CC BY 4.0.", "Source: OECD, FDI statistics by partner country (financial flows); own presentation. Licence of the figure: CC BY 4.0.");
+    FIGDATA.fdflow = { header: [L("Jahr", "Year"), L("USA, Mrd. EUR", "US, EUR bn"), L("China, Mrd. EUR", "China, EUR bn")], rows: F.flows.years.map((y, i) => [y, F.flows.usa[i], F.flows.chn[i]]) };
+    $("fdTabTitle").textContent = L(`Direktinvestitionen in Deutschland ${F.inward_year}: unmittelbares Partnerland und letzter Investor, Mrd. EUR`, `Direct investment in Germany ${F.inward_year}: immediate partner and ultimate investor, EUR bn`);
+    $("fdTable").innerHTML = `<thead><tr><th>${L("Land", "Country")}</th><th class="num">${L("Unmittelbarer Partner", "Immediate partner")}</th><th class="num">${L("Letzter Investor", "Ultimate investor")}</th></tr></thead><tbody>` +
+      Object.keys(I).sort((a, b) => (I[b].ult || 0) - (I[a].ult || 0)).map((c) => `<tr><td>${esc(CN(c))}</td><td class="num">${I[c].imc === null ? "–" : fmt(I[c].imc, 1)}</td><td class="num">${I[c].ult === null ? "–" : fmt(I[c].ult, 1)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
