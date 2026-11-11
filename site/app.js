@@ -1412,156 +1412,180 @@
   }
 
   // ---------------------------------------------------------------- government expenditure by function
-  const COF_COL = { GF10: "#002060", GF07: "#0070C0", GF01: "#00B0F0", GF04: "#595959", GF09: "#a6a6a6", REST: "#d9d9d9" };
-  const COF_MAIN = ["GF10", "GF07", "GF01", "GF04", "GF09"];
-  const LEVELS = () => ({ S1311: L("Bund", "Federal"), S1312: L("Länder", "Länder"), S1313: L("Gemeinden", "Municipalities"), S1314: L("Sozialversicherung", "Social security") });
-  const LEV_COL = { S1311: "#002060", S1312: "#0070C0", S1313: "#00B0F0", S1314: "#a6a6a6" };
-  const EVENTS = () => [[1995, L("Treuhand-Schulden", "Treuhand debt")], [2009, L("Finanzkrise", "Financial crisis")], [2020, "Corona"], [2022, L("Energiekrise", "Energy crisis")]];
+  // Tufte rules: direct labels instead of legends, one accent (social protection, dark blue), greys otherwise
+  const ACC = "#002060", G1 = "#595959", G2 = "#8c8c8c", G3 = "#bfbfbf", G4 = "#e6e6e6";
+  const LEVELS = () => ({ S1311: [L("Bund", "Federal"), "B"], S1312: [L("Länder", "Länder"), "L"], S1313: [L("Gemeinden", "Municipalities"), "G"], S1314: [L("Sozialversicherung", "Social security"), "S"] });
+  const spread = (labs, gap) => { labs.sort((a, b) => a.y - b.y); for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < gap) labs[k].y = labs[k - 1].y + gap; return labs; };
 
-  function stackChart(el, years, bands, opt) {
-    const W = 860, H = 400, m = { l: 16, r: 210, t: 40, b: 28 };
-    const x = (i) => m.l + (i / (years.length - 1)) * (W - m.l - m.r), y = (v) => H - m.b - (v / 100) * (H - m.t - m.b);
+  function slopegraph(el, cols, rows, opt) {
+    // cols: year labels; rows: {label, values:[..], accent}; values above opt.brk drawn in a top band (axis break)
+    const W = 860, m = { l: 300, r: 300, t: 34, b: 16 }, H = opt.h || 520, brk = opt.brk;
+    const vals = rows.flatMap((r) => r.values), lowVals = vals.filter((v) => !brk || v <= brk), hiVals = vals.filter((v) => brk && v > brk);
+    const topBand = brk ? 70 : 0, gap = brk ? 26 : 0, lowTop = m.t + topBand + gap, lowHi = Math.max(...lowVals) * 1.04;
+    const hMin = hiVals.length ? Math.min(...hiVals) - 1 : 0, hMax = hiVals.length ? Math.max(...hiVals) + 1 : 1;
+    const y = (v) => brk && v > brk ? m.t + topBand - 10 - ((v - hMin) / (hMax - hMin)) * (topBand - 20) : H - m.b - (v / lowHi) * (H - m.b - lowTop);
+    const x = (k) => m.l + (k / (cols.length - 1)) * (W - m.l - m.r);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
-    [0, 20, 40, 60, 80, 100].forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/>`; });
-    let base = years.map(() => 0);
-    const tops = [];
-    bands.forEach((b) => {
-      const top = base.map((v, i) => v + b.values[i]);
-      let d = "M" + years.map((_, i) => `${x(i).toFixed(1)},${y(top[i]).toFixed(1)}`).join("L") + "L" + years.map((_, i) => `${x(years.length - 1 - i).toFixed(1)},${y(base[years.length - 1 - i]).toFixed(1)}`).join("L") + "Z";
-      s += `<path d="${d}" fill="${b.color}" stroke="#fff" stroke-width="0.6"><title>${esc(b.label)}</title></path>`;
-      tops.push({ b, mid: (top.at(-1) + base.at(-1)) / 2, v: b.values.at(-1) });
-      base = top;
+    cols.forEach((c, k) => { s += `<text x="${x(k)}" y="16" text-anchor="middle" style="font-weight:600">${c}</text>`; });
+    if (brk) cols.forEach((_, k) => { const yy = m.t + topBand + gap / 2; s += `<path d="M${x(k) - 7},${yy + 3}L${x(k) + 7},${yy - 3}M${x(k) - 7},${yy + 8}L${x(k) + 7},${yy + 2}" stroke="${G2}" stroke-width="1"/>`; });
+    rows.forEach((r) => {
+      const col = r.accent ? ACC : G2, w = r.accent ? 2.6 : 1.4;
+      s += `<path d="${r.values.map((v, k) => (k ? "L" : "M") + x(k) + "," + y(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="${w}"><title>${esc(r.label)}</title></path>`;
+      r.values.forEach((v, k) => { s += `<circle cx="${x(k)}" cy="${y(v)}" r="${r.accent ? 3.5 : 2.5}" fill="${col}"><title>${esc(`${r.label}, ${cols[k]}: ${fmt(v, 1)} %`)}</title></circle>`; });
     });
-    (opt.events || []).forEach(([yr, t], k) => { const i = years.indexOf(yr); if (i < 0) return; const ty = k % 2 ? m.t - 2 : m.t - 14; s += `<line x1="${x(i)}" x2="${x(i)}" y1="${ty + 2}" y2="${H - m.b}" stroke="#000" stroke-width="0.8" stroke-dasharray="2,3"/><text x="${x(i) + 3}" y="${ty}" style="font-size:12px">${esc(t)}</text>`; });
-    const labs = tops.map((t) => ({ t, ly: y(t.mid) + 4 })).sort((a, b) => a.ly - b.ly);
-    labs.forEach((l, k) => { if (k && l.ly - labs[k - 1].ly < 15) l.ly = labs[k - 1].ly + 15; });
-    labs.forEach((l) => { s += `<text x="${W - m.r + 8}" y="${l.ly}">${esc(l.t.b.label)} ${fmt(l.t.v, 0)} %</text>`; });
-    years.forEach((yr, i) => { if (yr % 5 === 0 || i === years.length - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${yr}</text>`; });
-    s += "</svg>";
-    el.innerHTML = s;
+    const side = (k, anchor, dx, txt) => spread(rows.map((r) => ({ r, y: y(r.values[k]) + 4 })), 15).forEach((l) => { s += `<text x="${x(k) + dx}" y="${l.y}" text-anchor="${anchor}" style="font-weight:${l.r.accent ? 600 : 400};fill:${l.r.accent ? ACC : "#000"}">${esc(txt(l.r))}</text>`; });
+    side(0, "end", -10, (r) => `${r.label}  ${fmt(r.values[0], 1)}`);
+    side(cols.length - 1, "start", 10, (r) => `${fmt(r.values.at(-1), 1)}  ${r.label}`);
+    for (let k = 1; k < cols.length - 1; k++) rows.forEach((r) => { if (r.accent) s += `<text x="${x(k)}" y="${y(r.values[k]) - 9}" text-anchor="middle" style="fill:${ACC}">${fmt(r.values[k], 1)}</text>`; });
+    el.innerHTML = s + "</svg>";
   }
 
-  function multiples(el, years, items) {
-    const cols = 5, cw = 172, ch = 110, W = cols * cw, rows = Math.ceil(items.length / cols), H = rows * (ch + 56);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="small multiples">`;
-    items.forEach((it, k) => {
-      const ox = (k % cols) * cw, oy = Math.floor(k / cols) * (ch + 56) + 30, w = cw - 24;
-      const vals = it.values.filter((v) => v !== null), hi = Math.max(...vals) * 1.25;
-      const x = (i) => ox + (i / (years.length - 1)) * w, y = (v) => oy + ch - (v / hi) * (ch - 8);
-      s += `<text x="${ox}" y="${oy - 14}" style="font-weight:600;font-size:12.5px">${esc(it.label)}</text>`;
-      s += `<line class="grid" x1="${ox}" x2="${ox + w}" y1="${y(0)}" y2="${y(0)}"/>`;
-      let d = ""; it.values.forEach((v, i) => { if (v === null) return; d += (d ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); });
-      s += `<path d="${d}" fill="none" stroke="${it.color}" stroke-width="2"><title>${esc(it.label)}</title></path>`;
-      const lv = it.values.at(-1);
-      s += `<circle cx="${x(years.length - 1)}" cy="${y(lv)}" r="2.5" fill="${it.color}"/><text x="${ox + w}" y="${y(lv) - 7}" text-anchor="end" style="font-size:12px">${fmt(lv, 0)}</text>`;
-      s += `<text x="${ox}" y="${oy + ch + 14}" style="font-size:11px">${years[0]}</text><text x="${ox + w}" y="${oy + ch + 14}" text-anchor="end" style="font-size:11px">${years.at(-1)}</text>`;
+  function sparkTable(el, years, rows, head) {
+    // rows: {label, accent, level, spark:[..], change, share}
+    const W = 860, rh = 30, top = 30, H = top + rows.length * rh + 6, cx = [0, 330, 360, 560, 700, 860];
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="table">`;
+    head.forEach((h, k) => { s += `<text x="${k === 0 ? 0 : k === 2 ? cx[2] : cx[k + 1] - 10}" y="18" text-anchor="${k === 0 || k === 2 ? "start" : "end"}" style="font-size:12px;fill:${G1}">${esc(h)}</text>`; });
+    s += `<line x1="0" x2="${W}" y1="${top - 6}" y2="${top - 6}" stroke="${G3}"/>`;
+    rows.forEach((r, i) => {
+      const yy = top + i * rh, mid = yy + rh / 2, col = r.accent ? ACC : G1;
+      s += `<text x="0" y="${mid + 4}" style="font-weight:${r.accent ? 600 : 400};fill:${r.accent ? ACC : "#000"}">${esc(r.label)}</text>`;
+      s += `<text x="${cx[2] - 10}" y="${mid + 4}" text-anchor="end">${fmt(r.level, 0)}</text>`;
+      const sv = r.spark, mx = Math.max(...sv), mn = Math.min(...sv), sx = (k) => cx[2] + 10 + (k / (sv.length - 1)) * 170, sy = (v) => yy + rh - 6 - ((v - mn) / (mx - mn || 1)) * (rh - 12);
+      s += `<path d="${sv.map((v, k) => (k ? "L" : "M") + sx(k).toFixed(1) + "," + sy(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="1.3"><title>${esc(`${r.label}: ${years[0]} ${fmt(sv[0], 0)}, ${years.at(-1)} ${fmt(sv.at(-1), 0)} EUR`)}</title></path>`;
+      s += `<circle cx="${sx(sv.length - 1)}" cy="${sy(sv.at(-1))}" r="2.2" fill="${col}"/>`;
+      s += `<text x="${cx[4] - 10}" y="${mid + 4}" text-anchor="end">${(r.change > 0 ? "+" : "") + fmt(r.change, 0)}</text>`;
+      s += `<text x="${cx[5] - 10}" y="${mid + 4}" text-anchor="end">${fmt(r.share, 1)}</text>`;
     });
     el.innerHTML = s + "</svg>";
   }
 
-  function hbars(el, items, opt) {
-    const W = 860, rh = opt.rh || 26, m = { l: 290, r: 70, t: 10, b: 10 }, H = m.t + m.b + items.length * rh;
-    const vals = items.map((d) => d.v), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
-    const x = (v) => m.l + ((v - lo) / (hi - lo)) * (W - m.l - m.r);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
-    items.forEach((d, i) => {
-      const yy = m.t + i * rh, x0 = x(Math.min(0, d.v)), x1 = x(Math.max(0, d.v));
-      if (d.group) s += `<text x="${m.l - 10}" y="${yy + rh * 0.68}" text-anchor="end" style="font-weight:${d.bold ? 600 : 400}">${esc(d.group)}</text>`;
-      s += `<rect x="${x0}" y="${yy + rh * 0.18}" width="${Math.max(1, x1 - x0)}" height="${rh * 0.64}" fill="${d.color}"><title>${esc((d.title || d.group || "") + ": " + fmt(d.v, opt.dec || 0) + " " + (opt.unit || ""))}</title></rect>`;
-      s += `<text x="${(d.v >= 0 ? x1 + 5 : x0 - 5)}" y="${yy + rh * 0.68}" text-anchor="${d.v >= 0 ? "start" : "end"}" style="font-size:12px">${(d.v > 0 && opt.sign ? "+" : "") + fmt(d.v, opt.dec || 0)}</text>`;
-    });
-    s += `<line x1="${x(0)}" x2="${x(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/></svg>`;
-    el.innerHTML = s;
-  }
-
-  function treemap(el, items, W, H) {
-    // squarified treemap (Bruls, Huizing, van Wijk 2000)
+  function squarify(items, rect) {
     const total = items.reduce((t, d) => t + d.v, 0), out = [];
-    let rect = { x: 0, y: 0, w: W, h: H }, rest = items.slice().sort((a, b) => b.v - a.v).map((d) => ({ ...d, a: (d.v / total) * W * H }));
+    let r = { ...rect }, rest = items.slice().sort((a, b) => b.v - a.v).map((d) => ({ ...d, a: (d.v / total) * rect.w * rect.h }));
     const worst = (row, side) => { const s = row.reduce((t, d) => t + d.a, 0), mx = Math.max(...row.map((d) => d.a)), mn = Math.min(...row.map((d) => d.a)); return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn)); };
     while (rest.length) {
-      const side = Math.min(rect.w, rect.h); let row = [rest[0]], i = 1;
+      const side = Math.min(r.w, r.h); let row = [rest[0]], i = 1;
       while (i < rest.length && worst([...row, rest[i]], side) <= worst(row, side)) { row.push(rest[i]); i++; }
       const s = row.reduce((t, d) => t + d.a, 0);
-      if (rect.w >= rect.h) { const w = s / rect.h; let yy = rect.y; row.forEach((d) => { const h = d.a / w; out.push({ ...d, x: rect.x, y: yy, w, h }); yy += h; }); rect = { x: rect.x + w, y: rect.y, w: rect.w - w, h: rect.h }; }
-      else { const h = s / rect.w; let xx = rect.x; row.forEach((d) => { const w = d.a / h; out.push({ ...d, x: xx, y: rect.y, w, h }); xx += w; }); rect = { x: rect.x, y: rect.y + h, w: rect.w, h: rect.h - h }; }
+      if (r.w >= r.h) { const w = s / r.h; let yy = r.y; row.forEach((d) => { const h = d.a / w; out.push({ ...d, x: r.x, y: yy, w, h }); yy += h; }); r = { x: r.x + w, y: r.y, w: r.w - w, h: r.h }; }
+      else { const h = s / r.w; let xx = r.x; row.forEach((d) => { const w = d.a / h; out.push({ ...d, x: xx, y: r.y, w, h }); xx += w; }); r = { x: r.x, y: r.y + h, w: r.w, h: r.h - h }; }
       rest = rest.slice(i);
     }
+    return out;
+  }
+
+  function nestedTreemap(el, divs, W, H) {
+    // divs: {code, label, accent, groups:[{label, v}]}; division blocks first, groups inside in shades of one hue
+    const total = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0);
+    const blocks = squarify(divs.map((d) => ({ ...d, v: d.groups.reduce((u, g) => u + g.v, 0) })), { x: 0, y: 0, w: W, h: H });
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap">`;
-    out.forEach((d) => {
-      const dark = ["#002060", "#0070C0", "#595959"].includes(d.color);
-      s += `<rect x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" fill="${d.color}" stroke="#fff" stroke-width="1.5"><title>${esc(d.label + ": " + fmt(d.v, 0) + " " + L("Mrd. EUR", "EUR bn") + ", " + fmt(100 * d.v / total, 1) + " %")}</title></rect>`;
-      if (d.w > 70 && d.h > 30) {
-        const maxc = Math.floor(d.w / 7), lab = d.label.length > maxc ? d.label.slice(0, maxc - 1) + "…" : d.label;
-        s += `<text x="${d.x + 5}" y="${d.y + 16}" style="font-size:12px;fill:${dark ? "#fff" : "#000"}">${esc(lab)}</text><text x="${d.x + 5}" y="${d.y + 31}" style="font-size:12px;fill:${dark ? "#fff" : "#000"}">${fmt(100 * d.v / total, 1)} %</text>`;
-      }
+    blocks.forEach((b) => {
+      const head = b.h > 40 && b.w > 60 ? 20 : 0;
+      const cells = squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) });
+      const shades = b.accent ? ["#002060", "#1f3f7a", "#3d5d95", "#5c7bb0", "#7a99ca", "#99b7e5"] : ["#8c8c8c", "#a0a0a0", "#b3b3b3", "#c6c6c6", "#d9d9d9", "#e6e6e6"];
+      s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#fff"/>`;
+      if (head) s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px;fill:${b.accent ? ACC : "#000"}">${esc(b.label.length > b.w / 7 ? b.label.slice(0, Math.floor(b.w / 7) - 1) + "…" : b.label)} ${fmt(100 * b.v / total, 0)} %</text>`;
+      cells.forEach((c, k) => {
+        const fill = shades[Math.min(k, shades.length - 1)], dark = b.accent && k < 3;
+        s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${fill}" stroke="#fff" stroke-width="1"><title>${esc(`${b.label}: ${c.label}, ${fmt(c.v, 0)} ${L("Mrd. EUR", "EUR bn")} (${fmt(100 * c.v / total, 1)} %)`)}</title></rect>`;
+        if (c.w > 80 && c.h > 32) { const mc = Math.floor(c.w / 6.6), lab = c.label.length > mc ? c.label.slice(0, mc - 1) + "…" : c.label; s += `<text x="${c.x + 4}" y="${c.y + 14}" style="font-size:11.5px;fill:${dark ? "#fff" : "#000"}">${esc(lab)}</text><text x="${c.x + 4}" y="${c.y + 28}" style="font-size:11.5px;fill:${dark ? "#fff" : "#000"}">${fmt(100 * c.v / total, 1)} %</text>`; }
+      });
+      s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="none" stroke="#fff" stroke-width="3"/>`;
     });
+    el.innerHTML = s + "</svg>";
+  }
+
+  function barMatrix(el, rows, levels, opt) {
+    // rows = functions, columns = levels; each cell a bar on one common scale, value printed
+    const keys = Object.keys(levels), W = 860, lw = 210, cw = (W - lw) / keys.length, rh = 28, top = 30, H = top + rows.length * rh + 4;
+    const hi = Math.max(...rows.flatMap((r) => keys.map((k) => r.vals[k]))), bw = (v) => (v / hi) * (cw - 52);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    keys.forEach((k, j) => { s += `<text x="${lw + j * cw}" y="18" style="font-weight:600;fill:${k === "S1311" ? ACC : "#000"}">${esc(levels[k][0])}</text>`; });
+    s += `<line x1="0" x2="${W}" y1="${top - 6}" y2="${top - 6}" stroke="${G3}"/>`;
+    rows.forEach((r, i) => {
+      const yy = top + i * rh;
+      s += `<text x="0" y="${yy + rh / 2 + 4}" style="font-weight:${r.accent ? 600 : 400};fill:${r.accent ? ACC : "#000"}">${esc(r.label)}</text>`;
+      keys.forEach((k, j) => {
+        const v = r.vals[k], x0 = lw + j * cw, col = k === "S1311" ? ACC : G2;
+        if (v >= 0.5) s += `<rect x="${x0}" y="${yy + 7}" width="${Math.max(1, bw(v))}" height="${rh - 14}" fill="${col}"><title>${esc(`${r.label}, ${levels[k][0]}: ${fmt(v, 0)} ${opt.unit}`)}</title></rect><text x="${x0 + Math.max(1, bw(v)) + 4}" y="${yy + rh / 2 + 4}" style="font-size:12px">${fmt(v, 0)}</text>`;
+        else s += `<text x="${x0}" y="${yy + rh / 2 + 4}" style="font-size:12px;fill:${G2}">–</text>`;
+      });
+    });
+    el.innerHTML = s + "</svg>";
+  }
+
+  function lineDirect(el, years, series, opt) {
+    const W = 860, H = 330, m = { l: 16, r: 230, t: 24, b: 28 };
+    const vals = series.flatMap((s) => s.values), hi = Math.max(...vals) * 1.05, x = (i) => m.l + (i / (years.length - 1)) * (W - m.l - m.r), y = (v) => H - m.b - (v / hi) * (H - m.t - m.b);
+    const ticks = niceTicks(0, hi, 4);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    ticks.forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l}" y="${y(t) - 4}" style="font-size:12px;fill:${G1}">${fmt(t, 0)}</text>`; });
+    s += `<text x="${m.l}" y="${m.t - 10}" style="font-size:12px;fill:${G1}">${esc(opt.unit)}</text>`;
+    years.forEach((yr, i) => { if (yr % 5 === 0 || i === years.length - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" style="font-size:12px;fill:${G1}">${yr}</text>`; });
+    series.forEach((se) => { s += `<path d="${se.values.map((v, i) => (i ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1)).join("")}" fill="none" stroke="${se.color}" stroke-width="${se.bold ? 2.4 : 1.4}"><title>${esc(se.label)}</title></path>`; });
+    spread(series.map((se) => ({ se, y: y(se.values.at(-1)) + 4 })), 15).forEach((l) => { s += `<text x="${W - m.r + 8}" y="${l.y}" style="font-weight:${l.se.bold ? 600 : 400};fill:${l.se.color === G3 ? G1 : l.se.color}">${esc(l.se.label)} ${fmt(l.se.values.at(-1), 0)}</text>`; });
     el.innerHTML = s + "</svg>";
   }
 
   async function renderState() {
-    const C = await getJSON("data/cofog.json"), Y = C.years, n = Y.length, li = n - 1, i19 = Y.indexOf(2019);
-    const S = C.sectors.S13, dn = (c) => { const d = C.divisions.find((x) => x.code === c); return d ? L(d.de, d.en) : L("Übrige", "Other"); };
+    const C = await getJSON("data/cofog.json"), Y = C.years, li = Y.length - 1, i19 = Y.indexOf(2019), i00 = Y.indexOf(2000);
+    const S = C.sectors.S13, dn = (c) => { const d = C.divisions.find((x) => x.code === c); return L(d.de, d.en); };
     const share = (c, i) => 100 * S[c][i] / S.TOTAL[i];
     const real = (sec, c, i) => C.sectors[sec][c][i] * 1e6 / C.pop[i] / C.price_index[i];
-    const rest = C.divisions.map((d) => d.code).filter((c) => !COF_MAIN.includes(c));
-    const restShare = (i) => rest.reduce((t, c) => t + share(c, i), 0);
+    const codes = C.divisions.map((d) => d.code), order = codes.slice().sort((a, b) => S[b][li] - S[a][li]);
     const gdpShare = 100 * S.TOTAL[li] / C.gdp[li];
-    const ch = C.divisions.map((d) => ({ c: d.code, v: real("S13", d.code, li) - real("S13", d.code, i19) })).sort((a, b) => b.v - a.v);
+    const ch = codes.map((c) => ({ c, v: real("S13", c, li) - real("S13", c, i19) })).sort((a, b) => b.v - a.v);
+    const extra = 100 * (["S1311", "S1312", "S1313", "S1314"].reduce((t, s) => t + C.sectors[s].TOTAL[li], 0) / S.TOTAL[li] - 1);
     $("stAnswer").textContent = L(
       `Der Staat gab ${Y[li]} ${fmt(S.TOTAL[li] / 1000, 0)} Mrd. EUR aus, ${fmt(gdpShare, 1)} % des BIP. ${fmt(share("GF10", li), 0)} Cent von jedem Euro flossen in die Soziale Sicherung, ${fmt(share("GF07", li), 0)} in die Gesundheit. Am stärksten gestiegen sind seit 2019 die preisbereinigten Ausgaben je Einwohner für ${dn(ch[0].c)} (+${fmt(ch[0].v, 0)} EUR) und ${dn(ch[1].c)} (+${fmt(ch[1].v, 0)} EUR).`,
       `In ${Y[li]} general government spent EUR ${fmt(S.TOTAL[li] / 1000, 0)} bn, ${fmt(gdpShare, 1)} % of GDP. ${fmt(share("GF10", li), 0)} cents of every euro went to social protection, ${fmt(share("GF07", li), 0)} to health. Since 2019, real spending per head rose most for ${dn(ch[0].c).toLowerCase()} (+EUR ${fmt(ch[0].v, 0)}) and ${dn(ch[1].c).toLowerCase()} (+EUR ${fmt(ch[1].v, 0)}).`);
     $("stExplain").textContent = L(
-      `Eurostat, Staatsausgaben nach Aufgaben (COFOG), Gesamtausgaben, Stand ${String(C._meta.updated || "").slice(0, 10)}. Der Staat umfasst Bund, Länder, Gemeinden und Sozialversicherung; die Summe für den Staat ist konsolidiert, Zahlungen zwischen den Ebenen sind herausgerechnet. Die Werte je Ebene enthalten diese Zahlungen und lassen sich deshalb nicht addieren (zusammen ${fmt(100 * ((["S1311", "S1312", "S1313", "S1314"].reduce((t, s) => t + C.sectors[s].TOTAL[li], 0)) / S.TOTAL[li] - 1), 0)} % mehr als der Staat insgesamt). Preisbereinigt mit dem BIP-Deflator, in Preisen von ${C.price_base}. Zinsen zählen zur Allgemeinen Verwaltung. 1995 enthält die Übernahme der Treuhand-Schulden durch den Bund.`,
-      `Eurostat, government expenditure by function (COFOG), total expenditure, as of ${String(C._meta.updated || "").slice(0, 10)}. General government covers federal, Länder, municipal and social security funds; its total is consolidated, so payments between levels are netted out. Values by level include those payments and cannot be added up (together ${fmt(100 * ((["S1311", "S1312", "S1313", "S1314"].reduce((t, s) => t + C.sectors[s].TOTAL[li], 0)) / S.TOTAL[li] - 1), 0)} % more than the general government total). Deflated with the GDP deflator, ${C.price_base} prices. Interest is part of general public services. 1995 includes the federal takeover of the Treuhand debt.`);
+      `Eurostat, Staatsausgaben nach Aufgaben (COFOG), Stand ${String(C._meta.updated || "").slice(0, 10)}. Der Staat umfasst Bund, Länder, Gemeinden und Sozialversicherung; seine Summe ist konsolidiert, Zahlungen zwischen den Ebenen sind herausgerechnet. Die Werte je Ebene enthalten diese Zahlungen und lassen sich nicht addieren (zusammen ${fmt(extra, 0)} % mehr als der Staat insgesamt). Preisbereinigt mit dem BIP-Deflator, in Preisen von ${C.price_base}. Zinsen zählen zu Verwaltung. Die Reihen beginnen 2000; 1995 enthält die Übernahme der Treuhand-Schulden durch den Bund (rund 130 Mrd. EUR).`,
+      `Eurostat, government expenditure by function (COFOG), as of ${String(C._meta.updated || "").slice(0, 10)}. General government covers federal, Länder, municipal and social security funds; its total is consolidated, so payments between levels are netted out. Values by level include those payments and cannot be added up (together ${fmt(extra, 0)} % more than the general government total). Deflated with the GDP deflator, ${C.price_base} prices. Interest belongs to administration. Series start in 2000; 1995 includes the federal takeover of the Treuhand debt (about EUR 130 bn).`);
     const src = L("Quelle: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.", "Source: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); own calculation. Licence of the figure: CC BY 4.0.");
-    // 1 shares over time
-    const bands = COF_MAIN.map((c) => ({ label: dn(c), color: COF_COL[c], values: Y.map((_, i) => share(c, i)) })).concat([{ label: L("Übrige", "Other"), color: COF_COL.REST, values: Y.map((_, i) => restShare(i)) }]);
-    stackChart($("stSChart"), Y, bands, { label: "shares", events: EVENTS() });
+    // 1 slopegraph of shares
+    const cols = [2000, 2019, Y[li]], ci = cols.map((y) => Y.indexOf(y));
+    slopegraph($("stSChart"), cols, order.map((c) => ({ label: dn(c), accent: c === "GF10", values: ci.map((i) => share(c, i)) })), { label: "shares", h: 560, brk: 20 });
     $("stSAsk").textContent = L("Wofür gibt der Staat sein Geld aus?", "What does the state spend its money on?");
-    $("stSTitle").textContent = L(`Anteil an den Staatsausgaben, %; Soziale Sicherung ${fmt(share("GF10", 0), 0)} % (${Y[0]}) und ${fmt(share("GF10", li), 0)} % (${Y[li]})`, `Share of government expenditure, %; social protection ${fmt(share("GF10", 0), 0)} % (${Y[0]}) and ${fmt(share("GF10", li), 0)} % (${Y[li]})`);
-    $("stSSrc").textContent = L(`Übrige: ${rest.map(dn).join(", ")}. `, `Other: ${rest.map(dn).join(", ")}. `) + src;
-    FIGDATA.stshare = { header: [L("Jahr", "Year"), ...C.divisions.map((d) => `${L(d.de, d.en)}, %`)], rows: Y.map((y, i) => [y, ...C.divisions.map((d) => +share(d.code, i).toFixed(2))]) };
-    // 2 small multiples, real per head
-    const order = C.divisions.map((d) => d.code).sort((a, b) => S[b][li] - S[a][li]);
-    multiples($("stMChart"), Y, order.map((c) => ({ label: dn(c), color: COF_COL[c] || "#595959", values: Y.map((_, i) => real("S13", c, i)) })));
+    $("stSTitle").textContent = L(`Anteil an den Staatsausgaben, %; Soziale Sicherung ${fmt(share("GF10", i00), 0)} % (2000) und ${fmt(share("GF10", li), 0)} % (${Y[li]})`, `Share of government expenditure, %; social protection ${fmt(share("GF10", i00), 0)} % (2000) and ${fmt(share("GF10", li), 0)} % (${Y[li]})`);
+    $("stSSrc").textContent = src;
+    FIGDATA.stshare = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, %`)], rows: Y.slice(i00).map((y, k) => [y, ...order.map((c) => +share(c, i00 + k).toFixed(2))]) };
+    // 2 sparkline table
+    const ys = Y.slice(i00);
+    sparkTable($("stMChart"), ys, order.map((c) => ({ label: dn(c), accent: c === "GF10", level: real("S13", c, li), spark: ys.map((_, k) => real("S13", c, i00 + k)), change: real("S13", c, li) - real("S13", c, i19), share: share(c, li) })),
+      [L("Aufgabe", "Function"), L(`EUR je Einw. ${Y[li]}`, `EUR per head ${Y[li]}`), L(`Verlauf 2000 bis ${Y[li]}`, `2000 to ${Y[li]}`), L("seit 2019, EUR", "since 2019, EUR"), L("Anteil, %", "share, %")]);
     $("stMAsk").textContent = L("Wo ist das Niveau gestiegen?", "Where has the level risen?");
-    $("stMTitle").textContent = L(`Ausgaben je Einwohner, EUR in Preisen von ${C.price_base}; jede Grafik mit eigener Skala ab null`, `Expenditure per head, EUR at ${C.price_base} prices; each panel on its own scale from zero`);
+    $("stMTitle").textContent = L(`Ausgaben je Einwohner in Preisen von ${C.price_base}; Verlaufslinien mit eigener Skala`, `Expenditure per head at ${C.price_base} prices; trend lines on their own scale`);
     $("stMSrc").textContent = src;
-    FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: Y.map((y, i) => [y, ...order.map((c) => Math.round(real("S13", c, i)))]) };
-    // 3 change since 2019
-    hbars($("stCChart"), ch.map((d) => ({ group: dn(d.c), v: d.v, color: d.v >= 0 ? "#002060" : "#a6a6a6" })), { label: "change", sign: true, unit: "EUR" });
-    $("stCAsk").textContent = L("Was hat sich seit 2019 verschoben?", "What has shifted since 2019?");
-    $("stCTitle").textContent = L(`Veränderung der Ausgaben je Einwohner 2019 bis ${Y[li]}, EUR in Preisen von ${C.price_base}`, `Change in expenditure per head 2019 to ${Y[li]}, EUR at ${C.price_base} prices`);
-    $("stCSrc").textContent = src;
-    FIGDATA.stchg = { header: [L("Aufgabe", "Function"), L("Veränderung, EUR je Einwohner", "Change, EUR per head")], rows: ch.map((d) => [dn(d.c), Math.round(d.v)]) };
-    // 4 treemap of groups, latest year (slider)
-    const yr = $("stYear"); yr.min = 2000; yr.max = Y[li]; if (!yr.dataset.init) { yr.value = Y[li]; yr.dataset.init = 1; yr.addEventListener("input", () => drawTree()); }
+    FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...order.map((c) => Math.round(real("S13", c, i00 + k)))]) };
+    // 3 nested treemap
+    const yr = $("stYear"); yr.min = 2000; yr.max = Y[li];
+    if (!yr.dataset.init) { yr.value = Y[li]; yr.dataset.init = 1; yr.addEventListener("input", () => drawTree()); }
     const drawTree = () => {
       const i = Y.indexOf(+yr.value); $("stYearLab").textContent = yr.value;
-      const items = Object.entries(C.groups).map(([c, g]) => ({ c, label: L(g.de, g.en), v: (g.values[i] || 0) / 1000, color: COF_COL[c.slice(0, 4)] || COF_COL.REST })).filter((d) => d.v > 0);
-      treemap($("stTChart"), items, 860, 460);
-      $("stTTitle").textContent = L(`Staatsausgaben ${yr.value} nach Aufgabengruppen, Fläche = Ausgaben; ${fmt(items.reduce((t, d) => t + d.v, 0), 0)} Mrd. EUR`, `Government expenditure ${yr.value} by group, area = spending; EUR ${fmt(items.reduce((t, d) => t + d.v, 0), 0)} bn`);
-      FIGDATA.sttree = { header: ["COFOG", L("Aufgabengruppe", "Group"), L("Mrd. EUR", "EUR bn")], rows: items.sort((a, b) => b.v - a.v).map((d) => [d.c, d.label, +d.v.toFixed(2)]) };
+      const divs = codes.map((c) => ({ code: c, label: dn(c), accent: c === "GF10", groups: Object.entries(C.groups).filter(([g]) => g.startsWith(c)).map(([g, o]) => ({ code: g, label: L(o.de, o.en), v: (o.values[i] || 0) / 1000 })) }));
+      nestedTreemap($("stTChart"), divs, 860, 520);
+      const tot = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0);
+      $("stTTitle").textContent = L(`Staatsausgaben ${yr.value}: zehn Aufgaben und ihre Gruppen, Fläche = Ausgaben; insgesamt ${fmt(tot, 0)} Mrd. EUR`, `Government expenditure ${yr.value}: ten functions and their groups, area = spending; total EUR ${fmt(tot, 0)} bn`);
+      FIGDATA.sttree = { header: ["COFOG", L("Aufgabe", "Function"), L("Gruppe", "Group"), L("Mrd. EUR", "EUR bn")], rows: divs.flatMap((d) => d.groups.map((g) => [g.code, d.label, g.label, +g.v.toFixed(2)])) };
     };
     drawTree();
     $("stTAsk").textContent = L("Was steckt im Einzelnen dahinter?", "What lies behind it in detail?");
-    $("stTSrc").textContent = L("Farben wie oben: Soziale Sicherung dunkelblau, Gesundheit blau, Allgemeine Verwaltung hellblau, Wirtschaft dunkelgrau, Bildung grau, übrige hellgrau. ", "Colours as above: social protection dark blue, health blue, general public services light blue, economic affairs dark grey, education grey, other light grey. ") + src;
-    // 5 levels side by side
-    const LV = LEVELS(), lvItems = [];
-    order.forEach((c) => Object.keys(LV).forEach((sec, k) => lvItems.push({ group: k === 0 ? dn(c) : "", bold: true, title: `${dn(c)}, ${LV[sec]}`, v: C.sectors[sec][c][li] / 1000, color: LEV_COL[sec] })));
-    hbars($("stLChart"), lvItems, { label: "levels", rh: 15, dec: 0, unit: L("Mrd. EUR", "EUR bn") });
+    $("stTSrc").textContent = L("Jede Aufgabe ein Block, die Gruppen darin in Abstufungen; Soziale Sicherung blau, übrige Aufgaben grau. ", "Each function one block, its groups in shades; social protection blue, other functions grey. ") + src;
+    // 4 dot plot by level
+    const LV = LEVELS();
+    barMatrix($("stLChart"), order.map((c) => ({ label: dn(c), accent: c === "GF10", vals: Object.fromEntries(Object.keys(LV).map((sec) => [sec, C.sectors[sec][c][li] / 1000])) })), LV, { label: "levels", unit: L("Mrd. EUR", "EUR bn") });
     $("stLAsk").textContent = L("Welche Ebene gibt wofür aus?", "Which level spends on what?");
-    $("stLTitle").textContent = L(`Ausgaben ${Y[li]} je Ebene, Mrd. EUR; je Aufgabe von oben: Bund, Länder, Gemeinden, Sozialversicherung`, `Expenditure ${Y[li]} by level, EUR bn; for each function from top: federal, Länder, municipalities, social security`);
-    $("stLSrc").textContent = L("Werte je Ebene einschließlich Zahlungen an andere Ebenen, etwa des Bundeszuschusses an die Rentenversicherung; nicht addierbar. ", "Values by level include payments to other levels, such as the federal grant to pension insurance; not additive. ") + src;
-    FIGDATA.stlev = { header: [L("Aufgabe", "Function"), ...Object.values(LV).map((l) => `${l}, ${L("Mrd. EUR", "EUR bn")}`)], rows: order.map((c) => [dn(c), ...Object.keys(LV).map((s) => +(C.sectors[s][c][li] / 1000).toFixed(1))]) };
-    // 6 federal government over time
+    $("stLTitle").textContent = L(`Ausgaben ${Y[li]} je Ebene, Mrd. EUR; alle Balken auf einer Skala`, `Expenditure ${Y[li]} by level, EUR bn; all bars on one scale`);
+    $("stLSrc").textContent = L("Werte je Ebene einschließlich Zahlungen an andere Ebenen, etwa des Bundeszuschusses an die Rentenversicherung; nicht addierbar. Strich: unter 0,5 Mrd. EUR. ", "Values by level include payments to other levels, such as the federal grant to pension insurance; not additive. Dash: below EUR 0.5 bn. ") + src;
+    FIGDATA.stlev = { header: [L("Aufgabe", "Function"), ...Object.values(LV).map((l) => `${l[0]}, ${L("Mrd. EUR", "EUR bn")}`)], rows: order.map((c) => [dn(c), ...Object.keys(LV).map((s) => +(C.sectors[s][c][li] / 1000).toFixed(1))]) };
+    // 5 federal government, direct labels, from 2000
     const fed = ["GF10", "GF01", "GF04", "GF02", "GF09"];
-    lineChart($("stBChart"), Y, fed.map((c, k) => ({ label: dn(c), color: ["#002060", "#00B0F0", "#595959", "#C00000", "#a6a6a6"][k], bold: k === 0 || c === "GF02", values: Y.map((_, i) => real("S1311", c, i)) })), { min: 0, unit: L("EUR je Einwohner", "EUR per head"), label: "federal" });
+    lineDirect($("stBChart"), ys, fed.map((c) => ({ label: dn(c), color: c === "GF10" ? ACC : c === "GF02" ? "#000" : G3, bold: c === "GF10" || c === "GF02", values: ys.map((_, k) => real("S1311", c, i00 + k)) })), { unit: L(`EUR je Einwohner, Preise ${C.price_base}`, `EUR per head, ${C.price_base} prices`), label: "federal" });
     $("stBAsk").textContent = L("Wofür gibt der Bund sein Geld aus?", "What does the federal government spend on?");
-    $("stBTitle").textContent = L(`Ausgaben des Bundes je Einwohner, EUR in Preisen von ${C.price_base}; Verteidigung ${fmt(real("S1311", "GF02", i19), 0)} EUR (2019) und ${fmt(real("S1311", "GF02", li), 0)} EUR (${Y[li]})`, `Federal expenditure per head, EUR at ${C.price_base} prices; defence EUR ${fmt(real("S1311", "GF02", i19), 0)} (2019) and EUR ${fmt(real("S1311", "GF02", li), 0)} (${Y[li]})`);
-    $("stBSrc").textContent = L("Soziale Sicherung des Bundes enthält vor allem die Zuschüsse an die Rentenversicherung und das Bürgergeld. 1995: Übernahme der Treuhand-Schulden (Wirtschaft). ", "Federal social protection mainly contains grants to pension insurance and basic income support. 1995: takeover of the Treuhand debt (economic affairs). ") + src;
-    FIGDATA.stfed = { header: [L("Jahr", "Year"), ...fed.map((c) => `${dn(c)}, EUR`)], rows: Y.map((y, i) => [y, ...fed.map((c) => Math.round(real("S1311", c, i)))]) };
+    $("stBTitle").textContent = L(`Ausgaben des Bundes je Einwohner; Verteidigung ${fmt(real("S1311", "GF02", i19), 0)} EUR (2019) und ${fmt(real("S1311", "GF02", li), 0)} EUR (${Y[li]})`, `Federal expenditure per head; defence EUR ${fmt(real("S1311", "GF02", i19), 0)} (2019) and EUR ${fmt(real("S1311", "GF02", li), 0)} (${Y[li]})`);
+    $("stBSrc").textContent = L("Soziale Sicherung des Bundes enthält vor allem die Zuschüsse an die Rentenversicherung und das Bürgergeld. ", "Federal social protection mainly contains grants to pension insurance and basic income support. ") + src;
+    FIGDATA.stfed = { header: [L("Jahr", "Year"), ...fed.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...fed.map((c) => Math.round(real("S1311", c, i00 + k)))]) };
   }
 
   function renderForecast() {
