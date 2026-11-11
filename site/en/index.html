@@ -31,6 +31,7 @@
       <a href="#dienste">Services</a>
       <a href="#fdi">Investment</a>
       <a href="#beschaffung">Procurement</a>
+      <a href="#staat">Public spending</a>
       <a href="#regionen">Regions</a>
       <a href="#kreise">Districts</a>
       <a href="#steckbrief">District profile</a>
@@ -499,6 +500,56 @@
     <div class="tablewrap"><table id="pcCovTable"></table></div>
   </section>
 
+  <section id="view-staat" class="view" hidden>
+    <h2>What does the state spend money on?</h2>
+    <div class="intro"><p class="answer" id="stAnswer"></p><p class="explain" id="stExplain"></p></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="stshare">
+      <p class="cask" id="stSAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stSTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="stSChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stSSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="stmult">
+      <p class="cask" id="stMAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stMTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="stMChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stMSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="stchg">
+      <p class="cask" id="stCAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stCTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="stCChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stCSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="sttree">
+      <p class="cask" id="stTAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stTTitle"></span></h3>
+      <div class="toolbar"><label for="stYear">Year</label><input type="range" id="stYear" step="1"> <span id="stYearLab"></span></div>
+      <div class="cbody"><div class="cmain"><div id="stTChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stTSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="stlev">
+      <p class="cask" id="stLAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stLTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="stLChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stLSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    <figure class="card fig" data-fig="stfed">
+      <p class="cask" id="stBAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="stBTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="stBChart" class="svgwrap"></div></div></div>
+      <p class="src" id="stBSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Copy link</button></div>
+    </figure>
+    </div>
+  </section>
+
   <section id="view-regionen" class="view" hidden>
     <h2>Which European regions are hit by what?</h2>
     <div class="toolbar">
@@ -839,6 +890,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Also: <a href="https://wfhungerland.github.io/konjunkturmonitor/en/">Konjunkturmonitor</a> · <a href="../impressum.html" hreflang="de">Legal notice</a> · <a href="../datenschutz.html" hreflang="de">Privacy</a> · Text and figures: <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">CC BY 4.0</a></span>
   <span>Own calculations based on CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII tariff data and searoute.</span>
 </footer>
-<script src="../app.js?v=20261113a"></script>
+<script src="../app.js?v=20261113b"></script>
 </body>
 </html>

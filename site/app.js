@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "staat", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -53,7 +53,7 @@
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -202,6 +202,7 @@
     if (view === "dienste") await renderServices();
     if (view === "fdi") await renderFDI();
     if (view === "beschaffung") await renderProcurement();
+    if (view === "staat") await renderState();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
@@ -1408,6 +1409,159 @@
     $("pcCovTitle").textContent = L("Abdeckung der Daten je Jahr", "Data coverage by year");
     $("pcCovTable").innerHTML = `<thead><tr><th>${L("Jahr", "Year")}</th><th class="num">${L("Bekanntmachungen", "Notices")}</th><th class="num">${L("Vergaben", "Awards")}</th><th class="num">${L("Volumen, Mrd. EUR", "Volume, EUR bn")}</th><th class="num">${L("mit Wert", "with value")}</th><th class="num">${L("mit Auftragnehmer", "with contractor")}</th><th class="num">${L("mit Angebotszahl", "with bid count")}</th></tr></thead><tbody>` +
       cov.map((r) => `<tr><td>${r.year}</td><td class="num">${fmt(r.notices, 0)}</td><td class="num">${fmt(r.awards, 0)}</td><td class="num">${fmt(r.value_bn, 1)}</td><td class="num">${pc(r.share_with_value)}</td><td class="num">${pc(r.share_with_winner)}</td><td class="num">${pc(r.share_with_bids)}</td></tr>`).join("") + "</tbody>";
+  }
+
+  // ---------------------------------------------------------------- government expenditure by function
+  const COF_COL = { GF10: "#002060", GF07: "#0070C0", GF01: "#00B0F0", GF04: "#595959", GF09: "#a6a6a6", REST: "#d9d9d9" };
+  const COF_MAIN = ["GF10", "GF07", "GF01", "GF04", "GF09"];
+  const LEVELS = () => ({ S1311: L("Bund", "Federal"), S1312: L("Länder", "Länder"), S1313: L("Gemeinden", "Municipalities"), S1314: L("Sozialversicherung", "Social security") });
+  const LEV_COL = { S1311: "#002060", S1312: "#0070C0", S1313: "#00B0F0", S1314: "#a6a6a6" };
+  const EVENTS = () => [[1995, L("Treuhand-Schulden", "Treuhand debt")], [2009, L("Finanzkrise", "Financial crisis")], [2020, "Corona"], [2022, L("Energiekrise", "Energy crisis")]];
+
+  function stackChart(el, years, bands, opt) {
+    const W = 860, H = 400, m = { l: 16, r: 210, t: 40, b: 28 };
+    const x = (i) => m.l + (i / (years.length - 1)) * (W - m.l - m.r), y = (v) => H - m.b - (v / 100) * (H - m.t - m.b);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    [0, 20, 40, 60, 80, 100].forEach((t) => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/>`; });
+    let base = years.map(() => 0);
+    const tops = [];
+    bands.forEach((b) => {
+      const top = base.map((v, i) => v + b.values[i]);
+      let d = "M" + years.map((_, i) => `${x(i).toFixed(1)},${y(top[i]).toFixed(1)}`).join("L") + "L" + years.map((_, i) => `${x(years.length - 1 - i).toFixed(1)},${y(base[years.length - 1 - i]).toFixed(1)}`).join("L") + "Z";
+      s += `<path d="${d}" fill="${b.color}" stroke="#fff" stroke-width="0.6"><title>${esc(b.label)}</title></path>`;
+      tops.push({ b, mid: (top.at(-1) + base.at(-1)) / 2, v: b.values.at(-1) });
+      base = top;
+    });
+    (opt.events || []).forEach(([yr, t], k) => { const i = years.indexOf(yr); if (i < 0) return; const ty = k % 2 ? m.t - 2 : m.t - 14; s += `<line x1="${x(i)}" x2="${x(i)}" y1="${ty + 2}" y2="${H - m.b}" stroke="#000" stroke-width="0.8" stroke-dasharray="2,3"/><text x="${x(i) + 3}" y="${ty}" style="font-size:12px">${esc(t)}</text>`; });
+    const labs = tops.map((t) => ({ t, ly: y(t.mid) + 4 })).sort((a, b) => a.ly - b.ly);
+    labs.forEach((l, k) => { if (k && l.ly - labs[k - 1].ly < 15) l.ly = labs[k - 1].ly + 15; });
+    labs.forEach((l) => { s += `<text x="${W - m.r + 8}" y="${l.ly}">${esc(l.t.b.label)} ${fmt(l.t.v, 0)} %</text>`; });
+    years.forEach((yr, i) => { if (yr % 5 === 0 || i === years.length - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${yr}</text>`; });
+    s += "</svg>";
+    el.innerHTML = s;
+  }
+
+  function multiples(el, years, items) {
+    const cols = 5, cw = 172, ch = 110, W = cols * cw, rows = Math.ceil(items.length / cols), H = rows * (ch + 56);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="small multiples">`;
+    items.forEach((it, k) => {
+      const ox = (k % cols) * cw, oy = Math.floor(k / cols) * (ch + 56) + 30, w = cw - 24;
+      const vals = it.values.filter((v) => v !== null), hi = Math.max(...vals) * 1.25;
+      const x = (i) => ox + (i / (years.length - 1)) * w, y = (v) => oy + ch - (v / hi) * (ch - 8);
+      s += `<text x="${ox}" y="${oy - 14}" style="font-weight:600;font-size:12.5px">${esc(it.label)}</text>`;
+      s += `<line class="grid" x1="${ox}" x2="${ox + w}" y1="${y(0)}" y2="${y(0)}"/>`;
+      let d = ""; it.values.forEach((v, i) => { if (v === null) return; d += (d ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); });
+      s += `<path d="${d}" fill="none" stroke="${it.color}" stroke-width="2"><title>${esc(it.label)}</title></path>`;
+      const lv = it.values.at(-1);
+      s += `<circle cx="${x(years.length - 1)}" cy="${y(lv)}" r="2.5" fill="${it.color}"/><text x="${ox + w}" y="${y(lv) - 7}" text-anchor="end" style="font-size:12px">${fmt(lv, 0)}</text>`;
+      s += `<text x="${ox}" y="${oy + ch + 14}" style="font-size:11px">${years[0]}</text><text x="${ox + w}" y="${oy + ch + 14}" text-anchor="end" style="font-size:11px">${years.at(-1)}</text>`;
+    });
+    el.innerHTML = s + "</svg>";
+  }
+
+  function hbars(el, items, opt) {
+    const W = 860, rh = opt.rh || 26, m = { l: 290, r: 70, t: 10, b: 10 }, H = m.t + m.b + items.length * rh;
+    const vals = items.map((d) => d.v), lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    const x = (v) => m.l + ((v - lo) / (hi - lo)) * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    items.forEach((d, i) => {
+      const yy = m.t + i * rh, x0 = x(Math.min(0, d.v)), x1 = x(Math.max(0, d.v));
+      if (d.group) s += `<text x="${m.l - 10}" y="${yy + rh * 0.68}" text-anchor="end" style="font-weight:${d.bold ? 600 : 400}">${esc(d.group)}</text>`;
+      s += `<rect x="${x0}" y="${yy + rh * 0.18}" width="${Math.max(1, x1 - x0)}" height="${rh * 0.64}" fill="${d.color}"><title>${esc((d.title || d.group || "") + ": " + fmt(d.v, opt.dec || 0) + " " + (opt.unit || ""))}</title></rect>`;
+      s += `<text x="${(d.v >= 0 ? x1 + 5 : x0 - 5)}" y="${yy + rh * 0.68}" text-anchor="${d.v >= 0 ? "start" : "end"}" style="font-size:12px">${(d.v > 0 && opt.sign ? "+" : "") + fmt(d.v, opt.dec || 0)}</text>`;
+    });
+    s += `<line x1="${x(0)}" x2="${x(0)}" y1="${m.t}" y2="${H - m.b}" stroke="#595959"/></svg>`;
+    el.innerHTML = s;
+  }
+
+  function treemap(el, items, W, H) {
+    // squarified treemap (Bruls, Huizing, van Wijk 2000)
+    const total = items.reduce((t, d) => t + d.v, 0), out = [];
+    let rect = { x: 0, y: 0, w: W, h: H }, rest = items.slice().sort((a, b) => b.v - a.v).map((d) => ({ ...d, a: (d.v / total) * W * H }));
+    const worst = (row, side) => { const s = row.reduce((t, d) => t + d.a, 0), mx = Math.max(...row.map((d) => d.a)), mn = Math.min(...row.map((d) => d.a)); return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn)); };
+    while (rest.length) {
+      const side = Math.min(rect.w, rect.h); let row = [rest[0]], i = 1;
+      while (i < rest.length && worst([...row, rest[i]], side) <= worst(row, side)) { row.push(rest[i]); i++; }
+      const s = row.reduce((t, d) => t + d.a, 0);
+      if (rect.w >= rect.h) { const w = s / rect.h; let yy = rect.y; row.forEach((d) => { const h = d.a / w; out.push({ ...d, x: rect.x, y: yy, w, h }); yy += h; }); rect = { x: rect.x + w, y: rect.y, w: rect.w - w, h: rect.h }; }
+      else { const h = s / rect.w; let xx = rect.x; row.forEach((d) => { const w = d.a / h; out.push({ ...d, x: xx, y: rect.y, w, h }); xx += w; }); rect = { x: rect.x, y: rect.y + h, w: rect.w, h: rect.h - h }; }
+      rest = rest.slice(i);
+    }
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap">`;
+    out.forEach((d) => {
+      const dark = ["#002060", "#0070C0", "#595959"].includes(d.color);
+      s += `<rect x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" fill="${d.color}" stroke="#fff" stroke-width="1.5"><title>${esc(d.label + ": " + fmt(d.v, 0) + " " + L("Mrd. EUR", "EUR bn") + ", " + fmt(100 * d.v / total, 1) + " %")}</title></rect>`;
+      if (d.w > 70 && d.h > 30) {
+        const maxc = Math.floor(d.w / 7), lab = d.label.length > maxc ? d.label.slice(0, maxc - 1) + "…" : d.label;
+        s += `<text x="${d.x + 5}" y="${d.y + 16}" style="font-size:12px;fill:${dark ? "#fff" : "#000"}">${esc(lab)}</text><text x="${d.x + 5}" y="${d.y + 31}" style="font-size:12px;fill:${dark ? "#fff" : "#000"}">${fmt(100 * d.v / total, 1)} %</text>`;
+      }
+    });
+    el.innerHTML = s + "</svg>";
+  }
+
+  async function renderState() {
+    const C = await getJSON("data/cofog.json"), Y = C.years, n = Y.length, li = n - 1, i19 = Y.indexOf(2019);
+    const S = C.sectors.S13, dn = (c) => { const d = C.divisions.find((x) => x.code === c); return d ? L(d.de, d.en) : L("Übrige", "Other"); };
+    const share = (c, i) => 100 * S[c][i] / S.TOTAL[i];
+    const real = (sec, c, i) => C.sectors[sec][c][i] * 1e6 / C.pop[i] / C.price_index[i];
+    const rest = C.divisions.map((d) => d.code).filter((c) => !COF_MAIN.includes(c));
+    const restShare = (i) => rest.reduce((t, c) => t + share(c, i), 0);
+    const gdpShare = 100 * S.TOTAL[li] / C.gdp[li];
+    const ch = C.divisions.map((d) => ({ c: d.code, v: real("S13", d.code, li) - real("S13", d.code, i19) })).sort((a, b) => b.v - a.v);
+    $("stAnswer").textContent = L(
+      `Der Staat gab ${Y[li]} ${fmt(S.TOTAL[li] / 1000, 0)} Mrd. EUR aus, ${fmt(gdpShare, 1)} % des BIP. ${fmt(share("GF10", li), 0)} Cent von jedem Euro flossen in die Soziale Sicherung, ${fmt(share("GF07", li), 0)} in die Gesundheit. Am stärksten gestiegen sind seit 2019 die preisbereinigten Ausgaben je Einwohner für ${dn(ch[0].c)} (+${fmt(ch[0].v, 0)} EUR) und ${dn(ch[1].c)} (+${fmt(ch[1].v, 0)} EUR).`,
+      `In ${Y[li]} general government spent EUR ${fmt(S.TOTAL[li] / 1000, 0)} bn, ${fmt(gdpShare, 1)} % of GDP. ${fmt(share("GF10", li), 0)} cents of every euro went to social protection, ${fmt(share("GF07", li), 0)} to health. Since 2019, real spending per head rose most for ${dn(ch[0].c).toLowerCase()} (+EUR ${fmt(ch[0].v, 0)}) and ${dn(ch[1].c).toLowerCase()} (+EUR ${fmt(ch[1].v, 0)}).`);
+    $("stExplain").textContent = L(
+      `Eurostat, Staatsausgaben nach Aufgaben (COFOG), Gesamtausgaben, Stand ${String(C._meta.updated || "").slice(0, 10)}. Der Staat umfasst Bund, Länder, Gemeinden und Sozialversicherung; die Summe für den Staat ist konsolidiert, Zahlungen zwischen den Ebenen sind herausgerechnet. Die Werte je Ebene enthalten diese Zahlungen und lassen sich deshalb nicht addieren (zusammen ${fmt(100 * ((["S1311", "S1312", "S1313", "S1314"].reduce((t, s) => t + C.sectors[s].TOTAL[li], 0)) / S.TOTAL[li] - 1), 0)} % mehr als der Staat insgesamt). Preisbereinigt mit dem BIP-Deflator, in Preisen von ${C.price_base}. Zinsen zählen zur Allgemeinen Verwaltung. 1995 enthält die Übernahme der Treuhand-Schulden durch den Bund.`,
+      `Eurostat, government expenditure by function (COFOG), total expenditure, as of ${String(C._meta.updated || "").slice(0, 10)}. General government covers federal, Länder, municipal and social security funds; its total is consolidated, so payments between levels are netted out. Values by level include those payments and cannot be added up (together ${fmt(100 * ((["S1311", "S1312", "S1313", "S1314"].reduce((t, s) => t + C.sectors[s].TOTAL[li], 0)) / S.TOTAL[li] - 1), 0)} % more than the general government total). Deflated with the GDP deflator, ${C.price_base} prices. Interest is part of general public services. 1995 includes the federal takeover of the Treuhand debt.`);
+    const src = L("Quelle: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.", "Source: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); own calculation. Licence of the figure: CC BY 4.0.");
+    // 1 shares over time
+    const bands = COF_MAIN.map((c) => ({ label: dn(c), color: COF_COL[c], values: Y.map((_, i) => share(c, i)) })).concat([{ label: L("Übrige", "Other"), color: COF_COL.REST, values: Y.map((_, i) => restShare(i)) }]);
+    stackChart($("stSChart"), Y, bands, { label: "shares", events: EVENTS() });
+    $("stSAsk").textContent = L("Wofür gibt der Staat sein Geld aus?", "What does the state spend its money on?");
+    $("stSTitle").textContent = L(`Anteil an den Staatsausgaben, %; Soziale Sicherung ${fmt(share("GF10", 0), 0)} % (${Y[0]}) und ${fmt(share("GF10", li), 0)} % (${Y[li]})`, `Share of government expenditure, %; social protection ${fmt(share("GF10", 0), 0)} % (${Y[0]}) and ${fmt(share("GF10", li), 0)} % (${Y[li]})`);
+    $("stSSrc").textContent = L(`Übrige: ${rest.map(dn).join(", ")}. `, `Other: ${rest.map(dn).join(", ")}. `) + src;
+    FIGDATA.stshare = { header: [L("Jahr", "Year"), ...C.divisions.map((d) => `${L(d.de, d.en)}, %`)], rows: Y.map((y, i) => [y, ...C.divisions.map((d) => +share(d.code, i).toFixed(2))]) };
+    // 2 small multiples, real per head
+    const order = C.divisions.map((d) => d.code).sort((a, b) => S[b][li] - S[a][li]);
+    multiples($("stMChart"), Y, order.map((c) => ({ label: dn(c), color: COF_COL[c] || "#595959", values: Y.map((_, i) => real("S13", c, i)) })));
+    $("stMAsk").textContent = L("Wo ist das Niveau gestiegen?", "Where has the level risen?");
+    $("stMTitle").textContent = L(`Ausgaben je Einwohner, EUR in Preisen von ${C.price_base}; jede Grafik mit eigener Skala ab null`, `Expenditure per head, EUR at ${C.price_base} prices; each panel on its own scale from zero`);
+    $("stMSrc").textContent = src;
+    FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: Y.map((y, i) => [y, ...order.map((c) => Math.round(real("S13", c, i)))]) };
+    // 3 change since 2019
+    hbars($("stCChart"), ch.map((d) => ({ group: dn(d.c), v: d.v, color: d.v >= 0 ? "#002060" : "#a6a6a6" })), { label: "change", sign: true, unit: "EUR" });
+    $("stCAsk").textContent = L("Was hat sich seit 2019 verschoben?", "What has shifted since 2019?");
+    $("stCTitle").textContent = L(`Veränderung der Ausgaben je Einwohner 2019 bis ${Y[li]}, EUR in Preisen von ${C.price_base}`, `Change in expenditure per head 2019 to ${Y[li]}, EUR at ${C.price_base} prices`);
+    $("stCSrc").textContent = src;
+    FIGDATA.stchg = { header: [L("Aufgabe", "Function"), L("Veränderung, EUR je Einwohner", "Change, EUR per head")], rows: ch.map((d) => [dn(d.c), Math.round(d.v)]) };
+    // 4 treemap of groups, latest year (slider)
+    const yr = $("stYear"); yr.min = 2000; yr.max = Y[li]; if (!yr.dataset.init) { yr.value = Y[li]; yr.dataset.init = 1; yr.addEventListener("input", () => drawTree()); }
+    const drawTree = () => {
+      const i = Y.indexOf(+yr.value); $("stYearLab").textContent = yr.value;
+      const items = Object.entries(C.groups).map(([c, g]) => ({ c, label: L(g.de, g.en), v: (g.values[i] || 0) / 1000, color: COF_COL[c.slice(0, 4)] || COF_COL.REST })).filter((d) => d.v > 0);
+      treemap($("stTChart"), items, 860, 460);
+      $("stTTitle").textContent = L(`Staatsausgaben ${yr.value} nach Aufgabengruppen, Fläche = Ausgaben; ${fmt(items.reduce((t, d) => t + d.v, 0), 0)} Mrd. EUR`, `Government expenditure ${yr.value} by group, area = spending; EUR ${fmt(items.reduce((t, d) => t + d.v, 0), 0)} bn`);
+      FIGDATA.sttree = { header: ["COFOG", L("Aufgabengruppe", "Group"), L("Mrd. EUR", "EUR bn")], rows: items.sort((a, b) => b.v - a.v).map((d) => [d.c, d.label, +d.v.toFixed(2)]) };
+    };
+    drawTree();
+    $("stTAsk").textContent = L("Was steckt im Einzelnen dahinter?", "What lies behind it in detail?");
+    $("stTSrc").textContent = L("Farben wie oben: Soziale Sicherung dunkelblau, Gesundheit blau, Allgemeine Verwaltung hellblau, Wirtschaft dunkelgrau, Bildung grau, übrige hellgrau. ", "Colours as above: social protection dark blue, health blue, general public services light blue, economic affairs dark grey, education grey, other light grey. ") + src;
+    // 5 levels side by side
+    const LV = LEVELS(), lvItems = [];
+    order.forEach((c) => Object.keys(LV).forEach((sec, k) => lvItems.push({ group: k === 0 ? dn(c) : "", bold: true, title: `${dn(c)}, ${LV[sec]}`, v: C.sectors[sec][c][li] / 1000, color: LEV_COL[sec] })));
+    hbars($("stLChart"), lvItems, { label: "levels", rh: 15, dec: 0, unit: L("Mrd. EUR", "EUR bn") });
+    $("stLAsk").textContent = L("Welche Ebene gibt wofür aus?", "Which level spends on what?");
+    $("stLTitle").textContent = L(`Ausgaben ${Y[li]} je Ebene, Mrd. EUR; je Aufgabe von oben: Bund, Länder, Gemeinden, Sozialversicherung`, `Expenditure ${Y[li]} by level, EUR bn; for each function from top: federal, Länder, municipalities, social security`);
+    $("stLSrc").textContent = L("Werte je Ebene einschließlich Zahlungen an andere Ebenen, etwa des Bundeszuschusses an die Rentenversicherung; nicht addierbar. ", "Values by level include payments to other levels, such as the federal grant to pension insurance; not additive. ") + src;
+    FIGDATA.stlev = { header: [L("Aufgabe", "Function"), ...Object.values(LV).map((l) => `${l}, ${L("Mrd. EUR", "EUR bn")}`)], rows: order.map((c) => [dn(c), ...Object.keys(LV).map((s) => +(C.sectors[s][c][li] / 1000).toFixed(1))]) };
+    // 6 federal government over time
+    const fed = ["GF10", "GF01", "GF04", "GF02", "GF09"];
+    lineChart($("stBChart"), Y, fed.map((c, k) => ({ label: dn(c), color: ["#002060", "#00B0F0", "#595959", "#C00000", "#a6a6a6"][k], bold: k === 0 || c === "GF02", values: Y.map((_, i) => real("S1311", c, i)) })), { min: 0, unit: L("EUR je Einwohner", "EUR per head"), label: "federal" });
+    $("stBAsk").textContent = L("Wofür gibt der Bund sein Geld aus?", "What does the federal government spend on?");
+    $("stBTitle").textContent = L(`Ausgaben des Bundes je Einwohner, EUR in Preisen von ${C.price_base}; Verteidigung ${fmt(real("S1311", "GF02", i19), 0)} EUR (2019) und ${fmt(real("S1311", "GF02", li), 0)} EUR (${Y[li]})`, `Federal expenditure per head, EUR at ${C.price_base} prices; defence EUR ${fmt(real("S1311", "GF02", i19), 0)} (2019) and EUR ${fmt(real("S1311", "GF02", li), 0)} (${Y[li]})`);
+    $("stBSrc").textContent = L("Soziale Sicherung des Bundes enthält vor allem die Zuschüsse an die Rentenversicherung und das Bürgergeld. 1995: Übernahme der Treuhand-Schulden (Wirtschaft). ", "Federal social protection mainly contains grants to pension insurance and basic income support. 1995: takeover of the Treuhand debt (economic affairs). ") + src;
+    FIGDATA.stfed = { header: [L("Jahr", "Year"), ...fed.map((c) => `${dn(c)}, EUR`)], rows: Y.map((y, i) => [y, ...fed.map((c) => Math.round(real("S1311", c, i)))]) };
   }
 
   function renderForecast() {
