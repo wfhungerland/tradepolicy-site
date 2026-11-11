@@ -1427,6 +1427,11 @@
     const x = (k) => m.l + (k / (cols.length - 1)) * (W - m.l - m.r);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
     cols.forEach((c, k) => { s += `<text x="${x(k)}" y="16" text-anchor="middle" style="font-weight:600">${c}</text>`; });
+    // vertical axis: a thin line per column, ticks with light gridlines between the outer columns
+    const lowTicks = niceTicks(0, lowHi, 4).filter((t) => t <= lowHi), hiTicks = hiVals.length ? niceTicks(hMin, hMax, 2) : [];
+    cols.forEach((_, k) => { s += `<line x1="${x(k)}" x2="${x(k)}" y1="${m.t - 4}" y2="${H - m.b}" stroke="${G3}" stroke-width="0.8"/>`; });
+    [...lowTicks, ...hiTicks].forEach((t) => { const yy = y(t); s += `<line x1="${x(0)}" x2="${x(cols.length - 1)}" y1="${yy}" y2="${yy}" stroke="${G4}" stroke-width="0.8"/><text x="${x(0) + 4}" y="${yy - 3}" style="font-size:11px;fill:${G2}">${fmt(t, 0)}</text>`; });
+    s += `<text x="${x(0) + 4}" y="${m.t - 8}" style="font-size:11px;fill:${G2}">%</text>`;
     if (brk) cols.forEach((_, k) => { const yy = m.t + topBand + gap / 2; s += `<path d="M${x(k) - 7},${yy + 3}L${x(k) + 7},${yy - 3}M${x(k) - 7},${yy + 8}L${x(k) + 7},${yy + 2}" stroke="${G2}" stroke-width="1"/>`; });
     rows.forEach((r) => {
       const col = r.accent ? ACC : G2, w = r.accent ? 2.6 : 1.4;
@@ -1474,21 +1479,14 @@
     return out;
   }
 
-  // colour = real change per head over five years: muted blue for growth, muted red for decline, grey near zero
-  function chgColor(p) {
-    if (p === null || !isFinite(p)) return "#e6e6e6";
-    if (Math.abs(p) < 2) return "#e6e6e6";
-    const t = Math.min(1, (Math.abs(p) - 2) / 28);
-    const mix = (c0, c1) => "#" + [0, 2, 4].map((o) => Math.round(parseInt(c0.slice(o + 1, o + 3), 16) + t * (parseInt(c1.slice(o + 1, o + 3), 16) - parseInt(c0.slice(o + 1, o + 3), 16))).toString(16).padStart(2, "0")).join("");
-    return p > 0 ? mix("#c9d6ea", "#002060") : mix("#f2d4d4", "#a00000");
-  }
   const chgText = (p) => (p === null || !isFinite(p)) ? "" : `${p > 0 ? "+" : ""}${fmt(p, 0)} %`;
   const isDark = (hex) => { const v = [1, 3, 5].map((o) => parseInt(hex.slice(o, o + 2), 16)); return 0.299 * v[0] + 0.587 * v[1] + 0.114 * v[2] < 140; };
 
+  const shadesOf = (accent) => accent ? ["#002060", "#1f3f7a", "#3d5d95", "#5c7bb0", "#7a99ca", "#99b7e5"] : ["#8c8c8c", "#a0a0a0", "#b3b3b3", "#c6c6c6", "#d9d9d9", "#e6e6e6"];
   function cellLabel(c, total, big) {
     const fs = big ? 13 : 11.5, lh = fs + 3, mc = Math.floor(c.w / (fs * 0.56)), lab = c.label.length > mc ? c.label.slice(0, Math.max(1, mc - 1)) + "…" : c.label, col = isDark(c.fill) ? "#fff" : "#000";
     if (c.w < 60 || c.h < (big ? 40 : 32)) return "";
-    return `<text x="${c.x + 5}" y="${c.y + lh}" style="font-size:${fs}px;fill:${col}">${esc(lab)}</text><text x="${c.x + 5}" y="${c.y + 2 * lh}" style="font-size:${fs}px;fill:${col}">${fmt(100 * c.v / total, 1)} % · ${chgText(c.p)}</text>`;
+    return `<text x="${c.x + 5}" y="${c.y + lh}" style="font-size:${fs}px;fill:${col}">${esc(lab)}</text><text x="${c.x + 5}" y="${c.y + 2 * lh}" style="font-size:${fs}px;fill:${col}">${fmt(100 * c.v / total, 1)} %</text>`;
   }
 
   function nestedTreemap(el, divs, W, H, zoom, onZoom) {
@@ -1497,8 +1495,9 @@
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap">`;
     if (zoom) {
       const d = divs.find((x) => x.code === zoom), dt = d.groups.reduce((u, g) => u + g.v, 0);
-      squarify(d.groups.filter((g) => g.v > 0), { x: 0, y: 0, w: W, h: H }).forEach((c) => {
-        c.fill = chgColor(c.p);
+      const sh = shadesOf(d.accent);
+      squarify(d.groups.filter((g) => g.v > 0), { x: 0, y: 0, w: W, h: H }).forEach((c, k) => {
+        c.fill = sh[Math.min(k, sh.length - 1)];
         s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="2"><title>${esc(`${c.label}: ${fmt(c.v, 1)} ${L("Mrd. EUR", "EUR bn")}, ${fmt(100 * c.v / dt, 1)} % ${L("der Aufgabe", "of the function")}; ${L("real je Einwohner gegenüber fünf Jahren zuvor", "real per head vs five years earlier")} ${chgText(c.p)}`)}</title></rect>`;
         s += cellLabel({ ...c }, dt, true);
       });
@@ -1511,8 +1510,9 @@
       s += `<g class="tmdiv" data-code="${b.code}" style="cursor:zoom-in">`;
       s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#fff"/>`;
       if (head) { const mc = Math.floor(b.w / 7.2), lab = b.label.length > mc ? b.label.slice(0, mc - 1) + "…" : b.label; s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px">${esc(lab)} ${fmt(100 * b.v / total, 0)} %</text>`; }
-      squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }).forEach((c) => {
-        c.fill = chgColor(c.p);
+      const sh = shadesOf(b.accent);
+      squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }).forEach((c, k) => {
+        c.fill = sh[Math.min(k, sh.length - 1)];
         s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="1"><title>${esc(`${b.label}: ${c.label}, ${fmt(c.v, 1)} ${L("Mrd. EUR", "EUR bn")} (${fmt(100 * c.v / total, 1)} %); ${L("real je Einwohner gegenüber fünf Jahren zuvor", "real per head vs five years earlier")} ${chgText(c.p)}`)}</title></rect>`;
         s += cellLabel(c, total, false);
       });
@@ -1520,14 +1520,6 @@
     });
     el.innerHTML = s + "</svg>";
     el.querySelectorAll(".tmdiv").forEach((g) => g.addEventListener("click", () => onZoom(g.dataset.code)));
-  }
-
-  function changeLegend(el) {
-    const steps = [-30, -20, -10, -2, 2, 10, 20, 30];
-    let s = `<svg viewBox="0 0 420 34" width="420" height="34" role="img" aria-label="legend">`;
-    steps.slice(0, -1).forEach((v, k) => { const mid = (v + steps[k + 1]) / 2; s += `<rect x="${10 + k * 50}" y="4" width="50" height="10" fill="${chgColor(Math.abs(mid) < 2 ? 0 : mid)}"/>`; });
-    steps.forEach((v, k) => { s += `<text x="${10 + k * 50}" y="28" text-anchor="middle" style="font-size:11px">${v > 0 ? "+" : ""}${v}</text>`; });
-    el.innerHTML = s + `<text x="415" y="13" text-anchor="end" style="font-size:11px"></text></svg>`;
   }
 
   function barMatrix(el, rows, levels, opt) {
@@ -1594,26 +1586,25 @@
     $("stMSrc").textContent = src;
     FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...order.map((c) => Math.round(real("S13", c, i00 + k)))]) };
     // 3 zoomable treemap; area = spending, colour = real change per head over five years
-    const yr = $("stYear"); yr.min = 2005; yr.max = Y[li];
+    const yr = $("stYear"); yr.min = 2000; yr.max = Y[li];
     const TM = renderState.tm || (renderState.tm = { zoom: null });
     if (!yr.dataset.init) { yr.value = Y[li]; yr.dataset.init = 1; yr.addEventListener("input", () => drawTree()); $("stCrumb").addEventListener("click", (e) => { if (e.target.dataset.top) { TM.zoom = null; drawTree(); } }); }
-    changeLegend($("stLegend"));
     const realG = (o, i) => o.values[i] && o.values[i - 5] ? 100 * ((o.values[i] / C.pop[i] / C.price_index[i]) / (o.values[i - 5] / C.pop[i - 5] / C.price_index[i - 5]) - 1) : null;
     const drawTree = () => {
-      const i = Y.indexOf(+yr.value); $("stYearLab").textContent = `${yr.value} (${L("Veränderung gegenüber", "change vs")} ${+yr.value - 5})`;
-      const divs = codes.map((c) => ({ code: c, label: dn(c), groups: Object.entries(C.groups).filter(([g]) => g.startsWith(c)).map(([g, o]) => ({ code: g, label: L(o.de, o.en), v: (o.values[i] || 0) / 1000, p: realG(o, i) })) }));
+      const i = Y.indexOf(+yr.value); $("stYearLab").textContent = yr.value;
+      const divs = codes.map((c) => ({ code: c, label: dn(c), accent: c === "GF10", groups: Object.entries(C.groups).filter(([g]) => g.startsWith(c)).map(([g, o]) => ({ code: g, label: L(o.de, o.en), v: (o.values[i] || 0) / 1000, p: realG(o, i) })) }));
       nestedTreemap($("stTChart"), divs, 860, 520, TM.zoom, (code) => { TM.zoom = code; drawTree(); });
       const tot = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0);
       const zd = TM.zoom && divs.find((d) => d.code === TM.zoom);
       $("stCrumb").innerHTML = zd ? `<a href="javascript:void 0" data-top="1">${L("Alle Aufgaben", "All functions")}</a> › ${esc(zd.label)}` : L("Klick auf eine Aufgabe vergrößert sie.", "Click a function to zoom in.");
       $("stTTitle").textContent = zd
-        ? L(`${zd.label} ${yr.value}: ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} Mrd. EUR; Fläche = Ausgaben, Farbe = reale Veränderung je Einwohner gegenüber ${+yr.value - 5}`, `${zd.label} ${yr.value}: EUR ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} bn; area = spending, colour = real change per head vs ${+yr.value - 5}`)
-        : L(`Staatsausgaben ${yr.value}: ${fmt(tot, 0)} Mrd. EUR; Fläche = Ausgaben, Farbe = reale Veränderung je Einwohner gegenüber ${+yr.value - 5}`, `Government expenditure ${yr.value}: EUR ${fmt(tot, 0)} bn; area = spending, colour = real change per head vs ${+yr.value - 5}`);
+        ? L(`${zd.label} ${yr.value}: ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} Mrd. EUR nach Gruppen; Fläche = Ausgaben`, `${zd.label} ${yr.value}: EUR ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} bn by group; area = spending`)
+        : L(`Staatsausgaben ${yr.value}: zehn Aufgaben und ihre Gruppen, ${fmt(tot, 0)} Mrd. EUR; Fläche = Ausgaben`, `Government expenditure ${yr.value}: ten functions and their groups, EUR ${fmt(tot, 0)} bn; area = spending`);
       FIGDATA.sttree = { header: ["COFOG", L("Aufgabe", "Function"), L("Gruppe", "Group"), L("Mrd. EUR", "EUR bn"), L(`reale Veränderung je Einwohner gegenüber ${+yr.value - 5}, %`, `real change per head vs ${+yr.value - 5}, %`)], rows: divs.flatMap((d) => d.groups.map((g) => [g.code, d.label, g.label, +g.v.toFixed(2), g.p === null ? "" : +g.p.toFixed(1)])) };
     };
     drawTree();
-    $("stTAsk").textContent = L("Wo kommt Geld hinzu, wo wird gespart?", "Where is money added, where is it cut?");
-    $("stTSrc").textContent = L("Blau: reales Wachstum je Einwohner, rot: Rückgang, grau: weniger als 2 % Veränderung. Preisbereinigt mit dem BIP-Deflator. ", "Blue: real growth per head, red: decline, grey: change below 2 %. Deflated with the GDP deflator. ") + src;
+    $("stTAsk").textContent = L("Was steckt im Einzelnen dahinter?", "What lies behind it in detail?");
+    $("stTSrc").textContent = L("Jede Aufgabe ein Block, die Gruppen darin in Abstufungen; Soziale Sicherung blau, übrige Aufgaben grau. Der Hinweistext jeder Fläche nennt zusätzlich die reale Veränderung je Einwohner gegenüber fünf Jahren zuvor. ", "Each function one block, its groups in shades; social protection blue, other functions grey. The tooltip of each cell also gives the real change per head over five years. ") + src;
     // 4 dot plot by level
     const LV = LEVELS();
     barMatrix($("stLChart"), order.map((c) => ({ label: dn(c), accent: c === "GF10", vals: Object.fromEntries(Object.keys(LV).map((sec) => [sec, C.sectors[sec][c][li] / 1000])) })), LV, { label: "levels", unit: L("Mrd. EUR", "EUR bn") });
