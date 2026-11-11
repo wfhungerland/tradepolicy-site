@@ -1,0 +1,78 @@
+name: Kreisdaten aktualisieren
+
+on:
+  schedule:
+    - cron: "23 3 15 1,4,7,10 *"   # 15th of January, April, July, October, 03:23 UTC
+  workflow_dispatch:
+    inputs:
+      parts:
+        description: "Teile (Leerzeichen getrennt): mastr osm netzausbau"
+        default: "netzausbau mastr osm"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get install -y -qq poppler-utils
+      - run: pip install -r update/requirements.txt shapely
+      # each source on its own: a failing source leaves its old data in place
+      - name: Netzausbau (Bundesnetzagentur)
+        if: contains(inputs.parts || 'netzausbau mastr osm', 'netzausbau')
+        continue-on-error: true
+        run: python update/update_kreise.py site/data netzausbau
+      - name: Stromerzeugung (Marktstammdatenregister)
+        if: contains(inputs.parts || 'netzausbau mastr osm', 'mastr')
+        continue-on-error: true
+        run: python update/update_kreise.py site/data mastr
+      - name: Netze (OpenStreetMap)
+        if: contains(inputs.parts || 'netzausbau mastr osm', 'osm')
+        continue-on-error: true
+        run: python update/update_kreise.py site/data osm
+      - name: Kreis-Steckbrief
+        run: python update/update_kreise.py site/data steckbrief
+      - id: commit
+        run: |
+          if git diff --quiet site/data; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/data
+            git commit -m "Kreisdaten: vierteljährliche Aktualisierung"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

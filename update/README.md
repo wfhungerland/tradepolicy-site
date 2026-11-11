@@ -13,3 +13,16 @@ five US tariff scenarios on the stored baseline and rewrites their entries in
   (Actions tab, "Zollszenarien aktualisieren", "Run workflow").
 
 Local run: `python update/update_us_scenarios.py update/assets site/data/scenarios.json`
+
+# Quarterly update of the district data
+
+`update_kreise.py` refreshes the district data of the site from three public sources:
+Marktstammdatenregister (power generation, `kreise_energy.json`), OpenStreetMap via Overpass
+(power lines, substations, rail, motorways: `kreise_infra.json`, `netz_*.json`) and the
+Bundesnetzagentur grid expansion monitoring (`energienetze.json`, part "nab"); then the energy
+and network values of the district profile (`kreise_steckbrief.json`). Run by
+`.github/workflows/update-kreise.yml` on the 15th of January, April, July and October and by hand
+(Actions tab, "Kreisdaten aktualisieren"). Each source runs on its own; a failing source leaves
+its previous data in place. Not updated automatically (need credentials or appear yearly):
+Regionaldatenbank export ratios, Global Trade Alert subsidies, INKAR, Breitbandatlas, hydrogen
+core network. `assets/kreise.csv`: district key, NUTS 3 code, name, population, area.
