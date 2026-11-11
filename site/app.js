@@ -908,7 +908,7 @@
     else if (kre) $("regSrc").textContent = L("Quelle: eigene Berechnungen auf Basis des Marktstammdatenregisters (Bundesnetzagentur, Datenlizenz Deutschland 2.0) und Destatis; Kartengrundlage: © EuroGeographics (GISCO). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on the market master data register (Federal Network Agency, Data licence Germany 2.0) and Destatis; base map: © EuroGeographics (GISCO). Licence of the figure: CC BY 4.0.");
     const srt = [...all].sort((a, b) => a[1] - b[1]);
     const S = H.summary, yix = (y) => S.year.indexOf(y);
-    const G = K.germany, gi = G.years.length - 1;
+    const G = K.germany, gi = Math.max(0, G.years.indexOf(+(K.stand || "Ende 2025").slice(-4)));
     const ans = {
       rw: RW ? L(`Seit 1900 sind sich Europas Regionen nähergekommen: Die Streuung des logarithmierten BIP je Einwohner sank von ${fmt(RW.sigma[0], 2)} auf ${fmt(RW.sigma[RW.sigma.length - 1], 2)}, arme Regionen wuchsen schneller. Die Rangfolge hat sich dabei stark verschoben (Rangkorrelation 1900 zu 2021 nur ${fmt(RW.rho, 2)}). ${yr}: vorn ${nm(srt[srt.length - 1][0])} (${fv(srt[srt.length - 1][1])}), hinten ${nm(srt[0][0])} (${fv(srt[0][1])}); deutsche Regionen im Mittel bei ${fmt(RW.de_idx[ri], 0)}.`,
         `Since 1900 Europe's regions have converged: the dispersion of log GDP per head fell from ${fmt(RW.sigma[0], 2)} to ${fmt(RW.sigma[RW.sigma.length - 1], 2)}, poor regions grew faster. Rankings have shifted a lot (rank correlation 1900 to 2021 only ${fmt(RW.rho, 2)}). ${yr}: top ${nm(srt[srt.length - 1][0])} (${fv(srt[srt.length - 1][1])}), bottom ${nm(srt[0][0])} (${fv(srt[0][1])}); German regions at ${fmt(RW.de_idx[ri], 0)} on average.`) : "",
