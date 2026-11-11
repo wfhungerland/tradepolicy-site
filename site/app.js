@@ -1482,7 +1482,11 @@
   const chgText = (p) => (p === null || !isFinite(p)) ? "" : `${p > 0 ? "+" : ""}${fmt(p, 0)} %`;
   const isDark = (hex) => { const v = [1, 3, 5].map((o) => parseInt(hex.slice(o, o + 2), 16)); return 0.299 * v[0] + 0.587 * v[1] + 0.114 * v[2] < 140; };
 
-  const shadesOf = (accent) => accent ? ["#002060", "#1f3f7a", "#3d5d95", "#5c7bb0", "#7a99ca", "#99b7e5"] : ["#8c8c8c", "#a0a0a0", "#b3b3b3", "#c6c6c6", "#d9d9d9", "#e6e6e6"];
+  // every function its own hue (Konjunkturmonitor palette); each group a fixed tint of that hue by its COFOG code,
+  // so a tile keeps its colour across years and in the zoomed view
+  const DIV_HUE = { GF10: "#002060", GF07: "#0070C0", GF01: "#00B0F0", GF04: "#51154A", GF09: "#7030A0", GF03: "#D86DCD", GF02: "#C00000", GF08: "#47D359", GF05: "#2E7D32", GF06: "#595959" };
+  const tint = (hex, t) => "#" + [1, 3, 5].map((o) => Math.round(parseInt(hex.slice(o, o + 2), 16) + t * (255 - parseInt(hex.slice(o, o + 2), 16))).toString(16).padStart(2, "0")).join("");
+  const groupFill = (code, allCodes) => { const sib = allCodes.filter((c) => c.slice(0, 4) === code.slice(0, 4)).sort(), j = sib.indexOf(code); return tint(DIV_HUE[code.slice(0, 4)] || "#595959", sib.length > 1 ? 0.6 * j / (sib.length - 1) : 0); };
   function cellLabel(c, total, big) {
     const fs = big ? 13 : 11.5, lh = fs + 3, mc = Math.floor(c.w / (fs * 0.56)), lab = c.label.length > mc ? c.label.slice(0, Math.max(1, mc - 1)) + "…" : c.label, col = isDark(c.fill) ? "#fff" : "#000";
     if (c.w < 60 || c.h < (big ? 40 : 32)) return "";
@@ -1495,9 +1499,9 @@
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap">`;
     if (zoom) {
       const d = divs.find((x) => x.code === zoom), dt = d.groups.reduce((u, g) => u + g.v, 0);
-      const sh = shadesOf(d.accent);
-      squarify(d.groups.filter((g) => g.v > 0), { x: 0, y: 0, w: W, h: H }).forEach((c, k) => {
-        c.fill = sh[Math.min(k, sh.length - 1)];
+      const allc = d.groups.map((g) => g.code);
+      squarify(d.groups.filter((g) => g.v > 0), { x: 0, y: 0, w: W, h: H }).forEach((c) => {
+        c.fill = groupFill(c.code, allc);
         s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="2"><title>${esc(`${c.label}: ${fmt(c.v, 1)} ${L("Mrd. EUR", "EUR bn")}, ${fmt(100 * c.v / dt, 1)} % ${L("der Aufgabe", "of the function")}; ${L("real je Einwohner gegenüber fünf Jahren zuvor", "real per head vs five years earlier")} ${chgText(c.p)}`)}</title></rect>`;
         s += cellLabel({ ...c }, dt, true);
       });
@@ -1510,9 +1514,9 @@
       s += `<g class="tmdiv" data-code="${b.code}" style="cursor:zoom-in">`;
       s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#fff"/>`;
       if (head) { const mc = Math.floor(b.w / 7.2), lab = b.label.length > mc ? b.label.slice(0, mc - 1) + "…" : b.label; s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px">${esc(lab)} ${fmt(100 * b.v / total, 0)} %</text>`; }
-      const sh = shadesOf(b.accent);
-      squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }).forEach((c, k) => {
-        c.fill = sh[Math.min(k, sh.length - 1)];
+      const allc = b.groups.map((g) => g.code);
+      squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }).forEach((c) => {
+        c.fill = groupFill(c.code, allc);
         s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="1"><title>${esc(`${b.label}: ${c.label}, ${fmt(c.v, 1)} ${L("Mrd. EUR", "EUR bn")} (${fmt(100 * c.v / total, 1)} %); ${L("real je Einwohner gegenüber fünf Jahren zuvor", "real per head vs five years earlier")} ${chgText(c.p)}`)}</title></rect>`;
         s += cellLabel(c, total, false);
       });
@@ -1604,7 +1608,7 @@
     };
     drawTree();
     $("stTAsk").textContent = L("Was steckt im Einzelnen dahinter?", "What lies behind it in detail?");
-    $("stTSrc").textContent = L("Jede Aufgabe ein Block, die Gruppen darin in Abstufungen; Soziale Sicherung blau, übrige Aufgaben grau. Der Hinweistext jeder Fläche nennt zusätzlich die reale Veränderung je Einwohner gegenüber fünf Jahren zuvor. ", "Each function one block, its groups in shades; social protection blue, other functions grey. The tooltip of each cell also gives the real change per head over five years. ") + src;
+    $("stTSrc").textContent = L("Jede Aufgabe ein Block in eigener Farbe, ihre Gruppen in festen Abstufungen dieser Farbe. Der Hinweistext jeder Fläche nennt zusätzlich die reale Veränderung je Einwohner gegenüber fünf Jahren zuvor. ", "Each function one block in its own colour, its groups in fixed tints of that colour. The tooltip of each cell also gives the real change per head over five years. ") + src;
     // 4 dot plot by level
     const LV = LEVELS();
     barMatrix($("stLChart"), order.map((c) => ({ label: dn(c), accent: c === "GF10", vals: Object.fromEntries(Object.keys(LV).map((sec) => [sec, C.sectors[sec][c][li] / 1000])) })), LV, { label: "levels", unit: L("Mrd. EUR", "EUR bn") });
