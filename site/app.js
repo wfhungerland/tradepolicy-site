@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -53,7 +53,7 @@
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -199,6 +199,7 @@
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
     if (view === "mittelstand") await renderMittelstand();
+    if (view === "dienste") await renderServices();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
@@ -1280,6 +1281,43 @@
       Object.keys(I).filter((key) => I[key].g === gid).map((key) => `<tr><td>${esc(EN ? I[key].en : I[key].de)}</td><td class="num">${fv(key, k.v[key])}</td><td class="num">${fv(key, I[key].med)}</td><td class="num">${k.r[key] === null ? "–" : `${k.r[key]} / ${I[key].n}`}</td></tr>`).join("") + "</tbody></table></div>").join("");
     $("sbSrc").textContent = L("Quellen: INKAR 2025 (BBSR), Regionaldatenbank Deutschland, Marktstammdatenregister und Breitbandatlas (Bundesnetzagentur), OpenStreetMap (ODbL), BBSR-Referenz der GRW-Fördergebiete, Caliendo-Parro-Modell; eigene Berechnungen. Kreisgrenzen: © EuroGeographics (GISCO). Lizenz: CC BY 4.0.",
       "Sources: INKAR 2025 (BBSR), Regional Database Germany, market master data register and broadband atlas (Federal Network Agency), OpenStreetMap (ODbL), BBSR reference of GRW aid areas, Caliendo-Parro model; own calculations. District boundaries: © EuroGeographics (GISCO). Licence: CC BY 4.0.");
+  }
+
+  // trade in services (OECD TiS, IMF IMTS)
+  async function renderServices() {
+    const S = await getJSON("data/services.json"), y = S.year, li = S.years.length - 1, bn = (v) => L(`${fmt(v, 0)} Mrd. EUR`, `EUR ${fmt(v, 0)} bn`);
+    const ui = S.us.years.length - 1, di = S.digital.years.length - 1, X3 = { LUX: L("Luxemburg", "Luxembourg"), MLT: "Malta", CYP: L("Zypern", "Cyprus") }, CN = (p) => X3[p] || cname(p) || p;
+    const top = S.types.slice().sort((a, b) => b.x - a.x);
+    $("svAnswer").textContent = L(`Deutschland exportierte ${y} Dienstleistungen für ${bn(S.exp[li])} und importierte für ${bn(S.imp[li])}; das Defizit entsteht fast ganz im Reiseverkehr. Größter Abnehmer sind die USA (${bn(S.partners[0].x)}). Mit den USA ist der Dienstleistungshandel nach deutscher Statistik fast ausgeglichen (${fmt(S.us.services[ui], 0)} Mrd. USD), der Warenhandel weist einen Überschuss von ${fmt(S.us.goods[ui], 0)} Mrd. USD aus. Digitale Dienste und Lizenzen kommen zu ${fmt(S.digital.us[di], 0)} % direkt aus den USA, mit Irland zu ${fmt((S.digital.us_ie[di] ?? S.digital.us_ie.filter((v) => v !== null).at(-1)), 0)} %.`,
+      `In ${y} Germany exported services worth ${bn(S.exp[li])} and imported ${bn(S.imp[li])}; the deficit arises almost entirely in travel. The largest buyer is the US (${bn(S.partners[0].x)}). According to German statistics, services trade with the US is nearly balanced (USD ${fmt(S.us.services[ui], 0)} bn), while goods trade shows a surplus of USD ${fmt(S.us.goods[ui], 0)} bn. Digital services and licences come ${fmt(S.digital.us[di], 0)} % directly from the US, ${fmt((S.digital.us_ie[di] ?? S.digital.us_ie.filter((v) => v !== null).at(-1)), 0)} % including Ireland.`);
+    $("svExplain").textContent = L("OECD, Dienstleistungshandel nach Partnerländern (Zahlungsbilanz, BPM6), Meldeland Deutschland. Bilaterale Werte weichen zwischen den Meldeländern stark ab: Die US-Statistik weist einen deutlich höheren Überschuss der USA im Dienstleistungshandel mit Deutschland aus, weil US-Konzerne digitale Dienste und Lizenzen oft über Töchter in Irland, den Niederlanden oder Luxemburg verbuchen. Warenhandel: IMF IMTS, Zollstatistik (Exporte fob, Importe cif).",
+      "OECD, trade in services by partner (balance of payments, BPM6), reporter Germany. Bilateral figures differ widely between reporters: US statistics show a much larger US surplus in services with Germany, because US groups often book digital services and licences through subsidiaries in Ireland, the Netherlands or Luxembourg. Goods: IMF IMTS, customs basis (exports fob, imports cif).");
+    // 1 types: paired bars
+    const W = 860, rowH = 30, m = { l: 250, r: 70, t: 34, b: 26 }, H = m.t + m.b + rowH * top.length, mx = Math.max(...top.flatMap((r) => [r.x, r.m])) * 1.1, XS = (v) => m.l + v / mx * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img"><rect x="${m.l}" y="6" width="12" height="12" fill="#002060"/><text x="${m.l + 18}" y="16">${L("Exporte", "Exports")}</text><rect x="${m.l + 120}" y="6" width="12" height="12" fill="#a6a6a6"/><text x="${m.l + 138}" y="16">${L("Importe", "Imports")}</text>`;
+    niceTicks(0, mx, 5).forEach((t) => { s += `<line class="grid" x1="${XS(t)}" x2="${XS(t)}" y1="${m.t - 4}" y2="${H - m.b}"/><text x="${XS(t)}" y="${H - 8}" text-anchor="middle">${fmt(t, 0)}</text>`; });
+    top.forEach((r, i) => { const yy = m.t + i * rowH, nm = EN ? r.en : r.de;
+      s += `<text x="${m.l - 8}" y="${yy + rowH / 2 + 4}" text-anchor="end">${esc(nm)}</text><rect x="${m.l}" y="${yy + 3}" width="${XS(r.x) - m.l}" height="${(rowH - 8) / 2}" fill="#002060"><title>${esc(nm)}, ${L("Exporte", "exports")}: ${bn(r.x)}</title></rect><rect x="${m.l}" y="${yy + 3 + (rowH - 8) / 2}" width="${XS(r.m) - m.l}" height="${(rowH - 8) / 2}" fill="#a6a6a6"><title>${esc(nm)}, ${L("Importe", "imports")}: ${bn(r.m)}</title></rect><text x="${XS(Math.max(r.x, r.m)) + 6}" y="${yy + rowH / 2 + 4}">${fmt(r.x - r.m, 0)}</text>`; });
+    $("svTChart").innerHTML = s + "</svg>";
+    $("svTAsk").textContent = L("Womit verdient Deutschland, wofür zahlt es?", "What does Germany earn on, what does it pay for?");
+    $("svTTitle").textContent = L(`Dienstleistungshandel nach Art, ${y}, Mrd. EUR (Zahl rechts: Saldo)`, `Trade in services by type, ${y}, EUR bn (number on the right: balance)`);
+    $("svTSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von OECD, Trade in services by partner economy (BPM6). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on OECD, Trade in services by partner economy (BPM6). Licence of the figure: CC BY 4.0.");
+    FIGDATA.svtypes = { header: [L("Art", "Type"), L("Exporte, Mrd. EUR", "Exports, EUR bn"), L("Importe, Mrd. EUR", "Imports, EUR bn")], rows: top.map((r) => [EN ? r.en : r.de, r.x, r.m]) };
+    // 2 US balance
+    lineChart($("svUChart"), S.us.years, [{ label: L("Warenhandel", "Goods"), color: "#002060", bold: true, values: S.us.goods }, { label: L("Dienstleistungen", "Services"), color: "#00B0F0", bold: true, values: S.us.services }], { unit: L("Mrd. USD", "USD bn"), label: "US" });
+    $("svUAsk").textContent = L("Wie groß ist der Überschuss mit den USA wirklich?", "How large is the surplus with the US really?");
+    $("svUTitle").textContent = L("Saldo Deutschlands mit den USA, Waren und Dienstleistungen, Mrd. USD", "Germany's balance with the US, goods and services, USD bn");
+    $("svUSrc").textContent = L("Quelle: IMF IMTS (Waren, Zollstatistik), OECD (Dienstleistungen, Meldeland Deutschland); eigene Berechnungen. Lizenz der Abbildung: CC BY 4.0.", "Source: IMF IMTS (goods, customs basis), OECD (services, reporter Germany); own calculations. Licence of the figure: CC BY 4.0.");
+    FIGDATA.svus = { header: [L("Jahr", "Year"), L("Waren, Mrd. USD", "Goods, USD bn"), L("Dienstleistungen, Mrd. USD", "Services, USD bn")], rows: S.us.years.map((yy, i) => [yy, S.us.goods[i], S.us.services[i]]) };
+    // 3 digital dependence
+    lineChart($("svDChart"), S.digital.years, [{ label: L("USA und Irland", "US and Ireland"), color: "#002060", bold: true, values: S.digital.us_ie }, { label: L("USA", "US"), color: "#00B0F0", values: S.digital.us }], { min: 0, unit: "%", label: "digital" });
+    $("svDAsk").textContent = L("Wie abhängig ist Deutschland von digitalen Diensten aus den USA?", "How dependent is Germany on US digital services?");
+    $("svDTitle").textContent = L(`Importe von IT-, Telekommunikations- und Informationsdiensten sowie Lizenzgebühren: Anteil aus den USA, % (${y} insgesamt ${bn(S.digital.total[di])})`, `Imports of ICT services and licence fees: share from the US, % (${y} total ${bn(S.digital.total[di])})`);
+    $("svDSrc").textContent = L("Quelle: OECD, Trade in services by partner economy; EBOPS SI und SH; eigene Berechnungen. Die direkte US-Quote unterschätzt die Abhängigkeit, weil US-Konzerne viel über Irland abrechnen; Sprünge zwischen einzelnen Jahren spiegeln Meldelücken, für 2014 und 2023 fehlt der Wert für Irland. Lizenz der Abbildung: CC BY 4.0.", "Source: OECD, Trade in services by partner economy; EBOPS SI and SH; own calculations. The direct US share understates dependence, as US groups bill much through Ireland; jumps between single years reflect reporting gaps, and the value for Ireland is missing for 2014 and 2023. Licence of the figure: CC BY 4.0.");
+    FIGDATA.svdig = { header: [L("Jahr", "Year"), L("USA, %", "US, %"), L("USA und Irland, %", "US and Ireland, %"), L("Insgesamt, Mrd. EUR", "Total, EUR bn")], rows: S.digital.years.map((yy, i) => [yy, S.digital.us[i], S.digital.us_ie[i], S.digital.total[i]]) };
+    $("svTabTitle").textContent = L(`Die wichtigsten Partner im Dienstleistungshandel, ${y}`, `Main partners in services trade, ${y}`);
+    $("svTable").innerHTML = `<thead><tr><th>${L("Partner", "Partner")}</th><th class="num">${L("Exporte, Mrd. EUR", "Exports, EUR bn")}</th><th class="num">${L("Importe, Mrd. EUR", "Imports, EUR bn")}</th><th class="num">${L("Saldo", "Balance")}</th></tr></thead><tbody>` +
+      S.partners.map((r) => `<tr><td>${esc(CN(r.p))}</td><td class="num">${fmt(r.x, 1)}</td><td class="num">${fmt(r.m, 1)}</td><td class="num">${fmt(r.x - r.m, 1)}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {

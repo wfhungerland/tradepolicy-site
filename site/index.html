@@ -28,6 +28,7 @@
       <a href="#nullhandel">Null-Handel</a>
       <a href="#regime">Regierungsform</a>
       <a href="#mittelstand">Mittelstand</a>
+      <a href="#dienste">Dienstleistungen</a>
       <a href="#regionen">Regionen</a>
       <a href="#kreise">Kreise</a>
       <a href="#steckbrief">Kreis-Steckbrief</a>
@@ -392,6 +393,36 @@
     </div>
   </section>
 
+  <section id="view-dienste" class="view" hidden>
+    <h2>Womit handelt Deutschland bei Dienstleistungen?</h2>
+    <div class="intro"><p class="answer" id="svAnswer"></p><p class="explain" id="svExplain"></p></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="svtypes">
+      <p class="cask" id="svTAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="svTTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="svTChart" class="svgwrap"></div></div></div>
+      <p class="src" id="svTSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="svus">
+      <p class="cask" id="svUAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="svUTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="svUChart" class="svgwrap"></div></div></div>
+      <p class="src" id="svUSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="svdig">
+      <p class="cask" id="svDAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="svDTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="svDChart" class="svgwrap"></div></div></div>
+      <p class="src" id="svDSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+    <h3 id="svTabTitle"></h3>
+    <div class="tablewrap"><table id="svTable"></table></div>
+  </section>
+
   <section id="view-regionen" class="view" hidden>
     <h2>Welche Regionen Europas trifft was?</h2>
     <div class="toolbar">
@@ -732,6 +763,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
   <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
-<script src="app.js?v=20261111c"></script>
+<script src="app.js?v=20261111d"></script>
 </body>
 </html>
