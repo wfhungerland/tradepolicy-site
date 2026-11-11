@@ -1448,6 +1448,7 @@
   function sparkTable(el, years, rows, head) {
     // rows: {label, accent, level, spark:[..], change, share}
     const W = 860, rh = 30, top = 30, H = top + rows.length * rh + 6, cx = [0, 330, 360, 560, 700, 860];
+    const allIdx = rows.flatMap((r) => r.spark.map((v) => 100 * v / r.spark[0])), SPK = { lo: Math.min(...allIdx), hi: Math.max(...allIdx) };
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="table">`;
     head.forEach((h, k) => { s += `<text x="${k === 0 ? 0 : k === 2 ? cx[2] : cx[k + 1] - 10}" y="18" text-anchor="${k === 0 || k === 2 ? "start" : "end"}" style="font-size:12px;fill:${G1}">${esc(h)}</text>`; });
     s += `<line x1="0" x2="${W}" y1="${top - 6}" y2="${top - 6}" stroke="${G3}"/>`;
@@ -1455,9 +1456,10 @@
       const yy = top + i * rh, mid = yy + rh / 2, col = r.accent ? ACC : G1;
       s += `<text x="0" y="${mid + 4}" style="font-weight:${r.accent ? 600 : 400};fill:${r.accent ? ACC : "#000"}">${esc(r.label)}</text>`;
       s += `<text x="${cx[2] - 10}" y="${mid + 4}" text-anchor="end">${fmt(r.level, 0)}</text>`;
-      const sv = r.spark, mx = Math.max(...sv), mn = Math.min(...sv), sx = (k) => cx[2] + 10 + (k / (sv.length - 1)) * 170, sy = (v) => yy + rh - 6 - ((v - mn) / (mx - mn || 1)) * (rh - 12);
-      s += `<path d="${sv.map((v, k) => (k ? "L" : "M") + sx(k).toFixed(1) + "," + sy(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="1.3"><title>${esc(`${r.label}: ${years[0]} ${fmt(sv[0], 0)}, ${years.at(-1)} ${fmt(sv.at(-1), 0)} EUR`)}</title></path>`;
-      s += `<circle cx="${sx(sv.length - 1)}" cy="${sy(sv.at(-1))}" r="2.2" fill="${col}"/>`;
+      const sv = r.spark.map((v) => 100 * v / r.spark[0]), mx = SPK.hi, mn = SPK.lo, sx = (k) => cx[2] + 10 + (k / (sv.length - 1)) * 170, sy = (v) => yy + rh - 4 - ((v - mn) / (mx - mn || 1)) * (rh - 8);
+      s += `<line x1="${sx(0)}" x2="${sx(sv.length - 1)}" y1="${sy(100)}" y2="${sy(100)}" stroke="${G4}"/>`;
+      s += `<path d="${sv.map((v, k) => (k ? "L" : "M") + sx(k).toFixed(1) + "," + sy(v).toFixed(1)).join("")}" fill="none" stroke="${col}" stroke-width="1.3"><title>${esc(`${r.label}: ${years.at(-1)} ${fmt(sv.at(-1), 0)} (${years[0]} = 100)`)}</title></path>`;
+      s += `<circle cx="${sx(sv.length - 1)}" cy="${sy(sv.at(-1))}" r="2.2" fill="${col}"/><text x="${sx(sv.length - 1) + 6}" y="${sy(sv.at(-1)) + 4}" style="font-size:11px;fill:${G1}">${fmt(sv.at(-1), 0)}</text>`;
       s += `<text x="${cx[4] - 10}" y="${mid + 4}" text-anchor="end">${(r.change > 0 ? "+" : "") + fmt(r.change, 0)}</text>`;
       s += `<text x="${cx[5] - 10}" y="${mid + 4}" text-anchor="end">${fmt(r.share, 1)}</text>`;
     });
@@ -1576,8 +1578,8 @@
       `Der Staat gab ${Y[li]} ${fmt(S.TOTAL[li] / 1000, 0)} Mrd. EUR aus, ${fmt(gdpShare, 1)} % des BIP. ${fmt(share("GF10", li), 0)} Cent von jedem Euro flossen in die Soziale Sicherung, ${fmt(share("GF07", li), 0)} in die Gesundheit. Am stärksten gestiegen sind seit 2019 die preisbereinigten Ausgaben je Einwohner für ${dn(ch[0].c)} (+${fmt(ch[0].v, 0)} EUR) und ${dn(ch[1].c)} (+${fmt(ch[1].v, 0)} EUR).`,
       `In ${Y[li]} general government spent EUR ${fmt(S.TOTAL[li] / 1000, 0)} bn, ${fmt(gdpShare, 1)} % of GDP. ${fmt(share("GF10", li), 0)} cents of every euro went to social protection, ${fmt(share("GF07", li), 0)} to health. Since 2019, real spending per head rose most for ${dn(ch[0].c).toLowerCase()} (+EUR ${fmt(ch[0].v, 0)}) and ${dn(ch[1].c).toLowerCase()} (+EUR ${fmt(ch[1].v, 0)}).`);
     $("stExplain").textContent = L(
-      `Eurostat, Staatsausgaben nach Aufgaben (COFOG), Stand ${String(C._meta.updated || "").slice(0, 10)}. Der Staat umfasst Bund, Länder, Gemeinden und Sozialversicherung; seine Summe ist konsolidiert, Zahlungen zwischen den Ebenen sind herausgerechnet. Die Werte je Ebene enthalten diese Zahlungen und lassen sich nicht addieren (zusammen ${fmt(extra, 0)} % mehr als der Staat insgesamt). Preisbereinigt mit dem BIP-Deflator, in Preisen von ${C.price_base}. Zinsen zählen zu Verwaltung. Die Reihen beginnen 2000; 1995 enthält die Übernahme der Treuhand-Schulden durch den Bund (rund 130 Mrd. EUR).`,
-      `Eurostat, government expenditure by function (COFOG), as of ${String(C._meta.updated || "").slice(0, 10)}. General government covers federal, Länder, municipal and social security funds; its total is consolidated, so payments between levels are netted out. Values by level include those payments and cannot be added up (together ${fmt(extra, 0)} % more than the general government total). Deflated with the GDP deflator, ${C.price_base} prices. Interest belongs to administration. Series start in 2000; 1995 includes the federal takeover of the Treuhand debt (about EUR 130 bn).`);
+      `Eurostat, Staatsausgaben nach Aufgaben (COFOG), Stand ${String(C._meta.updated || "").slice(0, 10)}. Der Staat umfasst Bund, Länder, Gemeinden und Sozialversicherung; seine Summe ist konsolidiert, Zahlungen zwischen den Ebenen sind herausgerechnet. Die Werte je Ebene enthalten diese Zahlungen und lassen sich nicht addieren (zusammen ${fmt(extra, 0)} % mehr als der Staat insgesamt). Preisbereinigt mit dem Deflator der Konsumausgaben des Staates, in Preisen von ${C.price_base}. Zinsen zählen zu Verwaltung. Die Reihen beginnen 2000; 1995 enthält die Übernahme der Treuhand-Schulden durch den Bund (rund 130 Mrd. EUR).`,
+      `Eurostat, government expenditure by function (COFOG), as of ${String(C._meta.updated || "").slice(0, 10)}. General government covers federal, Länder, municipal and social security funds; its total is consolidated, so payments between levels are netted out. Values by level include those payments and cannot be added up (together ${fmt(extra, 0)} % more than the general government total). Deflated with the deflator of government final consumption, ${C.price_base} prices. Interest belongs to administration. Series start in 2000; 1995 includes the federal takeover of the Treuhand debt (about EUR 130 bn).`);
     const src = L("Quelle: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.", "Source: Eurostat (gov_10a_exp, demo_gind, nama_10_gdp); own calculation. Licence of the figure: CC BY 4.0.");
     // 1 slopegraph of shares
     const cols = [2000, 2019, Y[li]], ci = cols.map((y) => Y.indexOf(y));
@@ -1589,9 +1591,9 @@
     // 2 sparkline table
     const ys = Y.slice(i00);
     sparkTable($("stMChart"), ys, order.map((c) => ({ label: dn(c), accent: c === "GF10", level: real("S13", c, li), spark: ys.map((_, k) => real("S13", c, i00 + k)), change: real("S13", c, li) - real("S13", c, i19), share: share(c, li) })),
-      [L("Aufgabe", "Function"), L(`EUR je Einw. ${Y[li]}`, `EUR per head ${Y[li]}`), L(`Verlauf 2000 bis ${Y[li]}`, `2000 to ${Y[li]}`), L("seit 2019, EUR", "since 2019, EUR"), L("Anteil, %", "share, %")]);
+      [L("Aufgabe", "Function"), L(`EUR je Einw. ${Y[li]}`, `EUR per head ${Y[li]}`), L(`Index 2000 = 100, bis ${Y[li]}`, `index 2000 = 100, to ${Y[li]}`), L("seit 2019, EUR", "since 2019, EUR"), L("Anteil, %", "share, %")]);
     $("stMAsk").textContent = L("Wo ist das Niveau gestiegen?", "Where has the level risen?");
-    $("stMTitle").textContent = L(`Ausgaben je Einwohner in Preisen von ${C.price_base}: seit 2019 real +${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} EUR, gut ein Viertel davon für Soziale Sicherung; Verlaufslinien mit eigener Skala`, `Expenditure per head at ${C.price_base} prices: real +EUR ${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} since 2019, over a quarter of it for social protection; trend lines on their own scale`);
+    $("stMTitle").textContent = L(`Ausgaben je Einwohner in Preisen von ${C.price_base}: seit 2019 real +${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} EUR, davon ${fmt(100 * (real("S13", "GF10", li) - real("S13", "GF10", i19)) / (real("S13", "TOTAL", li) - real("S13", "TOTAL", i19)), 0)} % für Soziale Sicherung; Verlaufslinien als Index 2000 = 100 auf gemeinsamer Skala`, `Expenditure per head at ${C.price_base} prices: real +EUR ${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} since 2019, ${fmt(100 * (real("S13", "GF10", li) - real("S13", "GF10", i19)) / (real("S13", "TOTAL", li) - real("S13", "TOTAL", i19)), 0)} % of it for social protection; trend lines as index 2000 = 100 on one scale`);
     $("stMSrc").textContent = src;
     FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...order.map((c) => Math.round(real("S13", c, i00 + k)))]) };
     // 3 zoomable treemap; area = spending, colour = real change per head over five years

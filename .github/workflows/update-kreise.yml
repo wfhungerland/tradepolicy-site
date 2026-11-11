@@ -48,6 +48,9 @@ jobs:
         run: python update/update_kreise.py site/data osm
       - name: Kreis-Steckbrief
         run: python update/update_kreise.py site/data steckbrief
+      - name: Staatsausgaben (Eurostat COFOG)
+        continue-on-error: true
+        run: python update/update_cofog.py site/data
       - id: commit
         run: |
           if git diff --quiet site/data; then
