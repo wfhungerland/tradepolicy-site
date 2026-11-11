@@ -194,7 +194,7 @@
     if (view === "produktraum") await renderSpace();
     if (view === "branchen") await renderSectors();
     if (view === "szenarien") await renderScenarios();
-    if (view === "abhaengigkeiten") await renderDependencies();
+    if (view === "abhaengigkeiten") { await renderDependencies(); renderCritical(); }
     if (view === "wettbewerb") { await renderCompetition(); renderSubsidies(); }
     if (view === "nullhandel") await renderZeroTrade();
     if (view === "regime") await renderRegime();
@@ -1318,6 +1318,29 @@
     $("svTabTitle").textContent = L(`Die wichtigsten Partner im Dienstleistungshandel, ${y}`, `Main partners in services trade, ${y}`);
     $("svTable").innerHTML = `<thead><tr><th>${L("Partner", "Partner")}</th><th class="num">${L("Exporte, Mrd. EUR", "Exports, EUR bn")}</th><th class="num">${L("Importe, Mrd. EUR", "Imports, EUR bn")}</th><th class="num">${L("Saldo", "Balance")}</th></tr></thead><tbody>` +
       S.partners.map((r) => `<tr><td>${esc(CN(r.p))}</td><td class="num">${fmt(r.x, 1)}</td><td class="num">${fmt(r.m, 1)}</td><td class="num">${fmt(r.x - r.m, 1)}</td></tr>`).join("") + "</tbody>";
+  }
+
+  // critical raw materials under Chinese export controls (BACI HS22)
+  async function renderCritical() {
+    const C = await getJSON("data/critical_materials.json"), G = C.groups.slice().sort((a, b) => b.cn_2024 - a.cn_2024), nm = (g) => EN ? g.en : g.de;
+    const mg = C.groups.find((g) => g.g === "magnets"), bi = C.groups.find((g) => g.g === "bismuth");
+    $("crHead").textContent = L("Kritische Rohstoffe unter chinesischer Exportkontrolle", "Critical raw materials under Chinese export controls");
+    $("crAnswer").textContent = L(`Seit 2023 hat China den Export von neun Rohstoffgruppen genehmigungspflichtig gemacht. Direkt aus China kommen bei Permanentmagneten ${fmt(mg.cn_2024, 0)} % und bei Bismut ${fmt(bi.cn_2024, 0)} % der deutschen Importe; bei den meisten anderen liegt der Anteil zwischen 7 und 33 %, weil vieles über Verarbeiter in Frankreich, Belgien oder Österreich kommt. Diese verarbeiten teils chinesisches Vormaterial; die direkte Quote dürfte die Abhängigkeit daher unterschätzen.`,
+      `Since 2023 China has placed exports of nine raw-material groups under licensing. Directly from China come ${fmt(mg.cn_2024, 0)} % of German imports of permanent magnets and ${fmt(bi.cn_2024, 0)} % of bismuth; for most others the share lies between 7 and 33 %, as much arrives via processors in France, Belgium or Austria. These partly process Chinese input, so the direct share probably understates dependence.`);
+    const W = 860, rowH = 30, m = { l: 300, r: 80, t: 34, b: 26 }, H = m.t + m.b + rowH * G.length, XS = (v) => m.l + v / 100 * (W - m.l - m.r);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img"><rect x="${m.l}" y="6" width="12" height="12" fill="#C00000"/><text x="${m.l + 18}" y="16">${L("Anteil Chinas an den deutschen Importen 2024", "China's share of German imports 2024")}</text><circle cx="${m.l + 356}" cy="12" r="5" fill="none" stroke="#000" stroke-width="1.5"/><text x="${m.l + 366}" y="16">${L("Anteil Chinas an den Weltexporten", "China's share of world exports")}</text>`;
+    [0, 25, 50, 75, 100].forEach((t) => { s += `<line class="grid" x1="${XS(t)}" x2="${XS(t)}" y1="${m.t - 4}" y2="${H - m.b}"/><text x="${XS(t)}" y="${H - 8}" text-anchor="middle">${t}</text>`; });
+    G.forEach((g, i) => { const y = m.t + i * rowH;
+      s += `<text x="${m.l - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">${esc(nm(g))}</text><rect x="${m.l}" y="${y + 6}" width="${XS(g.cn_2024) - m.l}" height="${rowH - 12}" fill="#C00000"><title>${esc(nm(g))}: ${fmt(g.cn_2024, 1)} % ${L("aus China", "from China")}</title></rect>`;
+      s += `<circle cx="${XS(g.cn_world)}" cy="${y + rowH / 2}" r="5" fill="none" stroke="#000" stroke-width="1.5"><title>${L("Weltexporte", "World exports")}: ${fmt(g.cn_world, 1)} %</title></circle><text x="${XS(g.cn_2024) + 6}" y="${y + rowH / 2 + 4}" fill="#fff" style="paint-order:stroke" stroke="#C00000" stroke-width="0">${""}</text><text x="${XS(g.cn_2024) - 6}" y="${y + rowH / 2 + 4}" text-anchor="end" fill="#fff">${g.cn_2024 >= 10 ? fmt(g.cn_2024, 0) : ""}</text>`; });
+    $("crChart").innerHTML = s + "</svg>";
+    $("crAsk").textContent = L("Wie stark hängt Deutschland direkt an China?", "How directly does Germany depend on China?");
+    $("crTitle").textContent = L("Rohstoffe unter chinesischer Exportkontrolle: Anteil Chinas an den deutschen Importen 2024, %", "Raw materials under Chinese export controls: China's share of German imports 2024, %");
+    $("crSrc").textContent = L("Quelle: eigene Berechnungen auf Basis von CEPII BACI HS22; Warengruppen nach den Ankündigungen des chinesischen Handelsministeriums, Zuordnung zu HS-Sechsstellern genähert (Gallium, Germanium und Indium teilen sich Codes mit Niob und Vanadium). Weltexporte: ohne die Verarbeitung im Inland Chinas, die bei Seltenen Erden weit höher liegt. Lizenz der Abbildung: CC BY 4.0.",
+      "Source: own calculations based on CEPII BACI HS22; product groups following the announcements of China's Ministry of Commerce, mapping to HS six-digit codes approximate (gallium, germanium and indium share codes with niobium and vanadium). World exports: excluding processing inside China, which for rare earths is far higher. Licence of the figure: CC BY 4.0.");
+    FIGDATA.crit = { header: [L("Rohstoff", "Material"), L("China-Anteil Importe 2024, %", "China share imports 2024, %"), L("China-Anteil Weltexporte, %", "China share world exports, %")], rows: G.map((g) => [nm(g), g.cn_2024, g.cn_world]) };
+    $("crTable").innerHTML = `<thead><tr><th>${L("Rohstoff", "Material")}</th><th>${L("Kontrolle seit", "Controlled since")}</th><th class="num">${L("Importe 2024, Mio. USD", "Imports 2024, USD m")}</th><th class="num">${L("China 2022, %", "China 2022, %")}</th><th class="num">${L("China 2024, %", "China 2024, %")}</th><th>${L("Größte Lieferländer 2024", "Largest suppliers 2024")}</th></tr></thead><tbody>` +
+      G.map((g) => `<tr><td>${esc(nm(g))}</td><td>${g.control}</td><td class="num">${fmt(g.imp_mio_usd, 0)}</td><td class="num">${fmt(g.cn_2022, 0)}</td><td class="num">${fmt(g.cn_2024, 0)}</td><td>${g.top.map((t) => `${esc(t[0])} ${fmt(t[1], 0)} %`).join(", ")}</td></tr>`).join("") + "</tbody>";
   }
 
   function renderForecast() {
