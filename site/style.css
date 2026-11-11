@@ -142,3 +142,6 @@ details.fold[open] > summary { margin-bottom: 8px; }
 
 .ztwrap { width: 100%; max-width: 640px; aspect-ratio: 1; border: 1px solid var(--line, #d9d9d9); }
 .ztwrap canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; cursor: crosshair; }
+
+/* public spending tab: keep chart text legible on phones, scroll inside the card */
+@media (max-width: 700px) { #view-staat .svgwrap svg { min-width: 720px; } }

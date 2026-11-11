@@ -1490,7 +1490,9 @@
   function cellLabel(c, total, big) {
     const fs = big ? 13 : 11.5, lh = fs + 3, mc = Math.floor(c.w / (fs * 0.56)), lab = c.label.length > mc ? c.label.slice(0, Math.max(1, mc - 1)) + "…" : c.label, col = isDark(c.fill) ? "#fff" : "#000";
     if (c.w < 60 || c.h < (big ? 40 : 32)) return "";
-    return `<text x="${c.x + 5}" y="${c.y + lh}" style="font-size:${fs}px;fill:${col}">${esc(lab)}</text><text x="${c.x + 5}" y="${c.y + 2 * lh}" style="font-size:${fs}px;fill:${col}">${fmt(100 * c.v / total, 1)} %</text>`;
+    const pcT = `${fmt(100 * c.v / total, 1)}\u202f%`, amT = `${fmt(c.v, c.v < 10 ? 1 : 0)} ${L("Mrd.", "bn")}`, one = (pcT + " · " + amT).length * fs * 0.56 < c.w - 8;
+    const l2 = one ? pcT + " · " + amT : pcT, l3 = !one && c.h > 3 * lh + 4 ? amT : "";
+    return `<text x="${c.x + 5}" y="${c.y + lh}" style="font-size:${fs}px;fill:${col}">${esc(lab)}</text><text x="${c.x + 5}" y="${c.y + 2 * lh}" style="font-size:${fs}px;fill:${col}">${l2}</text>` + (l3 ? `<text x="${c.x + 5}" y="${c.y + 3 * lh}" style="font-size:${fs}px;fill:${col}">${l3}</text>` : "");
   }
 
   function nestedTreemap(el, divs, W, H, zoom, onZoom) {
@@ -1513,7 +1515,10 @@
       const head = b.h > 40 && b.w > 60 ? 20 : 0;
       s += `<g class="tmdiv" data-code="${b.code}" style="cursor:zoom-in">`;
       s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#fff"/>`;
-      if (head) { const mc = Math.floor(b.w / 7.2), lab = b.label.length > mc ? b.label.slice(0, mc - 1) + "…" : b.label; s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px">${esc(lab)} ${fmt(100 * b.v / total, 0)} %</text>`; }
+      if (head) { const pc = ` ${fmt(100 * b.v / total, 0)}\u202f%`, amt = ` · ${fmt(b.v, 0)} ${L("Mrd.", "bn")}`, mc = Math.floor(b.w / 7.2);
+        let lab = b.label, extra = "";
+        if (lab.length + pc.length + amt.length <= mc) extra = pc + amt; else if (lab.length + pc.length <= mc) extra = pc; else if (lab.length <= mc) extra = ""; else lab = lab.slice(0, Math.max(1, mc - 1)) + "…";
+        s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px">${esc(lab)}${extra}</text>`; }
       const allc = b.groups.map((g) => g.code);
       squarify(b.groups.filter((g) => g.v > 0), { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }).forEach((c) => {
         c.fill = groupFill(c.code, allc);
@@ -1578,7 +1583,7 @@
     const cols = [2000, 2019, Y[li]], ci = cols.map((y) => Y.indexOf(y));
     slopegraph($("stSChart"), cols, order.map((c) => ({ label: dn(c), accent: c === "GF10", values: ci.map((i) => share(c, i)) })), { label: "shares", h: 560, brk: 20 });
     $("stSAsk").textContent = L("Wofür gibt der Staat sein Geld aus?", "What does the state spend its money on?");
-    $("stSTitle").textContent = L(`Anteil an den Staatsausgaben, %; Soziale Sicherung ${fmt(share("GF10", i00), 0)} % (2000) und ${fmt(share("GF10", li), 0)} % (${Y[li]})`, `Share of government expenditure, %; social protection ${fmt(share("GF10", i00), 0)} % (2000) and ${fmt(share("GF10", li), 0)} % (${Y[li]})`);
+    $("stSTitle").textContent = L(`Anteil an den Staatsausgaben, %: Soziale Sicherung stabil bei ${fmt(share("GF10", li), 0)} %, Gesundheit steigt von ${fmt(share("GF07", i00), 0)} auf ${fmt(share("GF07", li), 0)} % und ist zweitgrößter Posten`, `Share of government expenditure, %: social protection stable at ${fmt(share("GF10", li), 0)} %, health up from ${fmt(share("GF07", i00), 0)} to ${fmt(share("GF07", li), 0)} %, now the second largest item`);
     $("stSSrc").textContent = src;
     FIGDATA.stshare = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, %`)], rows: Y.slice(i00).map((y, k) => [y, ...order.map((c) => +share(c, i00 + k).toFixed(2))]) };
     // 2 sparkline table
@@ -1586,7 +1591,7 @@
     sparkTable($("stMChart"), ys, order.map((c) => ({ label: dn(c), accent: c === "GF10", level: real("S13", c, li), spark: ys.map((_, k) => real("S13", c, i00 + k)), change: real("S13", c, li) - real("S13", c, i19), share: share(c, li) })),
       [L("Aufgabe", "Function"), L(`EUR je Einw. ${Y[li]}`, `EUR per head ${Y[li]}`), L(`Verlauf 2000 bis ${Y[li]}`, `2000 to ${Y[li]}`), L("seit 2019, EUR", "since 2019, EUR"), L("Anteil, %", "share, %")]);
     $("stMAsk").textContent = L("Wo ist das Niveau gestiegen?", "Where has the level risen?");
-    $("stMTitle").textContent = L(`Ausgaben je Einwohner in Preisen von ${C.price_base}; Verlaufslinien mit eigener Skala`, `Expenditure per head at ${C.price_base} prices; trend lines on their own scale`);
+    $("stMTitle").textContent = L(`Ausgaben je Einwohner in Preisen von ${C.price_base}: seit 2019 real +${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} EUR, gut ein Viertel davon für Soziale Sicherung; Verlaufslinien mit eigener Skala`, `Expenditure per head at ${C.price_base} prices: real +EUR ${fmt(real("S13", "TOTAL", li) - real("S13", "TOTAL", i19), 0)} since 2019, over a quarter of it for social protection; trend lines on their own scale`);
     $("stMSrc").textContent = src;
     FIGDATA.stmult = { header: [L("Jahr", "Year"), ...order.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...order.map((c) => Math.round(real("S13", c, i00 + k)))]) };
     // 3 zoomable treemap; area = spending, colour = real change per head over five years
