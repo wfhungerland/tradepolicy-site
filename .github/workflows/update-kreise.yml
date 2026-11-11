@@ -14,8 +14,10 @@ permissions:
   pages: write
   id-token: write
 
+# the long update job has its own queue; only the deploy step joins the "pages" queue, so a
+# site publish triggered by a push cannot cancel a running data update
 concurrency:
-  group: pages
+  group: update-kreise
   cancel-in-progress: false
 
 jobs:
@@ -55,6 +57,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add site/data
             git commit -m "Kreisdaten: vierteljährliche Aktualisierung"
+            git pull --rebase origin main
             git push
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
@@ -63,6 +66,9 @@ jobs:
     needs: update
     if: needs.update.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
