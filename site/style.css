@@ -145,3 +145,9 @@ details.fold[open] > summary { margin-bottom: 8px; }
 
 /* public spending tab: keep chart text legible on phones, scroll inside the card */
 @media (max-width: 700px) { #view-staat .svgwrap svg { min-width: 720px; } }
+/* controls as one text line (Tufte): chosen option black and underlined, others grey, no frames */
+.tline { display: flex; flex-wrap: wrap; align-items: baseline; row-gap: 4px; }
+.tline button { font: inherit; font-size: 13px; line-height: 1.4; padding: 0 0 1px; border: 0; border-bottom: 1.5px solid transparent; border-radius: 0; background: none; color: #8c8c8c; cursor: pointer; }
+.tline button:hover { color: #000; }
+.tline button[aria-pressed="true"] { color: #000; border-bottom-color: #000; }
+.tline .dot { color: #bfbfbf; margin: 0 6px; } .tline .gap { display: inline-block; width: 22px; } .tline .tl { color: #8c8c8c; font-size: 12px; margin-left: 5px; }
