@@ -1574,44 +1574,46 @@
 
   // federal budget by function plan: three levels (main, upper, function), click to descend
   const HF_HUE = { "0": "#00B0F0", "1": "#7030A0", "2": "#002060", "3": "#0070C0", "4": "#595959", "5": "#47D359", "6": "#D86DCD", "7": "#51154A", "8": "#C00000" };
-  // with withFunds: core budget plus special funds, minus payments between them; fp = part from special funds per leaf
-  function bundComb(Y, withFunds) {
-    if (!withFunds || !Y.funds || !Object.keys(Y.funds).length) return { V: Y.values, fp: {}, fb: {} };
-    const V = { ...Y.values }, fp = {}, fb = {};
-    Object.entries(Y.transfer || {}).forEach(([c, v]) => { V[c] = (V[c] || 0) - v; });
-    Object.entries(Y.funds).forEach(([k, d]) => Object.entries(d).forEach(([c, v]) => { V[c] = (V[c] || 0) + v; if (v > 0) { fp[c] = (fp[c] || 0) + v; (fb[c] = fb[c] || []).push([k, v]); } }));
-    return { V, fp, fb };
-  }
-  function bundTree(el, B, yi, path, onNav, withFunds) {
-    const Y = B.years[yi], { V, fp, fb } = bundComb(Y, withFunds), lab = (c) => (c.length === 1 ? L(B.haupt_short[c], B.labels[c]) : B.labels[c]) || c;
-    const leaves = Object.entries(V).filter(([, v]) => v > 0), MG = B.merge || {};
-    // node of a leaf code at depth n; upper functions defined as one range (11-12, 18-19) share one node
-    const nodeAt = (c, n) => n === 2 ? (MG[c.slice(0, 2)] || c.slice(0, 2)) : c.slice(0, n);
-    const inNode = (c, pre) => nodeAt(c, pre.length) === pre;
-    const sumOf = (pre) => leaves.filter(([c]) => inNode(c, pre)).reduce((t, [, v]) => t + v, 0);
-    const kids = (pre) => { const n = pre.length + 1, set = new Set(leaves.filter(([c]) => inNode(c, pre)).map(([c]) => nodeAt(c, n))); return [...set].sort().map((c) => ({ code: c, label: lab(c), v: sumOf(c) })).filter((d) => d.v > 0); };
-    const fill = (c) => { const h = HF_HUE[c[0]] || "#595959"; if (c.length === 1) return h; const sib2 = kids(c[0]).map((d) => d.code), t2 = sib2.length > 1 ? 0.5 * sib2.indexOf(nodeAt(c, 2)) / (sib2.length - 1) : 0; if (c.length === 2) return tint(h, t2); const sib3 = kids(nodeAt(c, 2)).map((d) => d.code), t3 = sib3.length > 1 ? 0.3 * sib3.indexOf(c) / (sib3.length - 1) : 0; return tint(h, Math.min(0.85, t2 + t3)); };
+  // federal budget treemap; views: fn (function plan), grp (economic type), epl (ministry); parent maps from bund.json
+  // withFunds: core budget plus special funds, minus payments into and between funds; hatched = part from special funds
+  const GRP_HUE = { "4": "#00B0F0", "5": "#C00000", "6": "#002060", "7": "#51154A", "8": "#47D359", "9": "#595959" };
+  const EPL_HUE = { "11": "#002060", "14": "#C00000", "60": "#595959", "32": "#7F7F7F", "12": "#51154A", "30": "#7030A0", "15": "#0070C0", "17": "#D86DCD", "09": "#47D359", "23": "#2E7D32", "16": "#00B0F0" };
+  function bundTree(el, B, yi, path, onNav, withFunds, view) {
+    const Y = B.years[yi], VW = B.views[view], P = VW.parent, haveAlt = withFunds && Y.alt;
+    const V = haveAlt ? Y.alt[view] : Y.v[view], fp = haveAlt ? Y.part[view] : {};
+    const lab = (c) => (view === "fn" && c.length === 1 && EN ? B.haupt_en[c] : VW.labels[c]) || c;
+    const chain = (k) => { const a = [k]; while (P[a[0]]) a.unshift(P[a[0]]); return a; };
+    const leaves = Object.entries(V).filter(([, v]) => v > 0);
+    const under = (k, p) => !p || chain(k).includes(p);
+    const sumOf = (p) => leaves.filter(([k]) => under(k, p)).reduce((t, [, v]) => t + v, 0);
+    const fundOf = (p) => leaves.filter(([k]) => under(k, p)).reduce((t, [k, v]) => t + Math.min(fp[k] || 0, v), 0);
+    const childAt = (k, p) => { const ch = chain(k), i = p ? ch.indexOf(p) : -1; return ch[i + 1]; };
+    const kids = (p) => [...new Set(leaves.filter(([k]) => under(k, p)).map(([k]) => childAt(k, p)).filter(Boolean))].sort().map((c) => ({ code: c, label: lab(c), v: sumOf(c) })).filter((d) => d.v > 0);
+    const kidsAll = (p) => Object.keys(P).filter((k) => P[k] === p).sort();
+    const hue = (c) => view === "fn" ? HF_HUE[c[0]] : view === "grp" ? GRP_HUE[c[0]] : EPL_HUE[chain(c)[0]];
+    const fill = (c) => { const ch = chain(c), h = hue(c) || "#595959"; let t = 0;
+      for (let d = 1; d < ch.length; d++) { const sib = kidsAll(ch[d - 1]); t += (d === 1 ? 0.5 : 0.3) * (sib.length > 1 ? sib.indexOf(ch[d]) / (sib.length - 1) : 0); }
+      if (view === "epl" && !EPL_HUE[ch[0]]) t = Math.max(t, 0.35);  // small ministries: light grey-blue
+      return tint(h, Math.min(0.85, t)); };
     const pre = path.at(-1) || "", W = 860, H = 520, total = sumOf(pre);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap federal budget"><defs><pattern id="sfhatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="none"/><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" stroke-width="2.2" opacity=".75"/></pattern></defs>`;
-    const fundOf = (c) => leaves.filter(([l]) => inNode(l, c)).reduce((t, [l]) => t + Math.min(fp[l] || 0, V[l]), 0);
-    const blocks = squarify(kids(pre), { x: 0, y: 0, w: W, h: H });
-    blocks.forEach((b) => {
-      const sub = b.code.length < 3 ? kids(b.code) : [], head = sub.length && b.h > 40 && b.w > 60 ? 20 : 0;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap federal budget"><defs><pattern id="sfhatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#fff" stroke-width="2.2" opacity=".75"/></pattern></defs>`;
+    squarify(kids(pre), { x: 0, y: 0, w: W, h: H }).forEach((b) => {
+      const sub = kids(b.code), head = sub.length && b.h > 40 && b.w > 60 ? 20 : 0;
       s += `<g class="btblk" data-code="${b.code}" style="cursor:${sub.length ? "zoom-in" : "default"}"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="#fff"/>`;
-      if (head) { const pc = ` ${fmt(100 * b.v / total, 0)} %`, amt = ` · ${fmt(b.v, b.v < 10 ? 1 : 0)} ${L("Mrd.", "bn")}`, mc = Math.floor(b.w / 7.2); let lb = b.label, ex = "";
+      if (head) { const pc = ` ${fmt(100 * b.v / total, 0)} %`, amt = ` · ${fmt(b.v, b.v < 10 ? 1 : 0)} ${L("Mrd.", "bn")}`, mc = Math.floor(b.w / 7.2); let lb = b.label, ex = "";
         if (lb.length + pc.length + amt.length <= mc) ex = pc + amt; else if (lb.length + pc.length <= mc) ex = pc; else if (lb.length > mc) lb = lb.slice(0, Math.max(1, mc - 1)) + "…";
         s += `<text x="${b.x + 4}" y="${b.y + 14}" style="font-weight:600;font-size:12.5px">${esc(lb)}${ex}</text>`; }
       const cells = sub.length ? squarify(sub, { x: b.x + 1, y: b.y + head + 1, w: Math.max(1, b.w - 2), h: Math.max(1, b.h - head - 2) }) : [{ ...b, x: b.x + 1, y: b.y + 1, w: b.w - 2, h: b.h - 2 }];
-      cells.forEach((c) => { c.fill = fill(c.code); const f = withFunds ? fundOf(c.code) : 0, fh = f > 0 ? Math.min(c.h, c.h * f / c.v) : 0;
-        const fx = withFunds && f > 0 ? `; ${L("davon Sondervermögen", "of which special funds")} ${fmt(f, 2)}` + (c.code.length === 3 && fb[c.code] ? ` (${fb[c.code].map(([k, v]) => `${B.fund_names[k] || k} ${fmt(v, 2)}`).join(", ")})` : "") : "";
+      cells.forEach((c) => { c.fill = fill(c.code); const f = haveAlt ? fundOf(c.code) : 0, fh = f > 0 ? Math.min(c.h, c.h * f / c.v) : 0;
+        const fx = f > 0 ? `; ${L("davon Sondervermögen", "of which special funds")} ${fmt(f, 2)}` : "";
         s += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="1"><title>${esc(`${c.code} ${c.label}: ${fmt(c.v, 2)} ${L("Mrd. EUR", "EUR bn")} (${fmt(100 * c.v / total, 1)} %)${fx}`)}</title></rect>`;
         if (fh > 0.5) s += `<rect x="${c.x}" y="${c.y + c.h - fh}" width="${c.w}" height="${fh}" fill="url(#sfhatch)" pointer-events="none"/>`;
         s += cellLabel(c, total, !sub.length); });
       s += `<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="none" stroke="#fff" stroke-width="3"/></g>`;
     });
     el.innerHTML = s + "</svg>";
-    el.querySelectorAll(".btblk").forEach((g) => { const c = g.dataset.code; if (c.length < 3 && kids(c).length) g.addEventListener("click", () => onNav([...path, c])); });
-    return { total, lab, kids };
+    el.querySelectorAll(".btblk").forEach((g) => { const c = g.dataset.code; if (kids(c).length) g.addEventListener("click", () => onNav([...path, c])); });
+    return { total, lab };
   }
 
   async function renderState() {
@@ -1699,28 +1701,36 @@
     $("stBSrc").textContent = L("Soziale Sicherung des Bundes enthält vor allem die Zuschüsse an die Rentenversicherung und das Bürgergeld. ", "Federal social protection mainly contains grants to pension insurance and basic income support. ") + src;
     FIGDATA.stfed = { header: [L("Jahr", "Year"), ...fed.map((c) => `${dn(c)}, EUR`)], rows: ys.map((y, k) => [y, ...fed.map((c) => Math.round(real("S1311", c, i00 + k)))]) };
 
-    // 6 federal budget by function plan (bundeshaushalt.de), three levels
-    const B = await getJSON("data/bund.json"), BT = renderState.bt || (renderState.bt = { yi: B.years.length - 1, path: [], sf: false });
+    // 6 federal budget treemap (bundeshaushalt.de): function plan, economic type or ministry
+    const B = await getJSON("data/bund.json"), BT = renderState.bt || (renderState.bt = { yi: B.years.length - 1, path: [], sf: false, view: "fn" });
+    B.haupt_en = { "0": "General services", "1": "Education, research, culture", "2": "Social security, family, labour market", "3": "Health, environment, sport", "4": "Housing, urban development", "5": "Food, agriculture", "6": "Energy, water, trade and industry", "7": "Transport, communications", "8": "Public finance", "9": "Not assigned" };
+    const VWL = { fn: L("Funktion", "Function"), grp: L("Ausgabenart", "Economic type"), epl: L("Ressort", "Ministry") };
     const drawBund = () => {
-      const Yb = B.years[BT.yi], hasF = Yb.funds && Object.keys(Yb.funds).length > 0, sf = BT.sf && hasF;
-      const r = bundTree($("stHChart"), B, BT.yi, BT.path, (p) => { BT.path = p; drawBund(); }, sf);
-      // outturn and plan in two separate groups: their differences are partly planning versus execution
+      const Yb = B.years[BT.yi], hasF = !!Yb.alt, sf = BT.sf && hasF;
+      const r = bundTree($("stHChart"), B, BT.yi, BT.path, (p) => { BT.path = p; drawBund(); }, sf, BT.view);
       const btn = (y, k) => `<button type="button" data-k="${k}" style="font-weight:${k === BT.yi ? 700 : 400}">${y.year}${y.kind === "Entwurf" ? L(" Entwurf", " draft") : ""}</button>`;
       const grp = (lbl, f) => { const g = B.years.map((y, k) => [y, k]).filter(([y]) => f(y.kind)); return g.length ? `<span style="white-space:nowrap">${lbl} ${g.map(([y, k]) => btn(y, k)).join(" ")}</span>` : ""; };
-      $("stHYears").innerHTML = [grp(L("Ergebnis (Ist):", "Outturn:"), (k) => k === "Ist"), grp(L("Plan (Soll):", "Plan:"), (k) => k !== "Ist")].filter(Boolean).join('<span style="display:inline-block;width:1.5em"></span>');
-      $("stHYears").innerHTML += `<span style="display:inline-block;width:1.5em"></span><label style="white-space:nowrap${hasF ? "" : ";color:#999"}"><input type="checkbox" id="stHSf"${sf ? " checked" : ""}${hasF ? "" : " disabled"}> ${L("mit Sondervermögen", "with special funds")}</label>`;
-      $("stHYears").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { BT.yi = +b.dataset.k; drawBund(); }));
+      const gap = '<span style="display:inline-block;width:1.5em"></span>';
+      $("stHYears").innerHTML = `<span style="white-space:nowrap">${L("Gliederung:", "Breakdown:")} ${Object.keys(VWL).map((v) => `<button type="button" data-v="${v}" style="font-weight:${v === BT.view ? 700 : 400}">${VWL[v]}</button>`).join(" ")}</span>` + gap
+        + [grp(L("Ergebnis (Ist):", "Outturn:"), (k) => k === "Ist"), grp(L("Plan (Soll):", "Plan:"), (k) => k !== "Ist")].filter(Boolean).join(gap)
+        + gap + `<label style="white-space:nowrap${hasF ? "" : ";color:#999"}"><input type="checkbox" id="stHSf"${sf ? " checked" : ""}${hasF ? "" : " disabled"}> ${L("mit Sondervermögen", "with special funds")}</label>`;
+      $("stHYears").querySelectorAll("button[data-k]").forEach((b) => b.addEventListener("click", () => { BT.yi = +b.dataset.k; drawBund(); }));
+      $("stHYears").querySelectorAll("button[data-v]").forEach((b) => b.addEventListener("click", () => { BT.view = b.dataset.v; BT.path = []; drawBund(); }));
       $("stHSf").addEventListener("change", (e) => { BT.sf = e.target.checked; drawBund(); });
-      const crumbs = [`<a href="javascript:void 0" data-p="">${L("Alle Funktionen", "All functions")}</a>`, ...BT.path.map((c, k) => k === BT.path.length - 1 ? esc(r.lab(c)) : `<a href="javascript:void 0" data-p="${BT.path.slice(0, k + 1).join(",")}">${esc(r.lab(c))}</a>`)];
-      $("stHCrumb").innerHTML = BT.path.length ? crumbs.join(" › ") : L("Klick auf eine Funktion vergrößert sie, zwei Ebenen tief.", "Click a function to zoom in, two levels deep.");
+      const crumbs = [`<a href="javascript:void 0" data-p="">${L("Alle", "All")}</a>`, ...BT.path.map((c, k) => k === BT.path.length - 1 ? esc(r.lab(c)) : `<a href="javascript:void 0" data-p="${BT.path.slice(0, k + 1).join(",")}">${esc(r.lab(c))}</a>`)];
+      $("stHCrumb").innerHTML = BT.path.length ? crumbs.join(" › ") : L("Klick auf einen Block vergrößert ihn.", "Click a block to zoom in.");
       $("stHCrumb").querySelectorAll("a").forEach((a) => a.addEventListener("click", () => { BT.path = a.dataset.p ? a.dataset.p.split(",") : []; drawBund(); }));
       const where = BT.path.length ? `, ${r.lab(BT.path.at(-1))}` : "";
-      $("stHTitle").textContent = L(`Grundriss des Bundeshaushalts ${Yb.year} (${Yb.kind})${sf ? " mit Sondervermögen" : ""}${where}: ${fmt(r.total, 1)} Mrd. EUR nach Funktionen; Fläche = Ausgaben${sf ? ", schraffiert = Sondervermögen" : ""}`, `Floor plan of the federal budget ${Yb.year} (${Yb.kind === "Ist" ? "outturn" : Yb.kind === "Entwurf" ? "draft" : "plan"})${sf ? " with special funds" : ""}${where}: EUR ${fmt(r.total, 1)} bn by function; area = spending${sf ? ", hatched = special funds" : ""}`);
-      const fnames = Object.keys(Yb.funds || {}).filter((k) => Object.values(Yb.funds[k]).reduce((t, v) => t + v, 0) >= 0.5).map((k) => B.fund_names[k] || k);
-      const sp = Yb.special_total;
-      $("stHSrc").textContent = L(`Kernhaushalt des Bundes nach dem Funktionenplan; Ist aus der Haushaltsrechnung, Soll aus dem Haushaltsplan, Entwurf aus dem Regierungsentwurf. Ist und Soll sind nur begrenzt vergleichbar: Das Soll ist eine Obergrenze und enthält globale Ansätze, die sich erst im Ist auf Funktionen verteilen. Einige Bezeichnungen sind gekürzt oder aktualisiert (Bürgergeld statt Arbeitslosengeld II). ${sf ? `Mit den Ausgaben der Sondervermögen (${fnames.join(", ")}; zusammen ${fmt(Yb.funds_total, 1)} Mrd. EUR); Zahlungen des Kernhaushalts an Sondervermögen und zwischen ihnen (${fmt(Yb.transfer_total + (Yb.transfer_funds || 0), 1)} Mrd. EUR, etwa 10 Mrd. EUR vom Infrastruktur-Sondervermögen an den Klima- und Transformationsfonds) sind herausgerechnet. Ohne EU-Eigenmittel, durchlaufende EU-Mittel und Rücklagen für Versorgung. ` : ""}${!hasF ? "Für 2024 enthält die Haushaltsrechnung als Datei keine Sondervermögen. " : ""}${sp && !sf ? `Ohne Sondervermögen (Klima- und Transformationsfonds, Sondervermögen Bundeswehr und weitere) und EU-Eigenmittel: ${fmt(sp, 1)} Mrd. EUR. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative Ansätze (globale Minderausgaben, ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} Mrd. EUR) nicht gezeigt. ` : ""}Quelle: bundeshaushalt.de; eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.`,
-        `Federal core budget by function plan; outturn from the budget accounts, plan from the budget, draft from the government draft. Outturn and plan are only partly comparable: the plan is a ceiling and contains global items that are spread over functions only in the outturn. Function names in German; some shortened or updated (Bürgergeld instead of Arbeitslosengeld II). ${sf ? `Including spending of the special funds (${fnames.join(", ")}; together EUR ${fmt(Yb.funds_total, 1)} bn); payments from the core budget to special funds and between them are netted out. Excluding EU own resources, EU pass-through funds and pension reserves. ` : ""}${!hasF ? "For 2024 the budget accounts file contains no special funds. " : ""}${sp && !sf ? `Excluding special funds (climate and transformation fund, Bundeswehr fund and others) and EU own resources: EUR ${fmt(sp, 1)} bn. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative items (global spending cuts, EUR ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} bn) not shown. ` : ""}Source: bundeshaushalt.de; own calculation. Licence of the figure: CC BY 4.0.`);
-      FIGDATA.stbund = { header: [L("Funktion", "Function"), L("Bezeichnung", "Name"), ...B.years.map((y) => `${y.year} ${y.kind}, ${L("Mrd. EUR", "EUR bn")}`)], rows: [...new Set(B.years.flatMap((y) => Object.keys(y.values)))].sort().map((c) => [c, B.labels[c], ...B.years.map((y) => y.values[c] === undefined ? "" : +y.values[c].toFixed(3))]) };
+      const byDe = { fn: "nach Funktionen", grp: "nach Ausgabenarten", epl: "nach Ressorts" }[BT.view], byEn = { fn: "by function", grp: "by economic type", epl: "by ministry" }[BT.view];
+      $("stHTitle").textContent = L(`Grundriss des Bundeshaushalts ${Yb.year} (${Yb.kind})${sf ? " mit Sondervermögen" : ""}${where}: ${fmt(r.total, 1)} Mrd. EUR ${byDe}; Fläche = Ausgaben${sf ? ", schraffiert = Sondervermögen" : ""}`, `Floor plan of the federal budget ${Yb.year} (${Yb.kind === "Ist" ? "outturn" : Yb.kind === "Entwurf" ? "draft" : "plan"})${sf ? " with special funds" : ""}${where}: EUR ${fmt(r.total, 1)} bn ${byEn}; area = spending${sf ? ", hatched = special funds" : ""}`);
+      const fnames = Object.keys(Yb.funds || {}), neg = Yb.kind !== "Ist" && Yb.negative < 0;
+      const viewDe = { fn: "nach dem Funktionenplan (Aufgaben)", grp: "nach dem Gruppierungsplan (ökonomische Arten: Personal, Sachausgaben, Zuweisungen, Investitionen); Gruppen ohne eigenen Namen tragen den Namen der Obergruppe und ihre Nummer", epl: "nach Einzelplänen (Ressorts) und Kapiteln; Einzelplan 60 (Allgemeine Finanzverwaltung) und 32 (Bundesschuld) gehören keinem Ministerium" }[BT.view];
+      const viewEn = { fn: "by the function plan", grp: "by the group plan (economic types: personnel, material spending, grants, investment); groups without own name carry the upper group's name and their number", epl: "by budget section (ministry) and chapter; sections 60 (general financial administration) and 32 (federal debt) belong to no ministry" }[BT.view];
+      $("stHSrc").textContent = L(`Kernhaushalt des Bundes ${viewDe}; Ist aus der Haushaltsrechnung, Soll aus dem Haushaltsplan, Entwurf aus dem Regierungsentwurf. Ist und Soll sind nur begrenzt vergleichbar: Das Soll ist eine Obergrenze und enthält globale Ansätze, die sich erst im Ist verteilen. Die Summe kann je Gliederung leicht abweichen, weil negative Ansätze innerhalb eines Blocks verrechnet werden. ${BT.view === "fn" ? "Einige Bezeichnungen sind gekürzt oder aktualisiert (Bürgergeld statt Arbeitslosengeld II). " : ""}${sf ? `Mit den Ausgaben der Sondervermögen (${fnames.join(", ")}; zusammen ${fmt(Yb.funds_total, 1)} Mrd. EUR); Zahlungen des Kernhaushalts an Sondervermögen und zwischen ihnen (${fmt(Yb.netted, 1)} Mrd. EUR, darunter 10 Mrd. EUR vom Infrastruktur-Sondervermögen an den Klima- und Transformationsfonds) sind herausgerechnet. Ohne EU-Eigenmittel, durchlaufende EU-Mittel und Rücklagen für Versorgung. ` : ""}${!hasF ? "Für 2024 enthält die Haushaltsrechnung als Datei keine Sondervermögen. " : ""}${!sf && Yb.special_total ? `Ohne Sondervermögen und EU-Eigenmittel (${fmt(Yb.special_total, 1)} Mrd. EUR). ` : ""}${neg ? `Negative Ansätze (globale Minderausgaben, ${fmt(Yb.negative, 1)} Mrd. EUR) nicht gezeigt. ` : ""}Quelle: bundeshaushalt.de; eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.`,
+        `Federal core budget ${viewEn}; outturn from the budget accounts, plan from the budget, draft from the government draft. Outturn and plan are only partly comparable: the plan is a ceiling and contains global items that are spread only in the outturn. The sum can differ slightly between breakdowns because negative items are netted within a block. Names in German. ${sf ? `Including spending of the special funds (${fnames.join(", ")}; together EUR ${fmt(Yb.funds_total, 1)} bn); payments from the core budget to special funds and between them (EUR ${fmt(Yb.netted, 1)} bn) are netted out. Excluding EU own resources, EU pass-through funds and pension reserves. ` : ""}${!hasF ? "For 2024 the budget accounts file contains no special funds. " : ""}${!sf && Yb.special_total ? `Excluding special funds and EU own resources (EUR ${fmt(Yb.special_total, 1)} bn). ` : ""}${neg ? `Negative items (global spending cuts, EUR ${fmt(Yb.negative, 1)} bn) not shown. ` : ""}Source: bundeshaushalt.de; own calculation. Licence of the figure: CC BY 4.0.`);
+      const VWc = B.views[BT.view], codes = [...new Set(B.years.flatMap((y) => [...Object.keys(y.v[BT.view]), ...Object.keys((y.alt || {})[BT.view] || {})]))].sort();
+      FIGDATA.stbund = { header: [VWL[BT.view], L("Bezeichnung", "Name"), L("Obergruppe", "Upper level"), ...B.years.map((y) => `${y.year} ${y.kind}, ${L("Mrd. EUR", "EUR bn")}`), ...B.years.filter((y) => y.alt).map((y) => `${y.year} ${y.kind} ${L("mit Sondervermögen", "with special funds")}, ${L("Mrd. EUR", "EUR bn")}`)],
+        rows: codes.map((c) => [c, VWc.labels[c] || c, VWc.labels[VWc.parent[c]] || "", ...B.years.map((y) => y.v[BT.view][c] === undefined ? "" : +y.v[BT.view][c].toFixed(3)), ...B.years.filter((y) => y.alt).map((y) => y.alt[BT.view][c] === undefined ? "" : +y.alt[BT.view][c].toFixed(3))]) };
     };
     drawBund();
     $("stHAsk").textContent = L("Wofür gibt der Bund im Einzelnen aus?", "What does the federal government spend on in detail?");
