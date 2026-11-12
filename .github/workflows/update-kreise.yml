@@ -37,19 +37,24 @@ jobs:
       - name: Netzausbau (Bundesnetzagentur)
         if: contains(inputs.parts || 'netzausbau mastr osm', 'netzausbau')
         continue-on-error: true
+        timeout-minutes: 30
         run: python update/update_kreise.py site/data netzausbau
       - name: Stromerzeugung (Marktstammdatenregister)
         if: contains(inputs.parts || 'netzausbau mastr osm', 'mastr')
         continue-on-error: true
+        timeout-minutes: 90
         run: python update/update_kreise.py site/data mastr
       - name: Netze (OpenStreetMap)
         if: contains(inputs.parts || 'netzausbau mastr osm', 'osm')
         continue-on-error: true
+        timeout-minutes: 120
         run: python update/update_kreise.py site/data osm
       - name: Kreis-Steckbrief
+        timeout-minutes: 15
         run: python update/update_kreise.py site/data steckbrief
       - name: Staatsausgaben (Eurostat COFOG)
         continue-on-error: true
+        timeout-minutes: 15
         run: python update/update_cofog.py site/data
       - id: commit
         run: |
