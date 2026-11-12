@@ -1503,11 +1503,14 @@
     const pinMark = (c) => pins.has(c.code) ? `<rect x="${c.x + 1.5}" y="${c.y + 1.5}" width="${Math.max(0, c.w - 3)}" height="${Math.max(0, c.h - 3)}" fill="none" stroke="#000" stroke-width="2.5"/>` : "";
     // divs: {code, label, groups:[{label, v, p}], p}; area = spending, colour = 5-year real change per head
     const total = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0);
+    // area grows with real spending: the box covers scale x full area, the dotted frame marks the peak
+    const sc = Math.max(0.05, Math.min(1, (opt && opt.scale) || 1)), BW = W * Math.sqrt(sc), BH = H * Math.sqrt(sc);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap">`;
+    if (sc < 0.999) s += `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" fill="none" stroke="#8c8c8c" stroke-dasharray="3,3"/><text x="${W - 6}" y="${H - 8}" text-anchor="end" style="font-size:12px;fill:#595959">${esc((opt && opt.frameLabel) || "")}</text>`;
     if (zoom) {
       const d = divs.find((x) => x.code === zoom), dt = d.groups.reduce((u, g) => u + g.v, 0);
       const allc = d.groups.map((g) => g.code);
-      squarify(ord(d.groups.filter((g) => g.v > 0)), { x: 0, y: 0, w: W, h: H }, true).forEach((c) => {
+      squarify(ord(d.groups.filter((g) => g.v > 0)), { x: 0, y: 0, w: BW, h: BH }, true).forEach((c) => {
         c.fill = groupFill(c.code, allc);
         s += `<g class="tmgrp" data-code="${c.code}" style="cursor:pointer"><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${c.fill}" stroke="#fff" stroke-width="2"><title>${esc(`${c.label}: ${fmt(c.v, 1)} ${L("Mrd. EUR", "EUR bn")}, ${fmt(100 * c.v / dt, 1)} % ${L("der Aufgabe", "of the function")}; ${L("real je Einwohner gegenüber fünf Jahren zuvor", "real per head vs five years earlier")} ${chgText(c.p)}`)}</title></rect>`;
         s += cellLabel({ ...c }, dt, true) + pinMark(c) + "</g>";
@@ -1516,7 +1519,7 @@
       el.querySelectorAll(".tmgrp").forEach((g) => g.addEventListener("click", () => opt && opt.onPin && opt.onPin(g.dataset.code)));
       return;
     }
-    const blocks = squarify(ord(divs.map((d) => ({ ...d, v: d.groups.reduce((u, g) => u + g.v, 0) }))), { x: 0, y: 0, w: W, h: H }, true);
+    const blocks = squarify(ord(divs.map((d) => ({ ...d, v: d.groups.reduce((u, g) => u + g.v, 0) }))), { x: 0, y: 0, w: BW, h: BH }, true);
     blocks.forEach((b) => {
       const head = b.h > 40 && b.w > 60 ? 20 : 0;
       s += `<g class="tmdiv" data-code="${b.code}" style="cursor:zoom-in">`;
@@ -1611,7 +1614,11 @@
       yf = yf === undefined ? +yr.value : yf; const yi = Math.floor(yf), i = Y.indexOf(yi);
       $("stYearLab").textContent = yi;
       const divs = codes.map((c) => ({ code: c, label: dn(c), groups: Object.entries(C.groups).filter(([g]) => g.startsWith(c)).map(([g, o]) => ({ code: g, label: L(o.de, o.en), v: valAt(o.values, yf) / 1000, p: realG(o, i) })) }));
-      nestedTreemap($("stTChart"), divs, 860, 520, TM.zoom, (code) => { TM.zoom = code; drawTree(); }, { pins: TM.pins, rank, onPin: (code) => { TM.pins.has(code) ? TM.pins.delete(code) : TM.pins.add(code); drawTree(); } });
+      // real totals (prices of the latest year) for the area scale: whole state, or the zoomed function
+      const realSeries = TM.zoom ? Y.map((_, k) => (Object.entries(C.groups).filter(([g]) => g.startsWith(TM.zoom)).reduce((t, [, o]) => t + (o.values[k] || 0), 0)) / C.price_index[k]) : Y.map((_, k) => S.TOTAL[k] / C.price_index[k]);
+      const from = Y.indexOf(2000), peakK = realSeries.reduce((b, v, k) => (k >= from && v > realSeries[b] ? k : b), from), now = valAt(realSeries, yf);
+      const scale = now / realSeries[peakK], frameLabel = L(`Rahmen: Höchststand ${Y[peakK]}, real`, `frame: peak ${Y[peakK]}, real`);
+      nestedTreemap($("stTChart"), divs, 860, 520, TM.zoom, (code) => { TM.zoom = code; drawTree(); }, { scale, frameLabel, pins: TM.pins, rank, onPin: (code) => { TM.pins.has(code) ? TM.pins.delete(code) : TM.pins.add(code); drawTree(); } });
       const tot = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0), zd = TM.zoom && divs.find((d) => d.code === TM.zoom);
       $("stCrumb").innerHTML = zd ? `<a href="javascript:void 0" data-top="1">${L("Alle Aufgaben", "All functions")}</a> › ${esc(zd.label)} <span style="color:#595959">· ${L("Klick auf eine Gruppe heftet sie oben links an (schwarzer Rahmen)", "click a group to pin it top left (black frame)")}</span>` : L("Klick auf eine Aufgabe vergrößert sie.", "Click a function to zoom in.") + (TM.pins.size ? ` <span style="color:#595959">· ${TM.pins.size} ${L("angeheftet", "pinned")}</span>` : "");
       $("stTTitle").textContent = zd
@@ -1634,7 +1641,7 @@
     }
     drawTree();
     $("stTAsk").textContent = L("Was steckt im Einzelnen dahinter?", "What lies behind it in detail?");
-    $("stTSrc").textContent = L("Jede Aufgabe ein Block in eigener Farbe, ihre Gruppen in festen Abstufungen dieser Farbe. Die Anordnung folgt den Ausgaben des letzten Jahres und bleibt über die Zeit gleich. Der Hinweistext jeder Fläche nennt zusätzlich die reale Veränderung je Einwohner gegenüber fünf Jahren zuvor. ", "Each function one block in its own colour, its groups in fixed tints of that colour. The layout follows spending in the latest year and stays fixed over time. The tooltip of each cell also gives the real change per head over five years. ") + src;
+    $("stTSrc").textContent = L("Jede Aufgabe ein Block in eigener Farbe, ihre Gruppen in festen Abstufungen dieser Farbe. Die Anordnung folgt den Ausgaben des letzten Jahres und bleibt über die Zeit gleich. Die Gesamtfläche wächst mit den realen Ausgaben (Preise des letzten Jahres); der gestrichelte Rahmen zeigt den Höchststand. Der Hinweistext jeder Fläche nennt zusätzlich die reale Veränderung je Einwohner gegenüber fünf Jahren zuvor. ", "Each function one block in its own colour, its groups in fixed tints of that colour. The layout follows spending in the latest year and stays fixed over time. The total area grows with real spending (latest-year prices); the dashed frame marks the peak. The tooltip of each cell also gives the real change per head over five years. ") + src;
     // 4 dot plot by level
     const LV = LEVELS();
     barMatrix($("stLChart"), order.map((c) => ({ label: dn(c), accent: c === "GF10", vals: Object.fromEntries(Object.keys(LV).map((sec) => [sec, C.sectors[sec][c][li] / 1000])) })), LV, { label: "levels", unit: L("Mrd. EUR", "EUR bn") });
