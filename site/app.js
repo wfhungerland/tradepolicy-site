@@ -1424,7 +1424,7 @@
     const topBand = brk ? 70 : 0, gap = brk ? 26 : 0, lowTop = m.t + topBand + gap, lowHi = Math.max(...lowVals) * 1.04;
     const hMin = hiVals.length ? Math.min(...hiVals) - 1 : 0, hMax = hiVals.length ? Math.max(...hiVals) + 1 : 1;
     const y = (v) => brk && v > brk ? m.t + topBand - 10 - ((v - hMin) / (hMax - hMin)) * (topBand - 20) : H - m.b - (v / lowHi) * (H - m.b - lowTop);
-    const x = (k) => m.l + (k / (cols.length - 1)) * (W - m.l - m.r);
+    const x = (k) => m.l + ((cols[k] - cols[0]) / (cols.at(-1) - cols[0])) * (W - m.l - m.r);  // columns placed on a time scale
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
     cols.forEach((c, k) => { s += `<text x="${x(k)}" y="16" text-anchor="middle" style="font-weight:600">${c}</text>`; });
     // vertical axis: a thin line per column, ticks with light gridlines between the outer columns
@@ -1622,8 +1622,8 @@
       const tot = divs.reduce((t, d) => t + d.groups.reduce((u, g) => u + g.v, 0), 0), zd = TM.zoom && divs.find((d) => d.code === TM.zoom);
       $("stCrumb").innerHTML = zd ? `<a href="javascript:void 0" data-top="1">${L("Alle Aufgaben", "All functions")}</a> › ${esc(zd.label)} <span style="color:#595959">· ${L("Klick auf eine Gruppe heftet sie oben links an (schwarzer Rahmen)", "click a group to pin it top left (black frame)")}</span>` : L("Klick auf eine Aufgabe vergrößert sie.", "Click a function to zoom in.") + (TM.pins.size ? ` <span style="color:#595959">· ${TM.pins.size} ${L("angeheftet", "pinned")}</span>` : "");
       $("stTTitle").textContent = zd
-        ? L(`${zd.label} ${yi}: ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} Mrd. EUR nach Gruppen; Fläche = Ausgaben`, `${zd.label} ${yi}: EUR ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} bn by group; area = spending`)
-        : L(`Staatsausgaben ${yi}: zehn Aufgaben und ihre Gruppen, ${fmt(tot, 0)} Mrd. EUR; Fläche = Ausgaben`, `Government expenditure ${yi}: ten functions and their groups, EUR ${fmt(tot, 0)} bn; area = spending`);
+        ? L(`Grundriss der Staatsausgaben ${yi}, ${zd.label}: ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} Mrd. EUR nach Gruppen; Fläche = Ausgaben`, `Floor plan of government spending ${yi}, ${zd.label}: EUR ${fmt(zd.groups.reduce((u, g) => u + g.v, 0), 0)} bn by group; area = spending`)
+        : L(`Grundriss der Staatsausgaben ${yi}: zehn Aufgaben und ihre Gruppen, ${fmt(tot, 0)} Mrd. EUR; Fläche = Ausgaben`, `Floor plan of government spending ${yi}: ten functions and their groups, EUR ${fmt(tot, 0)} bn; area = spending`);
       FIGDATA.sttree = { header: ["COFOG", L("Aufgabe", "Function"), L("Gruppe", "Group"), L("Mrd. EUR", "EUR bn")], rows: divs.flatMap((d) => d.groups.map((g) => [g.code, d.label, g.label, +g.v.toFixed(2)])) };
     };
     const stop = () => { if (TM.anim) cancelAnimationFrame(TM.anim); TM.anim = null; $("stPlay").textContent = L("Abspielen", "Play"); };
