@@ -88,7 +88,7 @@ select { font: inherit; font-size: 15px; padding: 3px 8px; border: 1px solid var
 @media (min-width: 980px) { .cbody { grid-template-columns: minmax(0, 1fr) 290px; } }
 .cside { font-size: 13.5px; line-height: 1.45; }
 .capnote { font-style: italic; margin: 0; }
-.src { font-size: 13.5px; line-height: 1.4; margin-top: 6px; max-width: none; }
+.src { font-size: 12px; line-height: 1.4; margin-top: 6px; max-width: none; color: var(--grey); }  /* source grey and smaller than text in figures */
 .acts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 4px; font-size: 13.5px; }
 .acts button, .copy { font: inherit; font-size: 13.5px; color: var(--grey); background: none; border: 0; padding: 0; cursor: pointer; }
 .acts button:hover, .copy:hover { color: var(--fg); text-decoration: underline; }

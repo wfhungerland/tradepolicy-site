@@ -1491,7 +1491,7 @@
   const tint = (hex, t) => "#" + [1, 3, 5].map((o) => Math.round(parseInt(hex.slice(o, o + 2), 16) + t * (255 - parseInt(hex.slice(o, o + 2), 16))).toString(16).padStart(2, "0")).join("");
   const groupFill = (code, allCodes) => { const sib = allCodes.filter((c) => c.slice(0, 4) === code.slice(0, 4)).sort(), j = sib.indexOf(code); return tint(DIV_HUE[code.slice(0, 4)] || "#595959", sib.length > 1 ? 0.6 * j / (sib.length - 1) : 0); };
   function cellLabel(c, total, big) {
-    const fs = big ? 13 : 11.5, lh = fs + 3, mc = Math.floor(c.w / (fs * 0.56)), lab = c.label.length > mc ? c.label.slice(0, Math.max(1, mc - 1)) + "…" : c.label, col = isDark(c.fill) ? "#fff" : "#000";
+    const fs = big ? 13 : 12.5, lh = fs + 3, mc = Math.floor(c.w / (fs * 0.56)), lab = c.label.length > mc ? c.label.slice(0, Math.max(1, mc - 1)) + "…" : c.label, col = isDark(c.fill) ? "#fff" : "#000";
     if (c.w < 60 || c.h < (big ? 40 : 32)) return "";
     const pcT = `${fmt(100 * c.v / total, 1)}\u202f%`, amT = `${fmt(c.v, c.v < 10 ? 1 : 0)} ${L("Mrd.", "bn")}`, one = (pcT + " · " + amT).length * fs * 0.56 < c.w - 8;
     const l2 = one ? pcT + " · " + amT : pcT, l3 = !one && c.h > 3 * lh + 4 ? amT : "";
