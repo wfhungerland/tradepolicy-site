@@ -1576,10 +1576,13 @@
   const HF_HUE = { "0": "#00B0F0", "1": "#7030A0", "2": "#002060", "3": "#0070C0", "4": "#595959", "5": "#47D359", "6": "#D86DCD", "7": "#51154A", "8": "#C00000" };
   function bundTree(el, B, yi, path, onNav) {
     const Y = B.years[yi], V = Y.values, lab = (c) => (c.length === 1 ? L(B.haupt_short[c], B.labels[c]) : B.labels[c]) || c;
-    const leaves = Object.entries(V).filter(([, v]) => v > 0);
-    const sumOf = (pre) => leaves.filter(([c]) => c.startsWith(pre)).reduce((t, [, v]) => t + v, 0);
-    const kids = (pre) => { const n = pre.length + 1, set = new Set(leaves.filter(([c]) => c.startsWith(pre)).map(([c]) => c.slice(0, n))); return [...set].sort().map((c) => ({ code: c, label: lab(c), v: sumOf(c) })).filter((d) => d.v > 0); };
-    const fill = (c) => { const h = HF_HUE[c[0]] || "#595959"; if (c.length === 1) return h; const sib2 = kids(c[0]).map((d) => d.code), t2 = sib2.length > 1 ? 0.5 * sib2.indexOf(c.slice(0, 2)) / (sib2.length - 1) : 0; if (c.length === 2) return tint(h, t2); const sib3 = kids(c.slice(0, 2)).map((d) => d.code), t3 = sib3.length > 1 ? 0.3 * sib3.indexOf(c) / (sib3.length - 1) : 0; return tint(h, Math.min(0.85, t2 + t3)); };
+    const leaves = Object.entries(V).filter(([, v]) => v > 0), MG = B.merge || {};
+    // node of a leaf code at depth n; upper functions defined as one range (11-12, 18-19) share one node
+    const nodeAt = (c, n) => n === 2 ? (MG[c.slice(0, 2)] || c.slice(0, 2)) : c.slice(0, n);
+    const inNode = (c, pre) => nodeAt(c, pre.length) === pre;
+    const sumOf = (pre) => leaves.filter(([c]) => inNode(c, pre)).reduce((t, [, v]) => t + v, 0);
+    const kids = (pre) => { const n = pre.length + 1, set = new Set(leaves.filter(([c]) => inNode(c, pre)).map(([c]) => nodeAt(c, n))); return [...set].sort().map((c) => ({ code: c, label: lab(c), v: sumOf(c) })).filter((d) => d.v > 0); };
+    const fill = (c) => { const h = HF_HUE[c[0]] || "#595959"; if (c.length === 1) return h; const sib2 = kids(c[0]).map((d) => d.code), t2 = sib2.length > 1 ? 0.5 * sib2.indexOf(nodeAt(c, 2)) / (sib2.length - 1) : 0; if (c.length === 2) return tint(h, t2); const sib3 = kids(nodeAt(c, 2)).map((d) => d.code), t3 = sib3.length > 1 ? 0.3 * sib3.indexOf(c) / (sib3.length - 1) : 0; return tint(h, Math.min(0.85, t2 + t3)); };
     const pre = path.at(-1) || "", W = 860, H = 520, total = sumOf(pre);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="treemap federal budget">`;
     const blocks = squarify(kids(pre), { x: 0, y: 0, w: W, h: H });
@@ -1687,7 +1690,10 @@
     const B = await getJSON("data/bund.json"), BT = renderState.bt || (renderState.bt = { yi: B.years.length - 1, path: [] });
     const drawBund = () => {
       const Yb = B.years[BT.yi], r = bundTree($("stHChart"), B, BT.yi, BT.path, (p) => { BT.path = p; drawBund(); });
-      $("stHYears").innerHTML = B.years.map((y, k) => `<button type="button" data-k="${k}" style="font-weight:${k === BT.yi ? 700 : 400}">${y.year} ${y.kind}</button>`).join(" ");
+      // outturn and plan in two separate groups: their differences are partly planning versus execution
+      const btn = (y, k) => `<button type="button" data-k="${k}" style="font-weight:${k === BT.yi ? 700 : 400}">${y.year}${y.kind === "Entwurf" ? L(" Entwurf", " draft") : ""}</button>`;
+      const grp = (lbl, f) => { const g = B.years.map((y, k) => [y, k]).filter(([y]) => f(y.kind)); return g.length ? `<span style="white-space:nowrap">${lbl} ${g.map(([y, k]) => btn(y, k)).join(" ")}</span>` : ""; };
+      $("stHYears").innerHTML = [grp(L("Ergebnis (Ist):", "Outturn:"), (k) => k === "Ist"), grp(L("Plan (Soll):", "Plan:"), (k) => k !== "Ist")].filter(Boolean).join('<span style="display:inline-block;width:1.5em"></span>');
       $("stHYears").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { BT.yi = +b.dataset.k; drawBund(); }));
       const crumbs = [`<a href="javascript:void 0" data-p="">${L("Alle Funktionen", "All functions")}</a>`, ...BT.path.map((c, k) => k === BT.path.length - 1 ? esc(r.lab(c)) : `<a href="javascript:void 0" data-p="${BT.path.slice(0, k + 1).join(",")}">${esc(r.lab(c))}</a>`)];
       $("stHCrumb").innerHTML = BT.path.length ? crumbs.join(" › ") : L("Klick auf eine Funktion vergrößert sie, zwei Ebenen tief.", "Click a function to zoom in, two levels deep.");
@@ -1695,8 +1701,8 @@
       const where = BT.path.length ? `, ${r.lab(BT.path.at(-1))}` : "";
       $("stHTitle").textContent = L(`Grundriss des Bundeshaushalts ${Yb.year} (${Yb.kind})${where}: ${fmt(r.total, 1)} Mrd. EUR nach Funktionen; Fläche = Ausgaben`, `Floor plan of the federal budget ${Yb.year} (${Yb.kind === "Ist" ? "outturn" : Yb.kind === "Entwurf" ? "draft" : "plan"})${where}: EUR ${fmt(r.total, 1)} bn by function; area = spending`);
       const sp = Yb.special_total;
-      $("stHSrc").textContent = L(`Kernhaushalt des Bundes nach dem Funktionenplan; Ist aus der Haushaltsrechnung, Soll aus dem Haushaltsplan, Entwurf aus dem Regierungsentwurf. ${sp ? `Ohne Sondervermögen (Klima- und Transformationsfonds, Sondervermögen Bundeswehr und weitere) und EU-Eigenmittel: ${fmt(sp, 1)} Mrd. EUR. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative Ansätze (globale Minderausgaben, ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} Mrd. EUR) nicht gezeigt. ` : ""}Quelle: bundeshaushalt.de; eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.`,
-        `Federal core budget by function plan; outturn from the budget accounts, plan from the budget, draft from the government draft. ${sp ? `Excluding special funds (climate and transformation fund, Bundeswehr fund and others) and EU own resources: EUR ${fmt(sp, 1)} bn. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative items (global spending cuts, EUR ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} bn) not shown. ` : ""}Source: bundeshaushalt.de; own calculation. Licence of the figure: CC BY 4.0.`);
+      $("stHSrc").textContent = L(`Kernhaushalt des Bundes nach dem Funktionenplan; Ist aus der Haushaltsrechnung, Soll aus dem Haushaltsplan, Entwurf aus dem Regierungsentwurf. Ist und Soll sind nur begrenzt vergleichbar: Das Soll ist eine Obergrenze und enthält globale Ansätze, die sich erst im Ist auf Funktionen verteilen. Einige Bezeichnungen sind gekürzt oder aktualisiert (Bürgergeld statt Arbeitslosengeld II). ${sp ? `Ohne Sondervermögen (Klima- und Transformationsfonds, Sondervermögen Bundeswehr und weitere) und EU-Eigenmittel: ${fmt(sp, 1)} Mrd. EUR. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative Ansätze (globale Minderausgaben, ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} Mrd. EUR) nicht gezeigt. ` : ""}Quelle: bundeshaushalt.de; eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.`,
+        `Federal core budget by function plan; outturn from the budget accounts, plan from the budget, draft from the government draft. Outturn and plan are only partly comparable: the plan is a ceiling and contains global items that are spread over functions only in the outturn. Function names in German; some shortened or updated (Bürgergeld instead of Arbeitslosengeld II). ${sp ? `Excluding special funds (climate and transformation fund, Bundeswehr fund and others) and EU own resources: EUR ${fmt(sp, 1)} bn. ` : ""}${Yb.kind !== "Ist" && Object.values(Yb.values).some((v) => v < 0) ? `Negative items (global spending cuts, EUR ${fmt(Object.values(Yb.values).filter((v) => v < 0).reduce((t, v) => t + v, 0), 1)} bn) not shown. ` : ""}Source: bundeshaushalt.de; own calculation. Licence of the figure: CC BY 4.0.`);
       FIGDATA.stbund = { header: [L("Funktion", "Function"), L("Bezeichnung", "Name"), ...B.years.map((y) => `${y.year} ${y.kind}, ${L("Mrd. EUR", "EUR bn")}`)], rows: [...new Set(B.years.flatMap((y) => Object.keys(y.values)))].sort().map((c) => [c, B.labels[c], ...B.years.map((y) => y.values[c] === undefined ? "" : +y.values[c].toFixed(3))]) };
     };
     drawBund();
