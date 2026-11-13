@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "staat", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "staat", "bundeslaender", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -53,7 +53,7 @@
     document.querySelectorAll("nav a").forEach((a) => {
       if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat", "bundeslaender"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -203,6 +203,7 @@
     if (view === "fdi") await renderFDI();
     if (view === "beschaffung") await renderProcurement();
     if (view === "staat") await renderState();
+    if (view === "bundeslaender") await renderLaender();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
     if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
@@ -1736,6 +1737,94 @@
     };
     drawBund();
     $("stHAsk").textContent = L("Wofür gibt der Bund im Einzelnen aus?", "What does the federal government spend on in detail?");
+  }
+
+  // ---------------------------------------------------------------- foreign trade of the Länder
+  function laenderTable(el, rows, head) {
+    // rows: {label, exp, quote, us, cn, usgdp, spark:[...]}; sparkline = exports, index first year = 100, one scale
+    const W = 860, rh = 28, top = 30, H = top + rows.length * rh + 6, cx = [0, 200, 300, 390, 465, 540, 630, 860];
+    const allIdx = rows.flatMap((r) => r.spark.map((v) => 100 * v / r.spark[0])), lo = Math.min(...allIdx), hi = Math.max(...allIdx);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Länder table">`;
+    head.forEach((h, k) => { const right = k > 0 && k < 6; s += `<text x="${right ? cx[k + 1] - 10 : k === 6 ? cx[6] + 8 : 0}" y="18" text-anchor="${right ? "end" : "start"}" style="font-size:12px;fill:#595959">${esc(h)}</text>`; });
+    s += `<line x1="0" x2="${W}" y1="${top - 6}" y2="${top - 6}" stroke="#bfbfbf"/>`;
+    rows.forEach((r, i) => {
+      const yy = top + i * rh, mid = yy + rh / 2 + 4, acc = i === 0;
+      s += `<text x="0" y="${mid}" style="font-weight:${acc ? 600 : 400}">${esc(r.label)}</text>`;
+      [[r.exp, 1], [r.quote, 0], [r.us, 1], [r.cn, 1], [r.usgdp, 1]].forEach(([v, d], k) => { s += `<text x="${cx[k + 2] - 10}" y="${mid}" text-anchor="end" style="font-weight:${k === 4 ? 600 : 400}">${fmt(v, d)}</text>`; });
+      const sv = r.spark.map((v) => 100 * v / r.spark[0]), sx = (k) => cx[6] + 8 + (k / (sv.length - 1)) * 170, sy = (v) => yy + rh - 4 - ((v - lo) / (hi - lo || 1)) * (rh - 8);
+      s += `<line x1="${sx(0)}" x2="${sx(sv.length - 1)}" y1="${sy(100)}" y2="${sy(100)}" stroke="#e6e6e6"/><path d="${sv.map((v, k) => (k ? "L" : "M") + sx(k).toFixed(1) + "," + sy(v).toFixed(1)).join("")}" fill="none" stroke="#595959" stroke-width="1.3"><title>${esc(`${r.label}: ${fmt(sv.at(-1), 0)}`)}</title></path><circle cx="${sx(sv.length - 1)}" cy="${sy(sv.at(-1))}" r="2.2" fill="#595959"/><text x="${sx(sv.length - 1) + 6}" y="${sy(sv.at(-1)) + 4}" style="font-size:11px;fill:#595959">${fmt(sv.at(-1), 0)}</text>`;
+    });
+    el.innerHTML = s + "</svg>";
+  }
+
+  function dumbbells(el, rows, panels, opt) {
+    // rows: {label, vals:{panel:[from,to]}}; one panel per partner, common scale within a panel
+    const W = 860, lw = 190, pw = (W - lw) / panels.length, rh = 24, top = 34, H = top + rows.length * rh + 24;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    panels.forEach((p, j) => {
+      const x0 = lw + j * pw + 10, x1 = lw + (j + 1) * pw - 30, hi = Math.max(...rows.flatMap((r) => r.vals[p.key])) * 1.05, x = (v) => x0 + (v / hi) * (x1 - x0);
+      s += `<text x="${x0}" y="16" style="font-weight:600">${esc(p.label)}</text>`;
+      niceTicks(0, hi, 3).forEach((t) => { s += `<line x1="${x(t)}" x2="${x(t)}" y1="${top - 8}" y2="${H - 22}" stroke="#eeeeee"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle" style="font-size:11px;fill:#595959">${fmt(t, 0)}</text>`; });
+      rows.forEach((r, i) => {
+        const yy = top + i * rh + rh / 2, [a, b] = r.vals[p.key], up = b >= a;
+        s += `<line x1="${x(a)}" x2="${x(b)}" y1="${yy}" y2="${yy}" stroke="${up ? "#002060" : "#C00000"}" stroke-width="2"/><circle cx="${x(a)}" cy="${yy}" r="3.5" fill="#fff" stroke="#8c8c8c"><title>${esc(`${r.label}, ${p.label}, ${opt.from}: ${fmt(a, 1)} %`)}</title></circle><circle cx="${x(b)}" cy="${yy}" r="4" fill="${up ? "#002060" : "#C00000"}"><title>${esc(`${r.label}, ${p.label}, ${opt.to}: ${fmt(b, 1)} %`)}</title></circle>`;
+        if (j === panels.length - 1 || true) s += `<text x="${Math.max(x(a), x(b)) + 8}" y="${yy + 4}" style="font-size:11px">${fmt(b, 0)}</text>`;
+      });
+    });
+    rows.forEach((r, i) => { s += `<text x="${lw - 8}" y="${top + i * rh + rh / 2 + 4}" text-anchor="end">${esc(r.label)}</text>`; });
+    el.innerHTML = s + "</svg>";
+  }
+
+  function heatTable(el, rows, cols, opt) {
+    // rows: {label, vals:{col: share}}; cell shade = share on one scale, value printed
+    const W = 860, lw = 190, cw = (W - lw) / cols.length, rh = 26, top = 58, H = top + rows.length * rh + 4;
+    const hi = Math.max(...rows.flatMap((r) => cols.map((c) => r.vals[c.code] || 0)));
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label)}">`;
+    cols.forEach((c, j) => { const words = c.short.split(" "), l1 = [], l2 = []; words.forEach((w) => ((l1.join(" ") + " " + w).length <= 14 && !l2.length ? l1 : l2).push(w)); s += `<text x="${lw + j * cw + cw / 2}" y="22" text-anchor="middle" style="font-size:11.5px">${esc(l1.join(" "))}</text><text x="${lw + j * cw + cw / 2}" y="37" text-anchor="middle" style="font-size:11.5px">${esc(l2.join(" ").slice(0, 16))}</text><title>${esc(c.label)}</title>`; });
+    rows.forEach((r, i) => {
+      const yy = top + i * rh;
+      s += `<text x="${lw - 8}" y="${yy + rh / 2 + 4}" text-anchor="end">${esc(r.label)}</text>`;
+      cols.forEach((c, j) => { const v = r.vals[c.code] || 0, t = Math.sqrt(v / hi), fill = tint("#002060", 1 - 0.92 * t); s += `<rect x="${lw + j * cw + 1}" y="${yy + 1}" width="${cw - 2}" height="${rh - 2}" fill="${fill}"><title>${esc(`${r.label}, ${c.label}: ${fmt(v, 1)} %`)}</title></rect><text x="${lw + j * cw + cw / 2}" y="${yy + rh / 2 + 4}" text-anchor="middle" style="font-size:12px;fill:${t > 0.55 ? "#fff" : "#000"}">${v >= 0.5 ? fmt(v, 0) : "·"}</text>`; });
+    });
+    el.innerHTML = s + "</svg>";
+  }
+
+  async function renderLaender() {
+    const T = await getJSON("data/laender_trade.json"), Y = T.years, li = Y.length - 1, i19 = Y.indexOf(2019), i08 = 0;
+    const gy = Math.max(...Object.keys(T.gdp["08"]).map(Number)), gi = Y.indexOf(gy);
+    const rows = T.laender.map((l) => { const c = l.code, e = T.exp[c][li], g = T.gdp[c][String(gy)];
+      return { code: c, label: l.name, exp: e, quote: 100 * T.exp[c][gi] / g, us: 100 * T.exp_p.USA[c][li] / e, cn: 100 * T.exp_p.CHN[c][li] / e, usgdp: 100 * T.exp_p.USA[c][gi] / g, spark: T.exp[c] }; }).sort((a, b) => b.usgdp - a.usgdp);
+    const all = (k) => Object.values(T[k] ? T[k] : {}).reduce((t, a) => t + a[li], 0), totDE = T.laender.reduce((t, l) => t + T.exp[l.code][li], 0) + T.exp["17"][li] + T.exp["18"][li];
+    const r0 = rows[0], byUS = rows.slice().sort((a, b) => b.us - a.us);
+    $("blAnswer").textContent = L(
+      `${r0.label} hängt am stärksten am US-Markt: ${Y[li]} gingen ${fmt(r0.us, 0)} % seiner Ausfuhren in die USA; ${gy} entsprachen die Ausfuhren in die USA ${fmt(r0.usgdp, 0)} % seiner Wirtschaftsleistung. Es folgen ${rows[1].label} (${fmt(rows[1].usgdp, 1)} %) und ${rows[2].label} (${fmt(rows[2].usgdp, 1)} %), am Ende steht ${rows.at(-1).label} (${fmt(rows.at(-1).usgdp, 1)} %). Den höchsten China-Anteil an den Ausfuhren hat ${rows.slice().sort((a, b) => b.cn - a.cn)[0].label} (${fmt(rows.slice().sort((a, b) => b.cn - a.cn)[0].cn, 0)} %).`,
+      `${r0.label} depends most on the US market: in ${Y[li]}, ${fmt(r0.us, 0)} % of its exports went to the US; in ${gy}, exports to the US equalled ${fmt(r0.usgdp, 0)} % of its GDP. Next are ${rows[1].label} (${fmt(rows[1].usgdp, 1)} %) and ${rows[2].label} (${fmt(rows[2].usgdp, 1)} %); last is ${rows.at(-1).label} (${fmt(rows.at(-1).usgdp, 1)} %). The highest China share of exports is in ${rows.slice().sort((a, b) => b.cn - a.cn)[0].label} (${fmt(rows.slice().sort((a, b) => b.cn - a.cn)[0].cn, 0)} %).`);
+    $("blExplain").textContent = L(
+      `Destatis, Außenhandel der Bundesländer (GENESIS-Online 51000-0032 und 51000-0034), ${Y[0]} bis ${Y[li]}, ${Y[li]} vorläufig. Ausfuhren werden dem Land zugerechnet, in dem die Waren hergestellt wurden. Von den deutschen Ausfuhren ${Y[li]} (${fmt(totDE, 0)} Mrd. EUR) sind ${fmt(T.exp["17"][li], 0)} Mrd. EUR Waren ausländischen Ursprungs, die keinem Land zugeordnet sind. Wirtschaftsleistung: Bruttoinlandsprodukt der Länder (Eurostat), letztes verfügbares Jahr ${gy}. Nominale Werte.`,
+      `Destatis, foreign trade of the Länder (GENESIS-Online 51000-0032 and 51000-0034), ${Y[0]} to ${Y[li]}, ${Y[li]} provisional. Exports are assigned to the Land where the goods were produced. Of German exports in ${Y[li]} (EUR ${fmt(totDE, 0)} bn), EUR ${fmt(T.exp["17"][li], 0)} bn are goods of foreign origin not assigned to a Land. Economic output: GDP of the Länder (Eurostat), latest year ${gy}. Nominal values.`);
+    const src = L("Quelle: Destatis (51000-0032, 51000-0034), Eurostat (nama_10r_2gdp); eigene Berechnung. Lizenz der Abbildung: CC BY 4.0.", "Source: Destatis (51000-0032, 51000-0034), Eurostat (nama_10r_2gdp); own calculation. Licence of the figure: CC BY 4.0.");
+    laenderTable($("blTChart"), rows, [L("Land", "Land"), L(`Mrd. EUR ${Y[li]}`, `EUR bn ${Y[li]}`), L(`% BIP ${gy}`, `% GDP ${gy}`), L("USA, %", "US, %"), L("China, %", "China, %"), L(`USA, % BIP`, `US, % GDP`), L(`Ausfuhr, ${Y[0]} = 100`, `exports, ${Y[0]} = 100`)]);
+    $("blTAsk").textContent = L("Welches Land hängt wie stark am US-Markt?", "Which Land depends how much on the US market?");
+    $("blTTitle").textContent = L(`Ausfuhren der Länder: Wert ${Y[li]}, Exportquote ${gy}, Anteile von USA und China ${Y[li]}, Ausfuhren in die USA in % des BIP ${gy}; sortiert nach der letzten Größe`, `Exports of the Länder: value ${Y[li]}, exports/GDP ${gy}, shares of US and China ${Y[li]}, exports to the US in % of GDP ${gy}; sorted by the last measure`);
+    $("blTSrc").textContent = src;
+    FIGDATA.bltab = { header: [L("Land", "Land"), L(`Ausfuhr ${Y[li]}, Mrd. EUR`, `Exports ${Y[li]}, EUR bn`), L(`Exportquote ${gy}, %`, `Exports/GDP ${gy}, %`), L("Anteil USA, %", "US share, %"), L("Anteil China, %", "China share, %"), L("USA, % des BIP", "US, % of GDP")], rows: rows.map((r) => [r.label, +r.exp.toFixed(2), +r.quote.toFixed(1), +r.us.toFixed(1), +r.cn.toFixed(1), +r.usgdp.toFixed(2)]) };
+    // 2 dumbbells: shares 2019 -> latest for US, China, EU
+    const sh = (p, c, i) => 100 * T.exp_p[p][c][i] / T.exp[c][i];
+    const drows = byUS.map((r) => ({ label: r.label, vals: { USA: [sh("USA", r.code, i19), sh("USA", r.code, li)], CHN: [sh("CHN", r.code, i19), sh("CHN", r.code, li)], EU: [sh("EU", r.code, i19), sh("EU", r.code, li)] } }));
+    dumbbells($("blDChart"), drows, [{ key: "USA", label: "USA" }, { key: "CHN", label: "China" }, { key: "EU", label: L("EU (ohne Deutschland)", "EU (excl. Germany)") }], { label: "shares", from: 2019, to: Y[li] });
+    $("blDAsk").textContent = L("Wohin hat sich der Absatz seit 2019 verschoben?", "Where have sales shifted since 2019?");
+    $("blDTitle").textContent = L(`Anteil an den Ausfuhren des Landes, %: offener Punkt 2019, voller Punkt ${Y[li]}; blau gestiegen, rot gesunken`, `Share of the Land's exports, %: open dot 2019, filled dot ${Y[li]}; blue up, red down`);
+    $("blDSrc").textContent = src;
+    FIGDATA.bldumb = { header: [L("Land", "Land"), "USA 2019, %", `USA ${Y[li]}, %`, "China 2019, %", `China ${Y[li]}, %`, "EU 2019, %", `EU ${Y[li]}, %`], rows: drows.map((r) => [r.label, ...["USA", "CHN", "EU"].flatMap((k) => r.vals[k].map((v) => +v.toFixed(1)))]) };
+    // 3 product mix heat table, top 9 groups
+    const P = T.products, top = P.groups.slice(0, 9), SHORT = { "GP19-29": L("Kraftwagen", "Motor vehicles"), "GP19-28": L("Maschinen", "Machinery"), "GP19-20": L("Chemie", "Chemicals"), "GP19-21": L("Pharma", "Pharma"), "GP19-26": L("Elektronik, Optik", "Electronics, optics"), "GP19-27": L("Elektrische Ausrüstungen", "Electrical equipment"), "GP19-30": L("Sonstige Fahrzeuge", "Other transport"), "GP19-24": L("Metalle", "Metals"), "GP19-10": L("Nahrungsmittel", "Food"), "GP19-22": L("Gummi, Kunststoff", "Rubber, plastics"), "GP19-25": L("Metallerzeugnisse", "Metal products") };
+    const cols = top.map((g) => ({ code: g.code, label: g.label, short: SHORT[g.code] || g.label.split(" ").slice(0, 2).join(" ") }));
+    const hrows = rows.slice().sort((a, b) => b.exp - a.exp).map((r) => { const v = P.values[r.code], t = Object.values(v).reduce((a, b) => a + b, 0); return { label: r.label, vals: Object.fromEntries(cols.map((c) => [c.code, 100 * (v[c.code] || 0) / t])) }; });
+    heatTable($("blPChart"), hrows, cols, { label: "product mix" });
+    $("blPAsk").textContent = L("Was exportieren die Länder?", "What do the Länder export?");
+    $("blPTitle").textContent = L(`Anteil der Warengruppe an den Ausfuhren des Landes ${P.year}, %; die neun größten Gruppen`, `Share of the product group in the Land's exports ${P.year}, %; the nine largest groups`);
+    $("blPSrc").textContent = L("Warengruppen nach GP 2019 (Zweisteller); dunkler = höherer Anteil; Punkt: unter 0,5 %. ", "Product groups by GP 2019 (two digits); darker = higher share; dot: below 0.5 %. ") + src;
+    FIGDATA.blprod = { header: [L("Land", "Land"), ...cols.map((c) => `${c.label}, %`)], rows: hrows.map((r) => [r.label, ...cols.map((c) => +r.vals[c.code].toFixed(1))]) };
   }
 
   function renderForecast() {

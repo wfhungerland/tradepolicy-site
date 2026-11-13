@@ -32,6 +32,7 @@
       <a href="#fdi">Investitionen</a>
       <a href="#beschaffung">Beschaffung</a>
       <a href="#staat">Staatsausgaben</a>
+      <a href="#bundeslaender">Bundesländer</a>
       <a href="#regionen">Regionen</a>
       <a href="#kreise">Kreise</a>
       <a href="#steckbrief">Kreis-Steckbrief</a>
@@ -553,6 +554,34 @@
     </div>
   </section>
 
+  <section id="view-bundeslaender" class="view" hidden>
+    <h2>Wie hängen die Bundesländer am Außenhandel?</h2>
+    <div class="intro"><p class="answer" id="blAnswer"></p><p class="explain" id="blExplain"></p></div>
+    <div class="charts">
+    <figure class="card fig" data-fig="bltab">
+      <p class="cask" id="blTAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="blTTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="blTChart" class="svgwrap"></div></div></div>
+      <p class="src" id="blTSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="bldumb">
+      <p class="cask" id="blDAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="blDTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="blDChart" class="svgwrap"></div></div></div>
+      <p class="src" id="blDSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    <figure class="card fig" data-fig="blprod">
+      <p class="cask" id="blPAsk"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="blPTitle"></span></h3>
+      <div class="cbody"><div class="cmain"><div id="blPChart" class="svgwrap"></div></div></div>
+      <p class="src" id="blPSrc"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
+  </section>
+
   <section id="view-regionen" class="view" hidden>
     <h2>Welche Regionen Europas trifft was?</h2>
     <div class="toolbar">
@@ -893,6 +922,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
   <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
-<script src="app.js?v=20261114e"></script>
+<script src="app.js?v=20261114f"></script>
 </body>
 </html>
