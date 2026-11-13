@@ -151,3 +151,13 @@ details.fold[open] > summary { margin-bottom: 8px; }
 .tline button:hover { color: #000; }
 .tline button[aria-pressed="true"] { color: #000; border-bottom-color: #000; }
 .tline .dot { color: #bfbfbf; margin: 0 6px; } .tline .gap { display: inline-block; width: 22px; } .tline .tl { color: #8c8c8c; font-size: 12px; margin-left: 5px; }
+
+/* navigation by areas: first line areas, second line the tabs of the current area */
+nav { display: block; }
+nav .navareas, nav .navsub { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+nav .navareas a { font-size: 13.5px; color: var(--grey); }
+nav .navareas a[aria-current] { color: var(--fg); font-weight: 600; border-bottom-color: var(--fg); }
+nav .navsub { margin-top: 4px; font-size: 13px; }
+nav .navsub .sbx { font-size: 11px; color: var(--grey); border: 0; margin-left: 2px; }
+.modstatus { font-size: 12.5px; color: var(--grey); margin: -4px 0 12px; }
+@media (max-width: 700px) { nav .navareas, nav .navsub { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; } }

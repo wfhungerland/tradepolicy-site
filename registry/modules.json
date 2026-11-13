@@ -1,39 +1,399 @@
 {
-  "_about": "Register of all modules of the Produktraum-Monitor: one entry per tab. Single source for navigation areas, maturity and the path into the Konjunkturmonitor (KM). status: sandbox (methods and numbers may change), stable (checked, kept up to date), km (moved into the Konjunkturmonitor; the tab here may stay as the analytical version). km_candidate: true when the module meets the KM criteria or nearly so.",
-  "areas": [
-    {"id": "handel", "de": "Handel und Spezialisierung", "en": "Trade and specialisation"},
-    {"id": "geopolitik", "de": "Abhängigkeiten und Geopolitik", "en": "Dependencies and geopolitics"},
-    {"id": "regionen", "de": "Regionen", "en": "Regions"},
-    {"id": "staat", "de": "Staat", "en": "Government"},
-    {"id": "methoden", "de": "Szenarien und Methodik", "en": "Scenarios and methods"}
-  ],
-  "km_criteria": [
-    "official or established data source",
-    "automatic or at least yearly update, documented",
-    "descriptive, no model assumptions in the shown numbers",
-    "texts checked; figures follow the KM design rules"
-  ],
-  "modules": [
-    {"id": "ueberblick", "de": "Überblick", "area": "handel", "question": "Wie komplex sind die Exporte eines Landes?", "status": "stable", "km_candidate": false, "data": "CEPII BACI HS92", "scripts": ["01_exports.py", "02_complexity.py", "20_export_site.py"], "update": "by hand, yearly"},
-    {"id": "laender", "de": "Länder", "area": "handel", "question": "Wie stehen die Länder im Komplexitätsvergleich?", "status": "stable", "km_candidate": false, "data": "CEPII BACI HS92", "scripts": ["02_complexity.py", "04_robustness.py", "20_export_site.py"], "update": "by hand, yearly"},
-    {"id": "profil", "de": "Länderprofil", "area": "handel", "question": "Was exportiert ein Land, und was träfe es in den Szenarien?", "status": "stable", "km_candidate": false, "data": "CEPII BACI, scenario results", "scripts": ["03_germany.py", "20_export_site.py", "37_export_scenarios.py"], "update": "by hand, yearly"},
-    {"id": "produktraum", "de": "Produktraum", "area": "handel", "question": "Wo liegen die nächsten Exportchancen?", "status": "stable", "km_candidate": false, "data": "CEPII BACI HS92", "scripts": ["06_product_space.py", "07_atlas_comparison.py"], "update": "by hand, yearly"},
-    {"id": "branchen", "de": "Branchen", "area": "handel", "question": "Welche Branchen tragen die Komplexität?", "status": "stable", "km_candidate": false, "data": "CEPII BACI HS92", "scripts": ["05_sectors.py"], "update": "by hand, yearly"},
-    {"id": "dienste", "de": "Dienstleistungen", "area": "handel", "question": "Womit handelt Deutschland bei Dienstleistungen?", "status": "stable", "km_candidate": true, "data": "OECD TiS, IMF IMTS", "scripts": ["82_services.py"], "update": "by hand, yearly"},
-    {"id": "fdi", "de": "Investitionen", "area": "handel", "question": "Wo investiert die deutsche Wirtschaft?", "status": "stable", "km_candidate": true, "data": "OECD FDI statistics (BMD4)", "scripts": ["84_fdi.py"], "update": "by hand, yearly"},
-    {"id": "mittelstand", "de": "Mittelstand", "area": "handel", "question": "Wie stark hängt der Mittelstand am Außenhandel?", "status": "stable", "km_candidate": true, "data": "Eurostat TEC", "scripts": ["58_mittelstand.py", "59_export_mittelstand.py"], "update": "by hand, yearly", "note": "KM handover prompt exists (HANDOVER_KM_extensions.md, topic 1)"},
-    {"id": "abhaengigkeiten", "de": "Abhängigkeiten", "area": "geopolitik", "question": "Wo hängen EU und Deutschland an wenigen Lieferländern?", "status": "stable", "km_candidate": true, "data": "CEPII BACI HS22, OECD ICIO", "scripts": ["44_dependencies.py", "46_export_dependencies.py", "47_indirect_dependence.py", "83_critical_materials.py"], "update": "by hand, yearly"},
-    {"id": "wettbewerb", "de": "China-Wettbewerb", "area": "geopolitik", "question": "Wo konkurrieren deutsche und chinesische Exporte?", "status": "sandbox", "km_candidate": false, "data": "CEPII BACI, Global Trade Alert", "scripts": ["50_china_competition.py", "51_export_china_competition.py", "75_subsidies.py", "76_subsidies_regression.py"], "update": "by hand"},
-    {"id": "nullhandel", "de": "Null-Handel", "area": "geopolitik", "question": "Wer handelt überhaupt mit wem?", "status": "sandbox", "km_candidate": false, "data": "CEPII BACI, CEPII Gravity", "scripts": ["52_zero_trade.py", "53_zero_trade_figures.py", "54_export_zero_trade.py", "55_zero_trade_compare.py"], "update": "by hand"},
-    {"id": "regime", "de": "Regierungsform", "area": "geopolitik", "question": "Mit welchen Regierungen handeln Deutschland und die EU?", "status": "sandbox", "km_candidate": false, "data": "CEPII BACI, V-Dem", "scripts": ["56_trade_by_regime.py", "57_export_regime.py"], "update": "by hand"},
-    {"id": "bundeslaender", "de": "Bundesländer", "area": "regionen", "question": "Wie hängen die Bundesländer am Außenhandel?", "status": "stable", "km_candidate": true, "data": "Destatis 51000-0032/0034, Eurostat nama_10r_2gdp", "scripts": ["88_laender_trade.py"], "update": "by hand, yearly (Destatis account)"},
-    {"id": "regionen", "de": "Regionen", "area": "regionen", "question": "Welche Regionen Europas trifft was?", "status": "stable", "km_candidate": false, "data": "Eurostat, ARDECO, OSM, BNetzA, Rosés-Wolf", "scripts": ["64_regional_exposure.py", "65_regional_history_cohesion.py", "69_h2_kernnetz.py", "70_netzausbau.py", "71_netz_lines.py", "72_export_energienetze.py", "77_roses_wolf.py"], "update": "quarterly (grid expansion, OSM) and by hand", "note": "mixed: maps and descriptive parts stable, exposure model and cohesion RDD sandbox"},
-    {"id": "kreise", "de": "Kreise", "area": "regionen", "question": "Was zeigen die Kreisdaten?", "status": "sandbox", "km_candidate": false, "data": "MaStR, Breitbandatlas, OSM, Regionaldatenbank, INKAR, BBSR", "scripts": ["66_kreise_energy.py", "67_kreise_netze.py", "68_kreise_infra.py", "73_kreise_export.py", "74_kreise_us_tariffs.py", "78_kreise_profile.py", "79_inkar_analyses.py", "80_grw.py"], "update": "quarterly (MaStR, OSM) and by hand", "note": "maps stable, INKAR analyses and tariff exposure sandbox; deepened in a separate chat (HANDOVER_regional.md)"},
-    {"id": "steckbrief", "de": "Kreis-Steckbrief", "area": "regionen", "question": "Wie steht ein Kreis da?", "status": "stable", "km_candidate": false, "data": "as Kreise", "scripts": ["81_kreis_steckbrief.py"], "update": "quarterly"},
-    {"id": "staat", "de": "Staatsausgaben", "area": "staat", "question": "Wofür gibt der Staat Geld aus?", "status": "km", "km_candidate": true, "data": "Eurostat COFOG, bundeshaushalt.de", "scripts": ["86_cofog.py", "87_bundeshaushalt.py", "tools/export_km.py"], "update": "quarterly (COFOG), by hand (federal budget)", "note": "treemaps and COFOG charts in the KM since 2026-11-12; deepened in a separate chat (HANDOVER_haushalt.md)"},
-    {"id": "beschaffung", "de": "Beschaffung", "area": "staat", "question": "Wie kauft der Staat ein?", "status": "sandbox", "km_candidate": false, "data": "TED (EU), Destatis Vergabestatistik", "scripts": ["85_bigg_ted.py", "tools/ted_legacy_packages.py", "tools/ted_eforms_api.py"], "update": "by hand", "note": "Big G pilot; request to the procurement unit on hold"},
-    {"id": "szenarien", "de": "Szenarien", "area": "methoden", "question": "Was kosten Zölle, was bringt der Binnenmarkt, was gesperrte Seewege?", "status": "stable", "km_candidate": false, "data": "OECD ICIO, USITC ITPD-E, CEPII, US tariff schedules", "scripts": ["30_scenario_download.py", "34_scenario_us_tariffs.py", "36_scenario_eu.py", "38_scenario_transport.py", "42_update_us_scenarios.py", "run_strand3.py"], "update": "monthly (US tariffs)", "note": "model results; reproduction check 82 of 82"},
-    {"id": "prognose", "de": "Prognosetest", "area": "methoden", "question": "Taugen Gravitationsmodelle für Kurzfristprognosen?", "status": "sandbox", "km_candidate": false, "data": "Eurostat Comext, IMF IMTS", "scripts": ["10_comext_panel.py", "12_forecast_germany.py", "13_forecast_world.py"], "update": "none (archive)"},
-    {"id": "methodik", "de": "Methodik", "area": "methoden", "question": "Methodik und Quellen", "status": "stable", "km_candidate": false, "data": "-", "scripts": [], "update": "with each change"}
-  ]
+ "_about": "Register of all modules of the Produktraum-Monitor: one entry per tab. Single source for navigation areas, maturity and the path into the Konjunkturmonitor (KM). status: sandbox (methods and numbers may change), stable (checked, kept up to date), km (moved into the Konjunkturmonitor; the tab here may stay as the analytical version). km_candidate: true when the module meets the KM criteria or nearly so.",
+ "areas": [
+  {
+   "id": "handel",
+   "de": "Handel und Spezialisierung",
+   "en": "Trade and specialisation"
+  },
+  {
+   "id": "geopolitik",
+   "de": "Abhängigkeiten und Geopolitik",
+   "en": "Dependencies and geopolitics"
+  },
+  {
+   "id": "regionen",
+   "de": "Regionen",
+   "en": "Regions"
+  },
+  {
+   "id": "staat",
+   "de": "Staat",
+   "en": "Government"
+  },
+  {
+   "id": "methoden",
+   "de": "Szenarien und Methodik",
+   "en": "Scenarios and methods"
+  }
+ ],
+ "km_criteria": [
+  "official or established data source",
+  "automatic or at least yearly update, documented",
+  "descriptive, no model assumptions in the shown numbers",
+  "texts checked; figures follow the KM design rules"
+ ],
+ "modules": [
+  {
+   "id": "ueberblick",
+   "de": "Überblick",
+   "area": "handel",
+   "question": "Wie komplex sind die Exporte eines Landes?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "CEPII BACI HS92",
+   "scripts": [
+    "01_exports.py",
+    "02_complexity.py",
+    "20_export_site.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "laender",
+   "de": "Länder",
+   "area": "handel",
+   "question": "Wie stehen die Länder im Komplexitätsvergleich?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "CEPII BACI HS92",
+   "scripts": [
+    "02_complexity.py",
+    "04_robustness.py",
+    "20_export_site.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "profil",
+   "de": "Länderprofil",
+   "area": "handel",
+   "question": "Was exportiert ein Land, und was träfe es in den Szenarien?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "CEPII BACI, scenario results",
+   "scripts": [
+    "03_germany.py",
+    "20_export_site.py",
+    "37_export_scenarios.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "produktraum",
+   "de": "Produktraum",
+   "area": "handel",
+   "question": "Wo liegen die nächsten Exportchancen?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "CEPII BACI HS92",
+   "scripts": [
+    "06_product_space.py",
+    "07_atlas_comparison.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "branchen",
+   "de": "Branchen",
+   "area": "handel",
+   "question": "Welche Branchen tragen die Komplexität?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "CEPII BACI HS92",
+   "scripts": [
+    "05_sectors.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "dienste",
+   "de": "Dienstleistungen",
+   "area": "handel",
+   "question": "Womit handelt Deutschland bei Dienstleistungen?",
+   "status": "stable",
+   "km_candidate": true,
+   "data": "OECD TiS, IMF IMTS",
+   "scripts": [
+    "82_services.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "fdi",
+   "de": "Investitionen",
+   "area": "handel",
+   "question": "Wo investiert die deutsche Wirtschaft?",
+   "status": "stable",
+   "km_candidate": true,
+   "data": "OECD FDI statistics (BMD4)",
+   "scripts": [
+    "84_fdi.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "mittelstand",
+   "de": "Mittelstand",
+   "area": "handel",
+   "question": "Wie stark hängt der Mittelstand am Außenhandel?",
+   "status": "stable",
+   "km_candidate": true,
+   "data": "Eurostat TEC",
+   "scripts": [
+    "58_mittelstand.py",
+    "59_export_mittelstand.py"
+   ],
+   "update": "by hand, yearly",
+   "note": "KM handover prompt exists (HANDOVER_KM_extensions.md, topic 1)",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "abhaengigkeiten",
+   "de": "Abhängigkeiten",
+   "area": "geopolitik",
+   "question": "Wo hängen EU und Deutschland an wenigen Lieferländern?",
+   "status": "stable",
+   "km_candidate": true,
+   "data": "CEPII BACI HS22, OECD ICIO",
+   "scripts": [
+    "44_dependencies.py",
+    "46_export_dependencies.py",
+    "47_indirect_dependence.py",
+    "83_critical_materials.py"
+   ],
+   "update": "by hand, yearly",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "wettbewerb",
+   "de": "China-Wettbewerb",
+   "area": "geopolitik",
+   "question": "Wo konkurrieren deutsche und chinesische Exporte?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "CEPII BACI, Global Trade Alert",
+   "scripts": [
+    "50_china_competition.py",
+    "51_export_china_competition.py",
+    "75_subsidies.py",
+    "76_subsidies_regression.py"
+   ],
+   "update": "by hand",
+   "update_de": "von Hand",
+   "update_en": "by hand"
+  },
+  {
+   "id": "nullhandel",
+   "de": "Null-Handel",
+   "area": "geopolitik",
+   "question": "Wer handelt überhaupt mit wem?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "CEPII BACI, CEPII Gravity",
+   "scripts": [
+    "52_zero_trade.py",
+    "53_zero_trade_figures.py",
+    "54_export_zero_trade.py",
+    "55_zero_trade_compare.py"
+   ],
+   "update": "by hand",
+   "update_de": "von Hand",
+   "update_en": "by hand"
+  },
+  {
+   "id": "regime",
+   "de": "Regierungsform",
+   "area": "geopolitik",
+   "question": "Mit welchen Regierungen handeln Deutschland und die EU?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "CEPII BACI, V-Dem",
+   "scripts": [
+    "56_trade_by_regime.py",
+    "57_export_regime.py"
+   ],
+   "update": "by hand",
+   "update_de": "von Hand",
+   "update_en": "by hand"
+  },
+  {
+   "id": "bundeslaender",
+   "de": "Bundesländer",
+   "area": "regionen",
+   "question": "Wie hängen die Bundesländer am Außenhandel?",
+   "status": "stable",
+   "km_candidate": true,
+   "data": "Destatis 51000-0032/0034, Eurostat nama_10r_2gdp",
+   "scripts": [
+    "88_laender_trade.py"
+   ],
+   "update": "by hand, yearly (Destatis account)",
+   "update_de": "von Hand, jährlich (Destatis-Konto)",
+   "update_en": "by hand, yearly (Destatis account)"
+  },
+  {
+   "id": "regionen",
+   "de": "Regionen",
+   "area": "regionen",
+   "question": "Welche Regionen Europas trifft was?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "Eurostat, ARDECO, OSM, BNetzA, Rosés-Wolf",
+   "scripts": [
+    "64_regional_exposure.py",
+    "65_regional_history_cohesion.py",
+    "69_h2_kernnetz.py",
+    "70_netzausbau.py",
+    "71_netz_lines.py",
+    "72_export_energienetze.py",
+    "77_roses_wolf.py"
+   ],
+   "update": "quarterly (grid expansion, OSM) and by hand",
+   "note": "mixed: maps and descriptive parts stable, exposure model and cohesion RDD sandbox",
+   "update_de": "vierteljährlich (Netzausbau, OSM) und von Hand",
+   "update_en": "quarterly (grid expansion, OSM) and by hand"
+  },
+  {
+   "id": "kreise",
+   "de": "Kreise",
+   "area": "regionen",
+   "question": "Was zeigen die Kreisdaten?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "MaStR, Breitbandatlas, OSM, Regionaldatenbank, INKAR, BBSR",
+   "scripts": [
+    "66_kreise_energy.py",
+    "67_kreise_netze.py",
+    "68_kreise_infra.py",
+    "73_kreise_export.py",
+    "74_kreise_us_tariffs.py",
+    "78_kreise_profile.py",
+    "79_inkar_analyses.py",
+    "80_grw.py"
+   ],
+   "update": "quarterly (MaStR, OSM) and by hand",
+   "note": "maps stable, INKAR analyses and tariff exposure sandbox; deepened in a separate chat (HANDOVER_regional.md)",
+   "update_de": "vierteljährlich (MaStR, OSM) und von Hand",
+   "update_en": "quarterly (MaStR, OSM) and by hand"
+  },
+  {
+   "id": "steckbrief",
+   "de": "Kreis-Steckbrief",
+   "area": "regionen",
+   "question": "Wie steht ein Kreis da?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "as Kreise",
+   "scripts": [
+    "81_kreis_steckbrief.py"
+   ],
+   "update": "quarterly",
+   "update_de": "vierteljährlich",
+   "update_en": "quarterly"
+  },
+  {
+   "id": "staat",
+   "de": "Staatsausgaben",
+   "area": "staat",
+   "question": "Wofür gibt der Staat Geld aus?",
+   "status": "km",
+   "km_candidate": true,
+   "data": "Eurostat COFOG, bundeshaushalt.de",
+   "scripts": [
+    "86_cofog.py",
+    "87_bundeshaushalt.py",
+    "tools/export_km.py"
+   ],
+   "update": "quarterly (COFOG), by hand (federal budget)",
+   "note": "treemaps and COFOG charts in the KM since 2026-11-12; deepened in a separate chat (HANDOVER_haushalt.md)",
+   "update_de": "vierteljährlich (COFOG), von Hand (Bundeshaushalt)",
+   "update_en": "quarterly (COFOG), by hand (federal budget)"
+  },
+  {
+   "id": "beschaffung",
+   "de": "Beschaffung",
+   "area": "staat",
+   "question": "Wie kauft der Staat ein?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "TED (EU), Destatis Vergabestatistik",
+   "scripts": [
+    "85_bigg_ted.py",
+    "tools/ted_legacy_packages.py",
+    "tools/ted_eforms_api.py"
+   ],
+   "update": "by hand",
+   "note": "Big G pilot; request to the procurement unit on hold",
+   "update_de": "von Hand",
+   "update_en": "by hand"
+  },
+  {
+   "id": "szenarien",
+   "de": "Szenarien",
+   "area": "methoden",
+   "question": "Was kosten Zölle, was bringt der Binnenmarkt, was gesperrte Seewege?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "OECD ICIO, USITC ITPD-E, CEPII, US tariff schedules",
+   "scripts": [
+    "30_scenario_download.py",
+    "34_scenario_us_tariffs.py",
+    "36_scenario_eu.py",
+    "38_scenario_transport.py",
+    "42_update_us_scenarios.py",
+    "run_strand3.py"
+   ],
+   "update": "monthly (US tariffs)",
+   "note": "model results; reproduction check 82 of 82",
+   "update_de": "monatlich (US-Zölle)",
+   "update_en": "monthly (US tariffs)"
+  },
+  {
+   "id": "prognose",
+   "de": "Prognosetest",
+   "area": "methoden",
+   "question": "Taugen Gravitationsmodelle für Kurzfristprognosen?",
+   "status": "sandbox",
+   "km_candidate": false,
+   "data": "Eurostat Comext, IMF IMTS",
+   "scripts": [
+    "10_comext_panel.py",
+    "12_forecast_germany.py",
+    "13_forecast_world.py"
+   ],
+   "update": "none (archive)",
+   "update_de": "keine (Archiv)",
+   "update_en": "none (archive)"
+  },
+  {
+   "id": "methodik",
+   "de": "Methodik",
+   "area": "methoden",
+   "question": "Methodik und Quellen",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "-",
+   "scripts": [],
+   "update": "with each change",
+   "update_de": "bei jeder Änderung",
+   "update_en": "with each change"
+  }
+ ]
 }

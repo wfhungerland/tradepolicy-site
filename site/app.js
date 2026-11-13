@@ -50,11 +50,34 @@
     if (h.startsWith("abb-")) { fig = document.getElementById(h); const sec = fig && fig.closest("section.view"); h = sec ? sec.id.replace("view-", "") : ""; }
     const view = VIEWS.includes(h) ? h : "ueberblick";
     VIEWS.forEach((v) => { $("view-" + v).hidden = v !== view; });
-    document.querySelectorAll("nav a").forEach((a) => {
-      if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
-    });
+    navUpdate(view);
     $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat", "bundeslaender"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
+  }
+
+  // ---------------------------------------------------------------- navigation by areas (from data/modules.json)
+  let MODS = null, NAVTXT = {};
+  async function navSetup() {
+    try { MODS = await getJSON("data/modules.json"); } catch (e) { MODS = null; }
+    const nav = document.querySelector("header nav");
+    nav.querySelectorAll("a").forEach((a) => { NAVTXT[a.getAttribute("href").slice(1)] = a.textContent; });
+    if (!MODS) return;
+    nav.innerHTML = `<div class="navareas"></div><div class="navsub"></div>`;
+  }
+  function navUpdate(view) {
+    const nav = document.querySelector("header nav");
+    if (!MODS) { nav.querySelectorAll("a").forEach((a) => { if (a.getAttribute("href") === "#" + view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); }); return; }
+    const mod = MODS.modules.find((m) => m.id === view) || MODS.modules[0], area = mod.area;
+    nav.querySelector(".navareas").innerHTML = MODS.areas.map((a) => { const first = MODS.modules.find((m) => m.area === a.id); return `<a href="#${first.id}"${a.id === area ? ' aria-current="true"' : ""}>${esc(L(a.de, a.en))}</a>`; }).join("");
+    nav.querySelector(".navsub").innerHTML = MODS.modules.filter((m) => m.area === area).map((m) => `<a href="#${m.id}"${m.id === view ? ' aria-current="page"' : ""}>${esc(NAVTXT[m.id] || m.id)}${m.status === "sandbox" ? ' <span class="sbx">' + L("Sandkasten", "sandbox") + "</span>" : ""}</a>`).join("");
+    // on narrow screens the rows scroll sideways: keep the current area and tab in view
+    nav.querySelectorAll("[aria-current]").forEach((a) => { const row = a.parentElement; if (row.scrollWidth > row.clientWidth) row.scrollLeft = a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2; });
+    // status line under the heading of the tab
+    const sec = $("view-" + view); if (!sec) return;
+    let p = sec.querySelector(":scope > .modstatus");
+    if (!p) { p = document.createElement("p"); p.className = "modstatus"; const h = sec.querySelector(":scope > h2"); if (h) h.after(p); else sec.prepend(p); }
+    const st = { sandbox: L("Sandkasten: Methode und Zahlen können sich noch ändern", "Sandbox: methods and numbers may still change"), stable: L("Stabil", "Stable"), km: L("Auch im Konjunkturmonitor", "Also in the Konjunkturmonitor") }[mod.status];
+    p.textContent = `${st} · ${L("Daten", "Data")}: ${mod.data} · ${L("Aktualisierung", "Update")}: ${L(mod.update_de, mod.update_en)}`;
   }
 
   // figures: numbering, CSV, PNG and link (as under every chart of the Konjunkturmonitor)
@@ -1876,6 +1899,7 @@
     $("space").addEventListener("mousemove", onSpaceMove);
     $("space").addEventListener("mouseleave", () => { $("tip").hidden = true; });
     $("space").addEventListener("click", onSpaceMove);
+    await navSetup();
     window.addEventListener("hashchange", route);
     let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("view-produktraum").hidden) renderSpace(); }, 150); });
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", route);

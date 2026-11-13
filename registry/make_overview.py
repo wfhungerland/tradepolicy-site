@@ -16,4 +16,7 @@ for a in R["areas"]:
 cnt = {s: sum(m["status"] == s for m in R["modules"]) for s in ST}
 lines += ["## Summe", "", ", ".join(f"{ST[s]}: {n}" for s, n in cnt.items()) + f"; KM-Kandidaten: {sum(m['km_candidate'] and m['status'] != 'km' for m in R['modules'])}", ""]
 (here / "MODULES.md").write_text("\n".join(lines), encoding="utf-8")
+# the site reads a compact copy for its navigation and the status line of each tab
+site = {"areas": R["areas"], "modules": [{k: m[k] for k in ("id", "area", "status", "km_candidate", "data", "update_de", "update_en")} for m in R["modules"]]}
+(here.parent / "site" / "data" / "modules.json").write_text(json.dumps(site, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 print("\n".join(lines[-2:]))
