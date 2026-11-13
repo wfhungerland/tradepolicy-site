@@ -34,11 +34,13 @@ KM criteria: official or established data source; automatic or at least yearly u
 |---|---|---|---|---|---|
 | Bundesländer | Wie hängen die Bundesländer am Außenhandel? | stabil | ja | Destatis 51000-0032/0034, Eurostat nama_10r_2gdp | by hand, yearly (Destatis account) |
 | Regionen | Welche Regionen Europas trifft was? | stabil | nein | Eurostat, ARDECO, OSM, BNetzA, Rosés-Wolf | quarterly (grid expansion, OSM) and by hand |
-| Kreise | Was zeigen die Kreisdaten? | Sandkasten | nein | MaStR, Breitbandatlas, OSM, Regionaldatenbank, INKAR, BBSR | quarterly (MaStR, OSM) and by hand |
+| Kreise | Was zeigen die Kreisdaten? | stabil | nein | BBSR INKAR 2025, BBSR GRW status | by hand, yearly |
+| Betroffenheit | Wen treffen Zölle in den Regionen? | Sandkasten | nein | Caliendo-Parro scenarios, Regionaldatenbank, BBSR INKAR 2025, BBSR GRW | by hand |
 | Kreis-Steckbrief | Wie steht ein Kreis da? | stabil | nein | as Kreise | quarterly |
 
-- Regionen: mixed: maps and descriptive parts stable, exposure model and cohesion RDD sandbox
-- Kreise: maps stable, INKAR analyses and tariff exposure sandbox; deepened in a separate chat (HANDOVER_regional.md)
+- Regionen: map layers split: observed data first, model results (US tariffs, China stop, Red Sea, district tariff exposure) as a separate sandbox group in the layer list
+- Kreise: descriptive district maps; exposure analyses moved to the tab Betroffenheit (2026-11-13)
+- Betroffenheit: double-risk maps, profile of exposed districts, eleven INKAR analyses; deepened in a separate chat (HANDOVER_regional.md)
 
 ## Staat
 
@@ -62,4 +64,4 @@ KM criteria: official or established data source; automatic or at least yearly u
 
 ## Summe
 
-Sandkasten: 6, stabil: 14, im KM: 1; KM-Kandidaten: 5
+Sandkasten: 6, stabil: 15, im KM: 1; KM-Kandidaten: 5

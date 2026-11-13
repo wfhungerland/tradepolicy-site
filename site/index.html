@@ -34,6 +34,7 @@
       <a href="#staat">Staatsausgaben</a>
       <a href="#bundeslaender">Bundesländer</a>
       <a href="#regionen">Regionen</a>
+      <a href="#betroffenheit">Betroffenheit</a>
       <a href="#kreise">Kreise</a>
       <a href="#steckbrief">Kreis-Steckbrief</a>
       <a href="#szenarien">Szenarien</a>
@@ -587,16 +588,12 @@
     <div class="toolbar">
       <label for="regLayer">Karte</label>
       <select id="regLayer">
-        <option value="us">US-Zölle: Produktion</option>
-        <option value="cn">Lieferstopp Chinas: Produktion</option>
-        <option value="rs">Rotes Meer wie 2024: Produktion</option>
+        <optgroup label="Beobachtete Daten">
         <option value="en">Energieintensive Industrie</option>
         <option value="gdp">BIP je Einwohner (Index)</option>
         <option value="rw">BIP je Einwohner seit 1900 (Rosés-Wolf)</option>
         <option value="coh">EU-Kohäsionszahlungen</option>
         <option value="port">Seehäfen: Umschlag</option>
-        <option value="k_us">Kreise: US-Zölle, Produktion der Industrie</option>
-        <option value="k_usl">Kreise: US-Zölle, Verlust je Einwohner</option>
         <option value="k_exq">Kreise: Exportquote der Industrie</option>
         <option value="k_exd">Kreise: Veränderung der Exportquote</option>
         <option value="k_exp">Kreise: Auslandsumsatz je Einwohner</option>
@@ -612,6 +609,14 @@
         <option value="k_hvl">Kreise: 110-kV-Leitungen</option>
         <option value="k_rel">Kreise: elektrifizierte Bahnstrecken</option>
         <option value="k_bab">Kreise: Autobahndichte</option>
+        </optgroup>
+        <optgroup label="Modellrechnungen (Sandkasten)">
+        <option value="us">US-Zölle: Produktion</option>
+        <option value="cn">Lieferstopp Chinas: Produktion</option>
+        <option value="rs">Rotes Meer wie 2024: Produktion</option>
+        <option value="k_us">Kreise: US-Zölle, Produktion der Industrie</option>
+        <option value="k_usl">Kreise: US-Zölle, Verlust je Einwohner</option>
+        </optgroup>
       </select>
       <label for="regYear" id="regYearLab">Jahr</label>
       <select id="regYear"></select>
@@ -683,23 +688,9 @@
   <section id="view-kreise" class="view" hidden>
     <h2>Was zeigen die Kreisdaten?</h2>
     <div class="intro"><p class="answer" id="krIntro"></p></div>
-    <p class="hint" id="krHover"></p>
+    <p class="hint krhover" id="krHover"></p>
     <div class="charts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:40px 32px">
-    <figure class="card fig" data-fig="km_risk_demo">
-      <p class="cask" id="km_risk_demo_ask"></p>
-      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_demo_title"></span></h3>
-      <div class="cmain"><div id="km_risk_demo_map" class="svgwrap"></div><div id="km_risk_demo_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
-      <p class="src" id="km_risk_demo_src"></p>
-      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
-    </figure>
-    <figure class="card fig" data-fig="km_risk_pov">
-      <p class="cask" id="km_risk_pov_ask"></p>
-      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_pov_title"></span></h3>
-      <div class="cmain"><div id="km_risk_pov_map" class="svgwrap"></div><div id="km_risk_pov_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
-      <p class="src" id="km_risk_pov_src"></p>
-      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
-    </figure>
-    <figure class="card fig" data-fig="km_grw">
+            <figure class="card fig" data-fig="km_grw">
       <p class="cask" id="km_grw_ask"></p>
       <h3><span class="fignum"></span><span class="ftitle" id="km_grw_title"></span></h3>
       <div class="cmain"><div id="km_grw_map" class="svgwrap"></div><div id="km_grw_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
@@ -830,12 +821,34 @@
       <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
     </figure>
     </div>
+</section>
+
+  <section id="view-betroffenheit" class="view" hidden>
+    <h2>Wen treffen Zölle in den Regionen?</h2>
+    <div class="intro"><p class="answer" id="bfIntro"></p></div>
+    <p class="hint krhover"></p>
+    <div class="charts" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:40px 32px">
+<figure class="card fig" data-fig="km_risk_demo">
+      <p class="cask" id="km_risk_demo_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_demo_title"></span></h3>
+      <div class="cmain"><div id="km_risk_demo_map" class="svgwrap"></div><div id="km_risk_demo_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_risk_demo_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+<figure class="card fig" data-fig="km_risk_pov">
+      <p class="cask" id="km_risk_pov_ask"></p>
+      <h3><span class="fignum"></span><span class="ftitle" id="km_risk_pov_title"></span></h3>
+      <div class="cmain"><div id="km_risk_pov_map" class="svgwrap"></div><div id="km_risk_pov_leg" class="hint" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px"></div></div>
+      <p class="src" id="km_risk_pov_src"></p>
+      <div class="acts"><button type="button" data-act="xlsx">XLSX</button><button type="button" data-act="pptx">PPTX</button><button type="button" data-act="png">PNG</button><button type="button" data-act="csv">CSV</button><button type="button" data-act="link">Link kopieren</button></div>
+    </figure>
+    </div>
     <h3 id="kpHead"></h3>
     <p class="answer" id="kpAnswer"></p>
     <div class="tablewrap"><table id="kpTable"></table></div>
     <p class="src" id="kpSrc"></p>
     <div id="krItems"></div>
-  </section>
+    </section>
 
   <section id="view-steckbrief" class="view" hidden>
     <h2>Wie steht ein Kreis da?</h2>
@@ -922,6 +935,6 @@
   <span>Produktraum-Monitor · Wolf-Fabian Hungerland · Auch: <a href="https://wfhungerland.github.io/konjunkturmonitor/">Konjunkturmonitor</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a> · Texte und Abbildungen: <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="license">CC BY 4.0</a></span>
   <span>Eigene Berechnungen auf Basis von CEPII BACI, Eurostat Comext, IMF IMTS, Harvard Growth Lab, OECD ICIO, USITC ITPD-E, CEPII-Zolldaten und searoute.</span>
 </footer>
-<script src="app.js?v=20261114g"></script>
+<script src="app.js?v=20261114h"></script>
 </body>
 </html>

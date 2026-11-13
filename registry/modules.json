@@ -266,7 +266,7 @@
     "77_roses_wolf.py"
    ],
    "update": "quarterly (grid expansion, OSM) and by hand",
-   "note": "mixed: maps and descriptive parts stable, exposure model and cohesion RDD sandbox",
+   "note": "map layers split: observed data first, model results (US tariffs, China stop, Red Sea, district tariff exposure) as a separate sandbox group in the layer list",
    "update_de": "vierteljährlich (Netzausbau, OSM) und von Hand",
    "update_en": "quarterly (grid expansion, OSM) and by hand"
   },
@@ -275,23 +275,37 @@
    "de": "Kreise",
    "area": "regionen",
    "question": "Was zeigen die Kreisdaten?",
+   "status": "stable",
+   "km_candidate": false,
+   "data": "BBSR INKAR 2025, BBSR GRW status",
+   "scripts": [
+    "79_inkar_analyses.py",
+    "80_grw.py"
+   ],
+   "update": "by hand, yearly",
+   "note": "descriptive district maps; exposure analyses moved to the tab Betroffenheit (2026-11-13)",
+   "update_de": "von Hand, jährlich",
+   "update_en": "by hand, yearly"
+  },
+  {
+   "id": "betroffenheit",
+   "de": "Betroffenheit",
+   "area": "regionen",
+   "question": "Wen treffen Zölle in den Regionen?",
    "status": "sandbox",
    "km_candidate": false,
-   "data": "MaStR, Breitbandatlas, OSM, Regionaldatenbank, INKAR, BBSR",
+   "data": "Caliendo-Parro scenarios, Regionaldatenbank, BBSR INKAR 2025, BBSR GRW",
    "scripts": [
-    "66_kreise_energy.py",
-    "67_kreise_netze.py",
-    "68_kreise_infra.py",
-    "73_kreise_export.py",
+    "64_regional_exposure.py",
     "74_kreise_us_tariffs.py",
     "78_kreise_profile.py",
     "79_inkar_analyses.py",
     "80_grw.py"
    ],
-   "update": "quarterly (MaStR, OSM) and by hand",
-   "note": "maps stable, INKAR analyses and tariff exposure sandbox; deepened in a separate chat (HANDOVER_regional.md)",
-   "update_de": "vierteljährlich (MaStR, OSM) und von Hand",
-   "update_en": "quarterly (MaStR, OSM) and by hand"
+   "update": "by hand",
+   "update_de": "von Hand",
+   "update_en": "by hand",
+   "note": "double-risk maps, profile of exposed districts, eleven INKAR analyses; deepened in a separate chat (HANDOVER_regional.md)"
   },
   {
    "id": "steckbrief",

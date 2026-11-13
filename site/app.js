@@ -8,7 +8,7 @@
   const PN = EN ? 10 : 1; // product name column
   const bn = (txt) => L(`${txt} Mrd. USD`, `USD ${txt} bn`);
   const PP = L("Pp", "pp");
-  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "staat", "bundeslaender", "regionen", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
+  const VIEWS = ["ueberblick", "laender", "profil", "produktraum", "branchen", "abhaengigkeiten", "wettbewerb", "nullhandel", "regime", "mittelstand", "dienste", "fdi", "beschaffung", "staat", "bundeslaender", "regionen", "betroffenheit", "kreise", "steckbrief", "szenarien", "prognose", "methodik"];
   const DEFAULT_COMPARE = ["CHN", "USA", "JPN", "KOR"];
   const state = { scenario: "current_2026_08", iso: "DEU", compare: DEFAULT_COMPARE.slice(), colorMode: "status", snapYear: null, highlight: null };
   const cache = {};
@@ -51,7 +51,7 @@
     const view = VIEWS.includes(h) ? h : "ueberblick";
     VIEWS.forEach((v) => { $("view-" + v).hidden = v !== view; });
     navUpdate(view);
-    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat", "bundeslaender"].includes(view);
+    $("controls").hidden = ["prognose", "methodik", "kreise", "steckbrief", "dienste", "fdi", "beschaffung", "staat", "bundeslaender", "betroffenheit"].includes(view);
     render(view).then(() => { if (fig) fig.scrollIntoView(); });
   }
 
@@ -228,7 +228,8 @@
     if (view === "staat") await renderState();
     if (view === "bundeslaender") await renderLaender();
     if (view === "regionen") { await renderRegions(); renderNetMap(); renderEnergyNets(); }
-    if (view === "kreise") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
+    if (view === "kreise") await renderKreiseMap();
+    if (view === "betroffenheit") { await renderKreiseMap(); await renderKreisProfile(); await renderKreise(); }
     if (view === "steckbrief") await renderSteckbrief();
     if (view === "prognose") renderForecast();
     if (view === "methodik") renderMethod();
@@ -1220,7 +1221,7 @@
          `Rarely: in the most affected fifth ${fmt(100 * GR.summary.by_quintile[4].share_c, 0)} % of people live in C aid areas, in the least affected ${fmt(100 * GR.summary.by_quintile[0].share_c, 0)} %. Only ${fmt(100 * GR.summary.loss_share_in_c, 0)} % of the output loss falls in C areas, ${fmt(100 * GR.summary.loss_share_in_cd, 0)} % in C or D areas (population: ${fmt(100 * GR.summary.germany.share_c, 0)} and ${fmt(100 * GR.summary.germany.share_cd, 0)} %). GRW regional aid thus barely reaches the core of the tariff shock.`),
        `<thead><tr><th>${esc(qh)}</th><th class="num">${L("Bevölkerung in C-Fördergebieten, %", "Population in C aid areas, %")}</th><th class="num">${L("in C- oder D-Fördergebieten, %", "in C or D aid areas, %")}</th></tr></thead><tbody>` + GR.summary.by_quintile.map((r) => `<tr><td>${r.q}</td><td class="num">${fmt(100 * r.share_c, 0)}</td><td class="num">${fmt(100 * r.share_cd, 0)}</td></tr>`).join("") + "</tbody>"],
     ];
-    $("krIntro").textContent = L(`Elf Auswertungen mit den Kreisdaten des BBSR (INKAR 2025) und der US-Zoll-Betroffenheit je Kreis. Alles sind Zusammenhänge zwischen Kreisen, keine Ursachen. Regressionen mit Länder-Effekten und robusten Standardfehlern; Sterne: *** p < 0,01, ** p < 0,05, * p < 0,1.`,
+    $("bfIntro").textContent = L(`Elf Auswertungen mit den Kreisdaten des BBSR (INKAR 2025) und der US-Zoll-Betroffenheit je Kreis. Alles sind Zusammenhänge zwischen Kreisen, keine Ursachen. Regressionen mit Länder-Effekten und robusten Standardfehlern; Sterne: *** p < 0,01, ** p < 0,05, * p < 0,1.`,
       `Eleven analyses with BBSR district data (INKAR 2025) and the US tariff exposure by district. All are associations across districts, not causes. Regressions with Land effects and robust standard errors; stars: *** p < 0.01, ** p < 0.05, * p < 0.1.`);
     $("krItems").innerHTML = blocks.map(([h, t, tab]) => `<h3 style="margin-top:32px">${esc(h)}</h3><p class="answer">${esc(t)}</p><div class="tablewrap"><table>${tab}</table></div>`).join("") +
       `<p class="src">${L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR, Gebietsstand 31.12.2023, darin der GRW-Status jeder Gemeinde laut BBSR-Referenz 2023), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell. Bundestagswahl: Zweitstimmen.", "Source: own calculations based on INKAR 2025 (BBSR, boundaries of 31.12.2023, including the GRW status of every municipality from the BBSR reference 2023), the Regional Database Germany and the Caliendo-Parro model. Federal elections: party-list votes.")}</p>`;
@@ -1265,14 +1266,15 @@
       let s = `<svg viewBox="0 0 ${K.width} ${K.height.toFixed(1)}" role="img" aria-label="${esc(C.t)}" style="background:#fff;max-height:620px">`;
       Object.keys(K.paths).forEach((g) => { s += `<path d="${K.paths[g]}" fill="${colOf(get(g))}" stroke="#fff" stroke-width="0.4" data-g="${g}"><title>${esc(nm(g))}: ${esc(fv(get(g)))}</title></path>`; });
       el.innerHTML = s + "</svg>";
-      el.querySelectorAll("path").forEach((p) => { p.style.cursor = "pointer"; p.addEventListener("mousemove", () => { $("krHover").textContent = `${nm(p.dataset.g)}: ${fv(get(p.dataset.g))}`; }); p.addEventListener("click", () => { location.hash = "steckbrief/" + p.dataset.g; }); });
+      el.querySelectorAll("path").forEach((p) => { p.style.cursor = "pointer"; p.addEventListener("mousemove", () => { (p.closest("section").querySelector(".krhover") || $("krHover")).textContent = `${nm(p.dataset.g)}: ${fv(get(p.dataset.g))}`; }); p.addEventListener("click", () => { location.hash = "steckbrief/" + p.dataset.g; }); });
       $(`km_${k}_leg`).innerHTML = (C.cat ? C.labels.map((l, i) => `<span>${sw(C.cols[i])} ${esc(l)}</span>`) :
         C.cols.map((c, i) => `<span>${sw(c)} ${i === 0 ? L("unter ", "below ") + fmt(C.bins[1], k === "flaeche" ? 2 : 1) : i === C.cols.length - 1 ? fmt(C.bins[i], k === "flaeche" ? 2 : 1) + L(" und mehr", " and more") : fmt(C.bins[i], k === "flaeche" ? 2 : 1) + " – " + fmt(C.bins[i + 1], k === "flaeche" ? 2 : 1)}</span>`)).join("") + `<span>${sw("#bfbfbf")} ${L("keine Daten", "no data")}</span>`;
       $(`km_${k}_title`).textContent = C.t; $(`km_${k}_ask`).textContent = C.ask;
       $(`km_${k}_src`).textContent = L("Quelle: eigene Berechnungen auf Basis von INKAR 2025 (BBSR), der Regionaldatenbank Deutschland und dem Caliendo-Parro-Modell; Kartengrundlage: © EuroGeographics (GISCO). Lizenz der Abbildung: CC BY 4.0.", "Source: own calculations based on INKAR 2025 (BBSR), the Regional Database Germany and the Caliendo-Parro model; base map: © EuroGeographics (GISCO). Licence of the figure: CC BY 4.0.");
       FIGDATA[`km_${k}`] = { header: ["NUTS", L("Kreis", "District"), C.t], rows: Object.keys(K.paths).map((g) => [g, nm(g), C.cat ? fv(get(g)) : get(g)]) };
     });
-    $("krHover").textContent = L("Zeiger auf einen Kreis: Name und Wert; Klick öffnet den Kreis-Steckbrief.", "Point at a district: name and value; click opens the district profile.");
+    document.querySelectorAll(".krhover").forEach((e) => { e.textContent = L("Zeiger auf einen Kreis: Name und Wert; Klick öffnet den Kreis-Steckbrief.", "Point at a district: name and value; click opens the district profile."); });
+    $("krIntro").textContent = L("Beobachtete Kreisdaten in Karten: Arbeitsmarkt, Demografie, Gemeindefinanzen, Wahlen, Breitband, Erreichbarkeit, Migration und Flächennutzung (BBSR, INKAR 2025) sowie die GRW-Fördergebiete. Die Auswertungen zur US-Zoll-Betroffenheit stehen im Reiter Betroffenheit.", "Observed district data as maps: labour market, demography, municipal finances, elections, broadband, accessibility, migration and land use (BBSR, INKAR 2025) and the GRW aid areas. The analyses of US tariff exposure are on the tab Exposure.");
   }
 
   // district profile: every district indicator with German median and rank
